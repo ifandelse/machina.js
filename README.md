@@ -150,7 +150,7 @@ Each instance of an machina FSM has the following methods available via it's pro
 * `deferUntilNextHandler()` - calling this within a state handler function will queue the handler's arguments to be executed after the next handler is invoked.
 * `processQueue()` - called internally during state transitions and after handler methods have been invoked.  This call processes any queued events (queued by use of `deferUntilTransition` and/or `deferUntilNextHandler`).
 * `on(eventName, callback)` - used to subscribe to events that the FSM generates.
-* `off(eventName, callback)` - used to unsubsribe to FSM events.
+* `off(eventName, callback)` - used to unsubscribe to FSM events.
 
 ## The Top Level machina object
 The top level `machina` object has the following members:
