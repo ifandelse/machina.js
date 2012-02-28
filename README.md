@@ -1,5 +1,3 @@
-## I'm still solidifying this project - it's *close*, but not quite ready for prime-time.  Keep checking back!
-
 # machina.js
 
 ## What is it?
