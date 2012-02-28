@@ -1,0 +1,10 @@
+<div>Welcome, <span class="atm-info"><%= name %></span></div>
+
+<div class="atm-row">
+	<div class="atm-result-label">Current Account Balance:</div>
+	<span class="atm-result-value"><%= accounting.formatMoney(balance) %></span>
+</div>
+<div class="atm-row">
+	<div class="atm-result-label">Transaction Limit:</div>
+	<span class="atm-result-value"><%= accounting.formatMoney(limit) %></span>
+</div>

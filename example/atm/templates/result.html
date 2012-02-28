@@ -1,0 +1,17 @@
+<div class="atm-header">*** <%= transactionType %> ***</div>
+<div>
+	<div class="atm-row">
+		<div class="atm-result-label">Transaction Status:</div>
+		<div class="atm-result-value"><%= status %></div>
+	</div>
+	<div class="atm-row">
+		<div class="atm-result-label">Transaction Amount:</div>
+		<div class="atm-result-value"><%= accounting.formatMoney(transactionAmount) %></div>
+	</div>
+	<% if(status === "Successful") { %>
+	<div class="atm-row">
+		<div class="atm-result-label">New Account Balance:</div>
+		<div class="atm-result-value"><%= accounting.formatMoney(balance) %></div>
+	</div>
+	<% } %>
+</div>

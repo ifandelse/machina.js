@@ -1,0 +1,12 @@
+{
+    "source": "src",
+    "output": "lib/amd",
+    "lint": {},
+    "uglify": {},
+    "gzip": {},
+    "extensions": { "uglify": "min", "gzip": "gz" },
+    "wrap": {
+        "prefix": "define(['jquery', 'underscore'], function($, _) {",
+        "suffix": "return machina;});"
+    }
+}

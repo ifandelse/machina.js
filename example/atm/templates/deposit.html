@@ -1,0 +1,15 @@
+<div class="atm-header">*** Deposit ***</div>
+
+<div class="atm-row atm-info">Current Balance: <span><%= accounting.formatMoney(balance) %></span></div>
+<div class="atm-row">
+	<label>Deposit Amount</label>
+	<input type="text" id="amount" value="<%= amount %>">
+</div>
+<% if(!error) { %>
+	<div class="atm-row">
+		<div>Your balance after this transaction: <span class="atm-info"><%= accounting.formatMoney(parseFloat(balance) + parseFloat(amount)) %></span></div>
+	</div>
+<% } %>
+<div class="atm-row">
+	<span class="atm-error"><%= error%></span>
+</div>
