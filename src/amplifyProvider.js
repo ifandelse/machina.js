@@ -3,14 +3,14 @@ var AmplifyFsmProvider = function() {
 		wireHandlersToBus = function(exch, ns, fsm) {
 			_.each(utils.getHandlerNames(fsm), function(topic) {
 				fsm.messaging.subscriptions.push(
-					amplify.subscribe(exch + "." + ns + "." + topic, fsm, function(data) {
+					amplify.subscribe(exch + "." + ns + ".handle." + topic, fsm, function(data) {
 						this.handle.call(this,topic, data);
 					})
 				);
 			});
 		},
 		wireEventsToBus = function(exch, ns, fsm) {
-			var evnt = ns + "event.";
+			var evnt = ns + ".event.";
 			_.each(fsm.events, function(value, key) {
 				var pub = function() {
 					var payload = _.deepExtend({}, arguments);

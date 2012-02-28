@@ -3,7 +3,8 @@ var PostalFsmProvider = function() {
 		wireHandlersToBus = function(exch, ns, fsm) {
 			fsm.messaging.subscriptions.push(
 				postal.subscribe(exch, ns + ".handle.*", function(data, envelope){
-					this.handle.call(this, envelope.topic, data);
+					var handlerName = envelope.topic.replace(ns + ".handle.", "");
+					this.handle.call(this, handlerName, data);
 				}).withContext(fsm)
 			);
 		},

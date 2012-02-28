@@ -4,7 +4,7 @@ if(!_.deepExtend) {
 			obj[sourcePropKey] = sourcePropVal;
 		},
 		"object": function(obj, sourcePropKey, sourcePropVal) {
-			obj[sourcePropKey] = deepExtend({}, sourcePropVal);
+			obj[sourcePropKey] = deepExtend(obj[sourcePropKey] || {}, sourcePropVal);
 		},
 		"array": function(obj, sourcePropKey, sourcePropVal) {
 			obj[sourcePropKey] = [];
