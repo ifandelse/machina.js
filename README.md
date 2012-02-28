@@ -160,7 +160,7 @@ The top level `machina` object has the following members:
 * `utils` - contains various helper functions that can be overridden to drastically change default behavior(s) in machina:
 	* `getDefaultOptions` - returns the default options object for any machina instance
 	* `findProvider` - function that (by default) checks for postal and then amplify - if one is found, the FSM gets wired into the appropriate message bus.
-	* `makeMachinaTopic` - function that provides a default topic prefix for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
+	* `makeFsmNamespace` - function that provides a default topic prefix for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
 	* `getHandlerNames` - function that provides a flattened/distinct list of every handler name, under any state, an an FSM instance.
 	* `getTopicBase` - function that returns the base topic (prefix) for an FSM instance.  This is primarily used in creating topic strings in publish/subscribe operations.
 	* `getExchBase` - function that returns the base exchange/channel name for an FSM instance. This is primarily used in creating topic strings in publish/subscribe operations.
