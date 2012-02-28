@@ -17,7 +17,7 @@ var utils = {
 	findProvider: function() {
 		return window.postal ? "postal" : window.amplify ? "amplify" : undefined;
 	},
-	makeMachinaTopic: (function(){
+	makeFsmNamespace: (function(){
 		var machinaCount = 0;
 		return function() {
 			return "fsm." + machinaCount++;
@@ -40,7 +40,7 @@ var utils = {
 			messaging: {
 				provider : utils.findProvider(),
 				exchange: "machina",
-				topic: utils.makeMachinaTopic(),
+				topic: utils.makeFsmNamespace(),
 				subscriptions: [],
 				publishers: []
 			}

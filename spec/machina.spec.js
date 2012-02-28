@@ -2,8 +2,8 @@ QUnit.specify("machina.js", function(){
 	var fsm,
 		rgx = /.*\.[0-9]*/;
 	describe("machina.utils", function(){
-		describe("When calling machina.utils.makemachinaName", function() {
-			var name = machina.utils.makemachinaTopic();
+		describe("When calling machina.utils.makeFsmNamespace", function() {
+			var name = machina.utils.makeFsmNamespace();
 			it("should return fsm.{number}", function(){
 				assert(rgx.test(name)).equals(true);
 			});
