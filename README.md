@@ -59,7 +59,9 @@ var storageFsm = new machina.Fsm({
 			"sync.customer" : function( state ) {
 				if( verifyState( state, payload ) ) {
 					var unsynced = storage.getFromLocal( { startTime: state.offlineMarkerTime } );
-					storage.saveBatchToRemote( unsynced ); // Big assumption here!  In the real world, we'd batch this sync in reasonable chunks.
+					// Big assumption here!  In the real world,
+					// we'd batch this sync in reasonable chunks.
+					storage.saveBatchToRemote( unsynced );
 					this.fireEvent( "CustomerSyncComplete", { customers: unsynced } );
 				}
 			}
@@ -116,7 +118,8 @@ states: {
 
 		"ready" : {
 			"*" : function( state, payload ) {
-				// any message that comes while in the "ready" state will get handled here unless it matches another "ready" handler exactly.
+				// any message that comes while in the "ready" state will get handled here
+				// unless it matches another "ready" handler exactly.
             }
 		}
 ```
