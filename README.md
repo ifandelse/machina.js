@@ -143,7 +143,9 @@ Each instance of an machina FSM has the following methods available via it's pro
 * `fireEvent(eventName, [other args...])` - looks in the `events` object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to `fireEvent`.
 * `handle(msgType, [other args...])` - This is the main way you should be interacting with an FSM instance (assuming no message bus is present).  It will try to find a matching eventName/msgType under the current state and invoke it, if one exists.  Otherwise it will look for a catch-all handler, or simply ignore the message and raise the "NoHandler" event.
 * `transition(newState)` - Called when transitioning into a new state.
-* `deferThis(stateName)` - calling this within a state handler function will queue the event's arguments to be executed at a later time.  If you don't provide the `stateName` argument, it will replay the event after the next state transition.  Providing the `stateName` argument will queue the event until the FSM transitions into that state.
+* `deferUntilTransition(stateName)` - calling this within a state handler function will queue the event's arguments to be executed at a later time.  If you don't provide the `stateName` argument, it will replay the event after the next state transition.  Providing the `stateName` argument will queue the event until the FSM transitions into that state.
+* `deferUntilNextHandler()` - calling this within a state handler function will queue the event's arguments to be executed after the next handler is invoked.
+* `processQueue()` - called internally during state transitions and after handler methods have been invoked.  This call processes any queued events (queued by use of `deferUntilTransition` and/or `deferUntilNextHandler`).
 * `on(eventName, callback)` - used to subscribe to events that the FSM generates.
 * `off(eventName, callback)` - used to unsubsribe to FSM events.
 
