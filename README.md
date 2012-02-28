@@ -3,7 +3,7 @@
 # machina.js
 
 ## What is it?
-Machina.js is a JavaScript implementation of highly customizable finite state machine (FSM).  Many of the ideas for machina have been very heavily borrowed from the Erlang/OTP FSM behaviors.
+Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been very heavily borrowed from the Erlang/OTP FSM behaviors.
 
 ## Why would I use it?
 * Finite state machines offer a way to structure web client code in a very organized manner, and can make it much simpler to extend behavior for all or only key edge cases.
