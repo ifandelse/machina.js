@@ -16,6 +16,7 @@ var Fsm = function(options) {
 	if(initialState) {
 		this.transition(initialState);
 	}
+	machina.events.fireEvent("newFsm", this);
 };
 
 Fsm.prototype.fireEvent = function(eventName) {
