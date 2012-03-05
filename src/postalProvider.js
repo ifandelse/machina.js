@@ -8,7 +8,7 @@ var PostalFsmProvider = function() {
 			);
 		},
 		wireEventsToBus = function(fsm) {
-			fsm.on("*", function(){
+			fsm.messaging.eventPublisher = function(){
 				var topic = arguments[0],
 					payload = _.deepExtend({}, slice.call(arguments, 1));
 				payload.stateBag = payload[0];
@@ -17,7 +17,8 @@ var PostalFsmProvider = function() {
 					payload = eventTransformations[topic](payload);
 				}
 				postal.publish(fsm.messaging.eventNamespace, topic, payload);
-			});
+			};
+			fsm.on("*", fsm.messaging.eventPublisher);
 		};
 	return {
 		wireUp: function(fsm) {

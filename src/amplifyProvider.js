@@ -10,7 +10,7 @@ var AmplifyFsmProvider = function() {
 			});
 		},
 		wireEventsToBus = function(fsm) {
-			fsm.on("*", function(){
+			fsm.messaging.eventPublisher = function(){
 				var topic = arguments[0],
 					payload = _.deepExtend({}, slice.call(arguments, 1));
 				payload.stateBag = payload[0];
@@ -19,7 +19,8 @@ var AmplifyFsmProvider = function() {
 					payload = eventTransformations[topic](payload);
 				}
 				amplify.publish(fsm.messaging.eventNamespace + "." + topic, payload);
-			});
+			};
+			fsm.on("*", fsm.messaging.eventPublisher);
 		};
 	return {
 		wireUp: function(fsm) {

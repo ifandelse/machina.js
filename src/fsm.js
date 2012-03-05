@@ -1,8 +1,8 @@
 var Fsm = function(options) {
     var opt, initialState, defaults = utils.getDefaultOptions();
 	if(options) {
-		if(options.events) {
-			options.events = parseEvents(options.events);
+		if(options.eventListeners) {
+			options.eventListeners = parseEventListeners(options.eventListeners);
 		}
 		if(options.messaging) {
 			options.messaging = _.extend({}, defaults.messaging, options.messaging);
@@ -21,16 +21,16 @@ var Fsm = function(options) {
 	if(initialState) {
 		this.transition(initialState);
 	}
-	machina.events.fireEvent("newFsm", this);
+	machina.eventListeners.fireEvent("newFsm", this);
 };
 
 Fsm.prototype.fireEvent = function(eventName) {
     var i = 0, len, args = arguments;
-	_.each(this.events["*"], function(callback) {
+	_.each(this.eventListeners["*"], function(callback) {
 		callback.apply(this,slice.call(args, 0));
 	});
-    if(this.events[eventName]) {
-        _.each(this.events[eventName], function(callback) {
+    if(this.eventListeners[eventName]) {
+        _.each(this.eventListeners[eventName], function(callback) {
 	        callback.apply(this,slice.call(args, 1));
         });
     }
@@ -102,14 +102,14 @@ Fsm.prototype.deferUntilNextHandler = function() {
 };
 
 Fsm.prototype.on = function(eventName, callback) {
-    if(!this.events[eventName]) {
-	    this.events[eventName] = [];
+    if(!this.eventListeners[eventName]) {
+	    this.eventListeners[eventName] = [];
     }
-	this.events[eventName].push(callback);
+	this.eventListeners[eventName].push(callback);
 };
 
 Fsm.prototype.off = function(eventName, callback) {
-    if(this.events[eventName]){
-        _.without(this.events[eventName], callback);
+    if(this.eventListeners[eventName]){
+        _.without(this.eventListeners[eventName], callback);
     }
 };

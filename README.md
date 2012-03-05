@@ -40,7 +40,7 @@ var storageFsm = new machina.Fsm({
 		return true;
 	},
 
-	events: [ "CustomerSyncComplete" ],
+	eventListeners: [ "CustomerSyncComplete" ],
 
 	initialState: "offline",
 
@@ -91,12 +91,12 @@ Now that we've seen a quick example, let's do a whirlwind API tour.
 ## Whirlwind API Tour
 When you are creating a new FSM instance, `machina.Fsm` takes 1 argument - an options object.  Here's a breakdown of the members of this `options` object:
 
-`events` - Either a list of event names that the FSM can publish, or an object of event names, associated with the array of event handlers subscribed to them.
+`eventListeners` - Either a list of event names that the FSM can publish, or an object of event names, associated with the array of event handlers subscribed to them.
 
 ```javascript
-events: ["String", "List", "ofEvent", "names"]; // this is converted into an object similar to below
+eventListeners: ["String", "List", "ofEvent", "names"]; // this is converted into an object similar to below
 // OR
-events: {
+eventListeners: {
 	MyEvent1: [],
 	MyEvent2: [function(data) { console.log(data); }]
 }
@@ -136,7 +136,6 @@ messaging: {
     exchange: "machina", // the "channel" or "exchange" name for messages sent/delivered to/from this FSM
     topic: "sotrageFsm", // the "topic" prefix for messages sent/delivered to/from this FSM
     subscriptions: [],   // a list of message bus subscription objects/callbacks for this FSM
-    publishers: []       // a list of handlers for the events that this FSM generates.  These handlers take internal fireEvent calls and forward them to the message bus
 }
 ```
 
@@ -162,7 +161,5 @@ The top level `machina` object has the following members:
 	* `findProvider` - function that (by default) checks for postal and then amplify - if one is found, the FSM gets wired into the appropriate message bus.
 	* `makeFsmNamespace` - function that provides a default topic prefix for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
 	* `getHandlerNames` - function that provides a flattened/distinct list of every handler name, under any state, an an FSM instance.
-	* `getTopicBase` - function that returns the base topic (prefix) for an FSM instance.  This is primarily used in creating topic strings in publish/subscribe operations.
-	* `getExchBase` - function that returns the base exchange/channel name for an FSM instance. This is primarily used in creating topic strings in publish/subscribe operations.
 	* `standardEventTransforms` - an object that provides default implementations for transforming event arguments into a meaningful message payload when an FSM instance has been tied into a message bus.  Effectively, they provide the difference between a payload that looks like this: `"data":{"0":{"_currentAction":"","_priorAction":"unauthorized.*"},"1":"unauthorized","2":"unauthorized"}` vs this: `"data":{"stateBag":{"_currentAction":"","_priorAction":"unauthorized.*"},"oldState":"unauthorized","newState":"unauthorized"}`
 

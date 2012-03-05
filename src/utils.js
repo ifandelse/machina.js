@@ -1,10 +1,4 @@
 var utils = {
-	getExchBase: function(fsm) {
-		return fsm.messaging.exchange || "";
-	},
-	getTopicBase: function(fsm) {
-		return fsm.messaging.topic || "";
-	},
 	getHandlerNames: function(fsm) {
 		return _.uniq(
 			_.flatten(
@@ -26,7 +20,7 @@ var utils = {
 	getDefaultOptions: function() {
 		return {
 			initialState: "uninitialized",
-			events: {
+			eventListeners: {
 				"*" : []
 			},
 			states: {},

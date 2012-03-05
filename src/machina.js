@@ -12,19 +12,19 @@ var machina = {
 	busProviders: messageBusProvider,
 	utils: utils,
 	on: function(eventName, callback) {
-		if(this.events[eventName]) {
-			this.events[eventName].push(callback);
+		if(this.eventListeners[eventName]) {
+			this.eventListeners[eventName].push(callback);
 			return;
 		}
 		throw new Error("Invalid Event Name '" + eventName + "'.");
 	},
 	off: function(eventName, callback) {
-		if(this.events[eventName]){
-			_.without(this.events[eventName], callback);
+		if(this.eventListeners[eventName]){
+			_.without(this.eventListeners[eventName], callback);
 		}
 		throw new Error("Invalid Event Name '" + eventName + "'.");
 	},
-	events: {
+	eventListeners: {
 		fireEvent: function(eventName) {
 			var i = 0, len, args = arguments;
 			if(this[eventName]) {

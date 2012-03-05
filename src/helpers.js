@@ -8,7 +8,7 @@ var slice = [].slice,
 		});
 		return obj;
 	},
-	parseEvents = function(evnts) {
+	parseEventListeners = function(evnts) {
 		var obj = evnts;
 		if(_.isArray(evnts)) {
 			obj = transformEventListToObject(evnts);

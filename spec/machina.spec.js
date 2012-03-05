@@ -14,7 +14,7 @@ QUnit.specify("machina.js", function(){
 				assert(options.initialState).equals("uninitialized");
 			});
 			it("events should default to 1 empty arrays", function(){
-				assert(options.events["*"].length).equals(0);
+				assert(options.eventListeners["*"].length).equals(0);
 			});
 			it("states should default to empty object", function(){
 				assert(_.isEmpty(options.state)).equals(true);
@@ -50,23 +50,7 @@ QUnit.specify("machina.js", function(){
 						"b": function() { },
 						"c": function() { }
 					}
-				},
-				messaging: {
-					exchange: "myExchange",
-					topic: "myTopic"
 				}
-			});
-			describe("When calling machina.utils.getTopicBase", function() {
-				var topicBase = machina.utils.getTopicBase(fsm);
-				it("should set topicBase to myTopic", function(){
-					assert(topicBase).equals("myTopic");
-				});
-			});
-			describe("When calling machina.utils.getExchBase", function() {
-				var exchBase = machina.utils.getExchBase(fsm);
-				it("should set exchBase to myExchange", function(){
-					assert(exchBase).equals("myExchange");
-				});
 			});
 			describe("When calling machina.utils.getQualifiedHandlerNames", function() {
 				var handlers = machina.utils.getHandlerNames(fsm);
@@ -90,7 +74,7 @@ QUnit.specify("machina.js", function(){
 			});
 		});
 		describe("When calling parseEvents on an array of event names", function() {
-			var res = parseEvents(list);
+			var res = parseEventListeners(list);
 			it("should transform the array into an object", function(){
 				assert(result.One.length).equals(0);
 				assert(result.Two.length).equals(0);
@@ -98,7 +82,7 @@ QUnit.specify("machina.js", function(){
 			});
 		});
 		describe("When calling parseEvents on an events object", function() {
-			var res = parseEvents(result);
+			var res = parseEventListeners(result);
 			it("should return the events object", function(){
 				assert(result).equals(res);
 			});
@@ -137,7 +121,7 @@ QUnit.specify("machina.js", function(){
 							}
 						}
 					},
-					events: {
+					eventListeners: {
 						"NoHandler": [function() { noHandlerInvoked = true; }],
 						"Transitioned": [function() { transitionedHandler = true; }],
 						"Handling": [function() { handlingHandler = true; }],
@@ -198,7 +182,7 @@ QUnit.specify("machina.js", function(){
 							}
 						}
 					},
-					events: {
+					eventListeners: {
 						"Deferred": [function() { deferredInvoked = true; }]
 					}
 				});
@@ -240,7 +224,7 @@ QUnit.specify("machina.js", function(){
 							}
 						}
 					},
-					events: {
+					eventListeners: {
 						"Deferred": [function() { deferredInvoked = true; }]
 					}
 				});
@@ -283,7 +267,7 @@ QUnit.specify("machina.js", function(){
 							}
 						}
 					},
-					events: {
+					eventListeners: {
 						"Deferred": [function() { deferredInvoked = true; }]
 					}
 				});
