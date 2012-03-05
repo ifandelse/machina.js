@@ -1,9 +1,14 @@
 var Fsm = function(options) {
-    var opt, initialState;
-	if(options && options.events) {
-		options.events = parseEvents(options.events);
+    var opt, initialState, defaults = utils.getDefaultOptions();
+	if(options) {
+		if(options.events) {
+			options.events = parseEvents(options.events);
+		}
+		if(options.messaging) {
+			options.messaging = _.extend({}, defaults.messaging, options.messaging);
+		}
 	}
-	opt = _.deepExtend({ stateBag: { _priorAction:"", _currentAction: "" }}, utils.getDefaultOptions(), options || {});
+	opt = _.extend({ stateBag: { _priorAction:"", _currentAction: "" }}, defaults , options || {});
 	initialState = opt.initialState;
 	delete opt.initialState;
 	_.extend(this,opt);
@@ -21,9 +26,12 @@ var Fsm = function(options) {
 
 Fsm.prototype.fireEvent = function(eventName) {
     var i = 0, len, args = arguments;
+	_.each(this.events["*"], function(callback) {
+		callback.apply(this,slice.call(args, 0));
+	});
     if(this.events[eventName]) {
         _.each(this.events[eventName], function(callback) {
-            callback.apply(this,slice.call(args, 1));
+	        callback.apply(this,slice.call(args, 1));
         });
     }
 };
@@ -94,16 +102,14 @@ Fsm.prototype.deferUntilNextHandler = function() {
 };
 
 Fsm.prototype.on = function(eventName, callback) {
-    if(this.events[eventName]) {
-        this.events[eventName].push(callback);
-        return;
+    if(!this.events[eventName]) {
+	    this.events[eventName] = [];
     }
-    throw new Error("Invalid Event Name '" + eventName + "'.");
+	this.events[eventName].push(callback);
 };
 
 Fsm.prototype.off = function(eventName, callback) {
     if(this.events[eventName]){
         _.without(this.events[eventName], callback);
     }
-    throw new Error("Invalid Event Name '" + eventName + "'.");
 };

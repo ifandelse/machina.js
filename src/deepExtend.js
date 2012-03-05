@@ -1,6 +1,6 @@
-if(!_.deepExtend) {
+if (!_.deepExtend) {
 	var behavior = {
-		"*" : function(obj, sourcePropKey, sourcePropVal) {
+		"*": function(obj, sourcePropKey, sourcePropVal) {
 			obj[sourcePropKey] = sourcePropVal;
 		},
 		"object": function(obj, sourcePropKey, sourcePropVal) {
@@ -14,9 +14,15 @@ if(!_.deepExtend) {
 		}
 	},
 		getActualType = function(val) {
-			if(_.isArray(val))  { return "array"; }
-			if(_.isDate(val))   { return "date";  }
-			if(_.isRegExp(val)) { return "regex"; }
+			if (_.isArray(val)) {
+				return "array";
+			}
+			if (_.isDate(val)) {
+				return "date";
+			}
+			if (_.isRegExp(val)) {
+				return "regex";
+			}
 			return typeof val;
 		},
 		getHandlerName = function(val) {
@@ -33,6 +39,6 @@ if(!_.deepExtend) {
 		};
 
 	_.mixin({
-		deepExtend : deepExtend
+		deepExtend: deepExtend
 	});
 }

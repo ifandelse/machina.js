@@ -27,23 +27,20 @@ var utils = {
 		return {
 			initialState: "uninitialized",
 			events: {
-				"NoHandler"     : [],
-				"Transitioned"  : [],
-				"Handling"      : [],
-				"Handled"       : [],
-				"InvalidState"  : [],
-				"Deferred"      : []
+				"*" : []
 			},
 			states: {},
 			stateBag: {},
 			eventQueue: [],
-			messaging: {
-				provider : utils.findProvider(),
-				exchange: "machina",
-				topic: utils.makeFsmNamespace(),
-				subscriptions: [],
-				publishers: []
-			}
+			messaging: (function() {
+				var fsmNamespace = utils.makeFsmNamespace();
+				return {
+					provider : utils.findProvider(),
+					eventNamespace: fsmNamespace + ".events",
+					handlerNamespace: fsmNamespace,
+					subscriptions: []
+				}
+			})()
 		};
 	},
 	standardEventTransforms: {

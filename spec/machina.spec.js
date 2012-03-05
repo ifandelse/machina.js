@@ -2,7 +2,7 @@ QUnit.specify("machina.js", function(){
 	var fsm,
 		rgx = /.*\.[0-9]*/;
 	describe("machina.utils", function(){
-		describe("When calling machina.utils.makeFsmNamespace", function() {
+		describe("When calling machina.utils.makeFsmExchange", function() {
 			var name = machina.utils.makeFsmNamespace();
 			it("should return fsm.{number}", function(){
 				assert(rgx.test(name)).equals(true);
@@ -13,12 +13,8 @@ QUnit.specify("machina.js", function(){
 			it("initialState should default to uninitialized", function(){
 				assert(options.initialState).equals("uninitialized");
 			});
-			it("events should default to 5 empty arrays", function(){
-				assert(options.events.NoHandler.length).equals(0);
-				assert(options.events.Transitioned.length).equals(0);
-				assert(options.events.Handling.length).equals(0);
-				assert(options.events.Handled.length).equals(0);
-				assert(options.events.InvalidState.length).equals(0);
+			it("events should default to 1 empty arrays", function(){
+				assert(options.events["*"].length).equals(0);
 			});
 			it("states should default to empty object", function(){
 				assert(_.isEmpty(options.state)).equals(true);
@@ -27,33 +23,15 @@ QUnit.specify("machina.js", function(){
 				assert(_.isEmpty(options.stateBag)).equals(true);
 			});
 			it("messaging should default to expected values", function(){
-				assert(options.messaging.exchange).equals("machina");
-				assert(rgx.test(options.messaging.topic)).equals(true);
+				assert(rgx.test(options.messaging.handlerNamespace)).equals(true);
+				assert(rgx.test(options.messaging.eventNamespace)).equals(true);
 				assert(options.messaging.subscriptions.length).equals(0);
-				assert(options.messaging.publishers.length).equals(0);
 			});
 		});
 		describe("With defaulted FSM", function(){
 			var fsmB;
 			fsm = new machina.Fsm();
 			fsmB = new machina.Fsm();
-			describe("When calling machina.utils.getTopicBase", function() {
-				var topicBase = machina.utils.getTopicBase(fsm),
-					topicBaseB = machina.utils.getTopicBase(fsmB);
-				it("should set topicBase to fsm.{number}", function(){
-					assert(rgx.test(topicBase)).equals(true);
-				});
-				it("should set topicBase to fsm.{differentnumber}", function(){
-					assert(rgx.test(topicBaseB)).equals(true);
-					assert(topicBaseB === topicBase).equals(false);
-				});
-			});
-			describe("When calling machina.utils.getExchBase", function() {
-				var exchBase = machina.utils.getExchBase(fsm);
-				it("should set exchBase to machina", function(){
-					assert(exchBase).equals("machina");
-				});
-			});
 			describe("When calling machina.utils.getQualifiedHandlerNames", function() {
 				var handlers = machina.utils.getHandlerNames(fsm);
 				it("should return an empty array", function(){

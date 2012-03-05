@@ -1,37 +1,30 @@
 var AmplifyFsmProvider = function() {
 	var eventTransformations = {},
-		wireHandlersToBus = function(exch, ns, fsm) {
+		wireHandlersToBus = function(fsm) {
 			_.each(utils.getHandlerNames(fsm), function(topic) {
 				fsm.messaging.subscriptions.push(
-					amplify.subscribe(exch + "." + ns + ".handle." + topic, fsm, function(data) {
+					amplify.subscribe(fsm.messaging.handlerNamespace + "." + topic, fsm, function(data) {
 						this.handle.call(this,topic, data);
 					})
 				);
 			});
 		},
-		wireEventsToBus = function(exch, ns, fsm) {
-			var evnt = ns + ".event.";
-			_.each(fsm.events, function(value, key) {
-				var pub = function() {
-					var payload = _.deepExtend({}, arguments);
-					payload.stateBag = payload[0];
-					delete payload[0];
-					if(eventTransformations[key]) {
-						payload = eventTransformations[key](payload);
-					}
-					amplify.publish(exch + "." + evnt + key, payload);
-				};
-				value.push(pub);
-				fsm.messaging.publishers.push( { "Event" : key, "publish" : pub } );
+		wireEventsToBus = function(fsm) {
+			fsm.on("*", function(){
+				var topic = arguments[0],
+					payload = _.deepExtend({}, slice.call(arguments, 1));
+				payload.stateBag = payload[0];
+				delete payload[0];
+				if(eventTransformations[topic]) {
+					payload = eventTransformations[topic](payload);
+				}
+				amplify.publish(fsm.messaging.eventNamespace + "." + topic, payload);
 			});
 		};
 	return {
 		wireUp: function(fsm) {
-			var exch = utils.getExchBase(fsm),
-				ns = utils.getTopicBase(fsm),
-				evnt = ns + "event.";
-			wireHandlersToBus(exch, ns, fsm);
-			wireEventsToBus(exch, ns, fsm);
+			wireHandlersToBus(fsm);
+			wireEventsToBus(fsm);
 		},
 		addEventTransforms: function(transforms) {
 			_.deepExtend(eventTransformations, transforms);

@@ -15,10 +15,9 @@ QUnit.specify("machina.js integration with postal.js", function(){
 		fsm = new machina.Fsm({
 			initialState: "uninitialized",
 			messaging: {
-				exchange: "machina.test",
-				topic: "fsm"
+				eventNamespace: "myFsm.events",
+				handlerNamespace: "myFsm"
 			},
-			events: ["CustomEvent", "OnEnter"],
 			states: {
 				"uninitialized" : {
 					"event1" : function() {
@@ -26,7 +25,6 @@ QUnit.specify("machina.js integration with postal.js", function(){
 					},
 					"event2" : function() {
 						this.deferUntilTransition();
-						console.log("HAI!")
 					}
 				},
 				"initialized" : {
@@ -42,38 +40,41 @@ QUnit.specify("machina.js integration with postal.js", function(){
 				}
 			}
 		});
-		postal.subscribe("machina.test", "fsm.*", function(data, envelope) {
+		postal.subscribe("myFsm", "*", function(data, envelope) {
+			testCapture[envelope.topic] = true;
+		});
+		postal.subscribe("myFsm.events", "*", function(data, envelope) {
 			testCapture[envelope.topic] = true;
 		});
 
-		postal.publish("machina.test", "fsm.handle.event21", {});
-		postal.publish("machina.test", "fsm.handle.event2", {});
-		postal.publish("machina.test", "fsm.handle.event1", {});
+		postal.publish("myFsm", "event21", {});
+		postal.publish("myFsm", "event2", {});
+		postal.publish("myFsm", "event1", {});
 		fsm.transition("NoSuchThing");
 
 		it("should fire the Transitioned event", function(){
-			assert(testCapture["fsm.event.Transitioned"]).equals(true);
+			assert(testCapture["Transitioned"]).equals(true);
 		});
 		it("should fire the NoHandler event", function(){
-			assert(testCapture["fsm.event.NoHandler"]).equals(true);
+			assert(testCapture["NoHandler"]).equals(true);
 		});
 		it("should fire the Handling event", function(){
-			assert(testCapture["fsm.event.Handling"]).equals(true);
+			assert(testCapture["Handling"]).equals(true);
 		});
 		it("should fire the Handled event", function(){
-			assert(testCapture["fsm.event.Handled"]).equals(true);
+			assert(testCapture["Handled"]).equals(true);
 		});
 		it("should fire the CustomEvent event", function(){
-			assert(testCapture["fsm.event.CustomEvent"]).equals(true);
+			assert(testCapture["CustomEvent"]).equals(true);
 		});
 		it("should fire the OnEnter handler", function(){
-			assert(testCapture["fsm.event.OnEnter"]).equals(true);
+			assert(testCapture["OnEnter"]).equals(true);
 		});
 		it("should fire the InvalidState handler", function(){
-			assert(testCapture["fsm.event.InvalidState"]).equals(true);
+			assert(testCapture["InvalidState"]).equals(true);
 		});
 		it("should fire the Deferred handler", function(){
-			assert(testCapture["fsm.event.Deferred"]).equals(true);
+			assert(testCapture["Deferred"]).equals(true);
 		});
 	});
 });

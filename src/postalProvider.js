@@ -1,37 +1,28 @@
 var PostalFsmProvider = function() {
 	var eventTransformations = {},
-		wireHandlersToBus = function(exch, ns, fsm) {
+		wireHandlersToBus = function(fsm) {
 			fsm.messaging.subscriptions.push(
-				postal.subscribe(exch, ns + ".handle.*", function(data, envelope){
-					var handlerName = envelope.topic.replace(ns + ".handle.", "");
-					this.handle.call(this, handlerName, data);
+				postal.subscribe(fsm.messaging.handlerNamespace, "*", function(data, envelope){
+					this.handle.call(this, envelope.topic, data);
 				}).withContext(fsm)
 			);
 		},
-		wireEventsToBus = function(exch, ns, fsm) {
-			var evnt = ns + ".event.";
-			_.each(fsm.events, function(value, key) {
-				var pub = function() {
-					var payload = _.deepExtend({}, arguments);
-					payload.stateBag = payload[0];
-					delete payload[0];
-					if(eventTransformations[key]) {
-						payload = eventTransformations[key](payload);
-					}
-					postal.publish(exch, evnt + key, payload);
-				};
-				value.push(pub);
-				fsm.messaging.publishers.push( { "Event" : key, "publish" : pub } );
+		wireEventsToBus = function(fsm) {
+			fsm.on("*", function(){
+				var topic = arguments[0],
+					payload = _.deepExtend({}, slice.call(arguments, 1));
+				payload.stateBag = payload[0];
+				delete payload[0];
+				if(eventTransformations[topic]) {
+					payload = eventTransformations[topic](payload);
+				}
+				postal.publish(fsm.messaging.eventNamespace, topic, payload);
 			});
 		};
 	return {
 		wireUp: function(fsm) {
-			var exch = utils.getExchBase(fsm),
-				ns = utils.getTopicBase(fsm),
-				evnt = ns + "event.";
-			if(!exch) { exch = "/"; }
-			wireHandlersToBus(exch, ns, fsm);
-			wireEventsToBus(exch, ns, fsm);
+			wireHandlersToBus(fsm);
+			wireEventsToBus(fsm);
 		},
 		addEventTransforms: function(transforms) {
 			_.deepExtend(eventTransformations, transforms);

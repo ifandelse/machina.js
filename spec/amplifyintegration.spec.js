@@ -1,11 +1,11 @@
 var testCapture = {
-	"machina.test.fsm.event.Transitioned": false,
-	"machina.test.fsm.event.Handling": false,
-	"machina.test.fsm.event.Handled": false,
-	"machina.test.fsm.event.InvalidState": false,
-	"machina.test.fsm.event.CustomEvent": false,
-	"machina.test.fsm.event.Deferred": false,
-	"machina.test.fsm.event.OnEnter": false
+	"myFsm.events.Transitioned": false,
+	"myFsm.events.Handling": false,
+	"myFsm.events.Handled": false,
+	"myFsm.events.InvalidState": false,
+	"myFsm.events.CustomEvent": false,
+	"myFsm.events.Deferred": false,
+	"myFsm.events.OnEnter": false
 };
 
 QUnit.specify("machina.js integration with amplify.js", function(){
@@ -14,8 +14,8 @@ QUnit.specify("machina.js integration with amplify.js", function(){
 		fsm = new machina.Fsm({
 			initialState: "uninitialized",
 			messaging: {
-				exchange: "machina.test",
-				topic: "fsm"
+				eventNamespace: "myFsm.events",
+				handlerNamespace: "myFsm.handle"
 			},
 			events: ["CustomEvent", "OnEnter"],
 			states: {
@@ -25,7 +25,6 @@ QUnit.specify("machina.js integration with amplify.js", function(){
 					},
 					"event2" : function() {
 						this.deferUntilTransition();
-						console.log("HAI!")
 					}
 				},
 				"initialized" : {
@@ -48,30 +47,30 @@ QUnit.specify("machina.js integration with amplify.js", function(){
 			});
 		});
 
-		amplify.publish("machina.test.fsm.handle.event2", {});
-		amplify.publish("machina.test.fsm.handle.event1", {});
+		amplify.publish("myFsm.handle.event2", {});
+		amplify.publish("myFsm.handle.event1", {});
 		fsm.transition("NoSuchThing");
 
 		it("should fire the Transitioned event", function(){
-			assert(testCapture["machina.test.fsm.event.Transitioned"]).equals(true);
+			assert(testCapture["myFsm.events.Transitioned"]).equals(true);
 		});
 		it("should fire the Handling event", function(){
-			assert(testCapture["machina.test.fsm.event.Handling"]).equals(true);
+			assert(testCapture["myFsm.events.Handling"]).equals(true);
 		});
 		it("should fire the Handled event", function(){
-			assert(testCapture["machina.test.fsm.event.Handled"]).equals(true);
+			assert(testCapture["myFsm.events.Handled"]).equals(true);
 		});
 		it("should fire the CustomEvent event", function(){
-			assert(testCapture["machina.test.fsm.event.CustomEvent"]).equals(true);
+			assert(testCapture["myFsm.events.CustomEvent"]).equals(true);
 		});
 		it("should fire the OnEnter handler", function(){
-			assert(testCapture["machina.test.fsm.event.OnEnter"]).equals(true);
+			assert(testCapture["myFsm.events.OnEnter"]).equals(true);
 		});
 		it("should fire the InvalidState handler", function(){
-			assert(testCapture["machina.test.fsm.event.InvalidState"]).equals(true);
+			assert(testCapture["myFsm.events.InvalidState"]).equals(true);
 		});
 		it("should fire the Deferred handler", function(){
-			assert(testCapture["machina.test.fsm.event.Deferred"]).equals(true);
+			assert(testCapture["myFsm.events.Deferred"]).equals(true);
 		});
 	});
 });
