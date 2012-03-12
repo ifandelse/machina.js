@@ -24,7 +24,6 @@ var utils = {
 				"*" : []
 			},
 			states: {},
-			stateBag: {},
 			eventQueue: [],
 			messaging: (function() {
 				var fsmNamespace = utils.makeFsmNamespace();

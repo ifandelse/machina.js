@@ -2,7 +2,6 @@ var Atm = function( ) {
 	var fsm;
 	fsm = new machina.Fsm({
 		initialState: "uninitialized",
-		stateBag: {},
 		events: [
 			"Initialized",
 			"Authorized",
@@ -14,22 +13,22 @@ var Atm = function( ) {
 		],
 		states: {
 			"uninitialized" : {
-				"initialize" : function( state ) {
+				"initialize" : function() {
 					// TODO: any other init work here...
 					this.fireEvent( "Initialized" );
 					this.transition( "unauthorized" );
 				}
 			},
 			"unauthorized" : {
-				_onEnter: function( state ) {
+				_onEnter: function() {
 					this.fireEvent( "UnAuthorized", { msg: "Please enter your account and PIN." } );
 				},
-				"*" : function( state ) {
+				"*" : function() {
 					this.fireEvent( "UnAuthorized", { msg: "You must authenticate first." } );
 				},
-				authorize : function( state, credentials ){
+				authorize : function( credentials ){
 					if(authRepository.authorize( credentials.acct, credentials.pin )){
-						state.acct = credentials.acct;
+						this.acct = credentials.acct;
 						this.transition( "authorized" );
 						return;
 					}
@@ -37,20 +36,20 @@ var Atm = function( ) {
 				}
 			},
 			"authorized" : {
-				_onEnter: function( state ) {
-					this.fireEvent( "Authorized", { acct: state.acct } );
+				_onEnter: function() {
+					this.fireEvent( "Authorized", { acct: this.acct } );
 				},
-				deposit : function( state, amount ) {
-					var result = clientRepository.deposit( state.acct, amount );
+				deposit : function( amount ) {
+					var result = clientRepository.deposit( this.acct, amount );
 					this.fireEvent("Result", result);
 				},
-				withdrawal : function( state, amount ) {
-					var result = clientRepository.withdrawal( state.acct, amount );
+				withdrawal : function( amount ) {
+					var result = clientRepository.withdrawal( this.acct, amount );
 					this.fireEvent("Result", result);
 				},
-				deauthorize : function( state ) {
-					authRepository.deauthorize(state.acct);
-					delete state.acct;
+				deauthorize : function() {
+					authRepository.deauthorize(this.acct);
+					delete this.acct;
 					this.transition("unauthorized");
 				}
 			}

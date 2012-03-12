@@ -27,9 +27,9 @@ var storageFsm = new machina.Fsm({
 		return offline;
 	},
 
-	verifyState: function( state, payload ) {
+	verifyState: function( payload ) {
 		if( applicationOffline() && this.state !== "offline" ) {
-			state.offlineMarkerTime = new Date();
+			this.offlineMarkerTime = new Date();
 			this.transition("offline");
 			return false;
 		}
@@ -50,15 +50,15 @@ var storageFsm = new machina.Fsm({
 				this.handle("sync.customer");
 			},
 
-			"save.customer" : function( state, payload ) {
-				if( verifyState( state, payload ) ) {
+			"save.customer" : function( payload ) {
+				if( verifyState( payload ) ) {
                     storage.saveToRemote( payload );
 				}
 			},
 
-			"sync.customer" : function( state ) {
-				if( verifyState( state, payload ) ) {
-					var unsynced = storage.getFromLocal( { startTime: state.offlineMarkerTime } );
+			"sync.customer" : function() {
+				if( verifyState( payload ) ) {
+					var unsynced = storage.getFromLocal( { startTime: this.offlineMarkerTime } );
 					// Big assumption here!  In the real world,
 					// we'd batch this sync in reasonable chunks.
 					storage.saveBatchToRemote( unsynced );
@@ -68,8 +68,8 @@ var storageFsm = new machina.Fsm({
 		},
 
 		"offline" : {
-			"save.customer" : function( state, payload ) {
-				if( verifyState( state, payload ) ) {
+			"save.customer" : function( payload ) {
+				if( verifyState( payload ) ) {
                     storage.saveToLocal( payload );
 				}
             }
@@ -84,7 +84,7 @@ In addition to the state/handler definitions, the above code example as shows th
 
 The `verifyState` and `applicationOffline` methods are custom to this instance of the FSM, and are not, of course, part of machina by default.
 
-You can see in the above example that anytime the FSM handles an event, it first checks to see if the state needs to be transitioned between offline and online (via the `verifyState` call).  You'll also notice that each state handler takes a `state` argument as the first argument.  This is the `stateBag` member of the FSM - it's used to store information to which any handler might need access.  States can also have an `_onEnter` method - which is fired immediately after the FSM transitions into that state.
+You can see in the above example that anytime the FSM handles an event, it first checks to see if the state needs to be transitioned between offline and online (via the `verifyState` call).  States can also have an `_onEnter` method - which is fired immediately after the FSM transitions into that state.
 
 Now that we've seen a quick example, let's do a whirlwind API tour.
 
@@ -111,13 +111,13 @@ states: {
 				// do stuff immediately after we transition into uninitialized
 			},
 
-			"initialize" : function( state, payload ) {
+			"initialize" : function( payload ) {
 				// handle an "initialize" event
 			}
 		},
 
 		"ready" : {
-			"*" : function( state, payload ) {
+			"*" : function( payload ) {
 				// any message that comes while in the "ready" state will get handled here
 				// unless it matches another "ready" handler exactly.
             }
@@ -125,8 +125,6 @@ states: {
 ```
 
 `initialState` - the state in which the FSM will start.  As soon as the instance is created, the FSM calls the `transition` method to transition into this state.
-
-`stateBag` - an object used for state shared between event handlers.  It defaults to an object containing `_priorAction` and `_currentAction` members, but you can add members as you need them.
 
 `messaging` - an object used in wiring machina into a message bus
 
@@ -161,7 +159,7 @@ The top level `machina` object has the following members:
 	* `findProvider` - function that (by default) checks for postal and then amplify - if one is found, the FSM gets wired into the appropriate message bus.
 	* `makeFsmNamespace` - function that provides a default "channel" or "exchange" for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
 	* `getHandlerNames` - function that provides a flattened/distinct list of every handler name, under any state, an an FSM instance.
-	* `standardEventTransforms` - an object that provides default implementations for transforming event arguments into a meaningful message payload when an FSM instance has been tied into a message bus.  Effectively, they provide the difference between a payload that looks like this: `"data":{"0":{"_currentAction":"","_priorAction":"unauthorized.*"},"1":"unauthorized","2":"unauthorized"}` vs this: `"data":{"stateBag":{"_currentAction":"","_priorAction":"unauthorized.*"},"oldState":"unauthorized","newState":"unauthorized"}`
+	* `standardEventTransforms` - an object that provides default implementations for transforming event arguments into a meaningful message payload when an FSM instance has been tied into a message bus.  Effectively, they provide the difference between a payload that looks like this: `"data":{"0":{"_currentAction":"","_priorAction":"unauthorized.*"},"1":"unauthorized","2":"unauthorized"}` vs this: `"data":{"info":{"_currentAction":"","_priorAction":"unauthorized.*"},"oldState":"unauthorized","newState":"unauthorized"}`
 * `on` - function used to subscribe a callback to top-level machina events (currently the only event published at this level is "newFsm")
 * `off` - function used to unsubscribe a callback to top-level machina events.
 * `eventListeners` - an object literal containing the top-level `fireEvent` call as well as susbcribers to any top-level events.

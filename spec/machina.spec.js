@@ -19,9 +19,6 @@ QUnit.specify("machina.js", function(){
 			it("states should default to empty object", function(){
 				assert(_.isEmpty(options.state)).equals(true);
 			});
-			it("stateBag should default to empty object", function(){
-				assert(_.isEmpty(options.stateBag)).equals(true);
-			});
 			it("messaging should default to expected values", function(){
 				assert(rgx.test(options.messaging.handlerNamespace)).equals(true);
 				assert(rgx.test(options.messaging.eventNamespace)).equals(true);
