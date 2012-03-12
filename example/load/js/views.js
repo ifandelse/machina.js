@@ -8,7 +8,12 @@ var MainView = function( target ) {
 			var self = this;
 			infuser.infuse("main", {
 				target: target,
-				model: self.model
+				model: self.model,
+				postRender: function() {
+					$('#refresh').on("click", function() {
+						postal.publish("application", "refresh", {});
+					})
+				}
 			});
 		};
 

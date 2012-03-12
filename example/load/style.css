@@ -4,12 +4,22 @@
 }
 
 .header {
+    width: 570px;
+}
+
+.title {
+    float: left;
     font-size: 14pt;
     font-variant: small-caps;
     margin-bottom: 15px;
 }
 
+.ctrl {
+    float: right;
+}
+
 #items {
+    clear:both;
     height: 600px;
     overflow: scroll;
 }
@@ -22,6 +32,8 @@ li {
 
 ul {
     list-style-type: none;
+    padding: 0;
+    margin-left: 0;
 }
 
 .left {

@@ -87,6 +87,9 @@ var resourceGetter = {
 			"ready" : {
 				_onEnter: function() {
 					this.fireEvent("appReady");
+				},
+				refresh : function() {
+					this.transition("waitingOnData");
 				}
 			}
 		}
