@@ -159,7 +159,7 @@ The top level `machina` object has the following members:
 * `utils` - contains various helper functions that can be overridden to drastically change default behavior(s) in machina:
 	* `getDefaultOptions` - returns the default options object for any machina instance
 	* `findProvider` - function that (by default) checks for postal and then amplify - if one is found, the FSM gets wired into the appropriate message bus.
-	* `makeFsmNamespace` - function that provides a default topic prefix for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
+	* `makeFsmNamespace` - function that provides a default "channel" or "exchange" for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
 	* `getHandlerNames` - function that provides a flattened/distinct list of every handler name, under any state, an an FSM instance.
 	* `standardEventTransforms` - an object that provides default implementations for transforming event arguments into a meaningful message payload when an FSM instance has been tied into a message bus.  Effectively, they provide the difference between a payload that looks like this: `"data":{"0":{"_currentAction":"","_priorAction":"unauthorized.*"},"1":"unauthorized","2":"unauthorized"}` vs this: `"data":{"stateBag":{"_currentAction":"","_priorAction":"unauthorized.*"},"oldState":"unauthorized","newState":"unauthorized"}`
 * `on` - function used to subscribe a callback to top-level machina events (currently the only event published at this level is "newFsm")
