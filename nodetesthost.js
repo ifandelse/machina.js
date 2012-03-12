@@ -3,5 +3,5 @@ var express = require('express'),
     path = require("path");
 
 app.use("/", express.static(path.resolve(__dirname)));
-app.listen(1581);
-console.log("Listening on port 1581");
+app.listen(8080);
+console.log("Listening on port 8080");

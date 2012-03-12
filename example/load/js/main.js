@@ -1,49 +1,92 @@
-var appFsm = new machina.Fsm({
+var resourceGetter = {
+		getItemData: function() {
+			$.ajax({
+				url: "http://api.ihackernews.com/page?format=jsonp",
+				dataType: "jsonp",
+				success: function( data ) {
+					postal.publish("application", "itemData.retrieved", data);
+				}
+			});
+			setTimeout(function(){
+				postal.publish("application", "itemData.getFailed", {});
+			}, 4000);
+		}
+	},
+	appFsm = new machina.Fsm({
 		checkIfReady: function() {
-			if(_.all(this.stateBag.constraints, function(constraint) { return constraint; })) {
-				this.transition("ready");
+			if(_.all(this.stateBag.constraints[this.state].checkList, function(constraint) { return constraint; })) {
+				this.transition(this.stateBag.constraints[this.state].nextState);
 			}
 		},
 
-		events: [ "appReady" ],
+		messaging: {
+			provider : "postal",
+			eventNamespace: "application.events",
+			handlerNamespace: "application"
+		},
 
 		stateBag : {
 			constraints: {
-				haveMainTemplate: false,
-				haveItemTemplate: false,
-				haveItemData: false
+				waitingOnTemplates: {
+					nextState: "waitingOnData",
+					checkList: {
+						haveMainTemplate: false,
+						haveItemTemplate: false,
+						haveErrorTemplate: false
+					}
+				},
+				waitingOnData: {
+					nextState: "ready",
+					attempts: 0,
+					checkList: {
+						haveItemData: false
+					}
+				}
 			}
 		},
 
 		states: {
 			"uninitialized": {
-				"initialize" : function(){
-					this.transition("initializing");
+				initialize : function(){
+					this.transition("waitingOnTemplates");
+				},
+				"*" : function() {
+					this.deferUntilTransition();
 				}
 			},
-			"initializing" : {
+			waitingOnTemplates : {
 				"mainTemplate.retrieved" : function(state) {
-					state.constraints.haveMainTemplate = true;
+					state.constraints.waitingOnTemplates.checkList.haveMainTemplate = true;
 					this.checkIfReady();
 				},
-
 				"itemTemplate.retrieved" : function(state) {
-					state.constraints.haveItemTemplate = true;
+					state.constraints.waitingOnTemplates.checkList.haveItemTemplate = true;
 					this.checkIfReady();
 				},
-
-				"itemData.retrieved" : function(state) {
-					state.constraints.haveItemData = true;
+				"errorTemplate.retrieved" : function(state) {
+					state.constraints.waitingOnTemplates.checkList.haveErrorTemplate = true;
 					this.checkIfReady();
+				},
+				"*" : function() {
+					this.deferUntilTransition();
+				}
+			},
+			waitingOnData: {
+				_onEnter: function() {
+					resourceGetter.getItemData();
+				},
+				"itemData.retrieved" : function(state) {
+					state.constraints.waitingOnData.checkList.haveItemData = true;
+					this.checkIfReady();
+				},
+				"itemData.getFailed" : function(state) {
+					this.fireEvent("dataGetFail", { attempts: ++state.constraints.waitingOnData.attempts });
+					setTimeout(resourceGetter.getItemData, 0);
 				}
 			},
 			"ready" : {
 				_onEnter: function() {
 					this.fireEvent("appReady");
-				},
-
-				"*" : function() {
-
 				}
 			}
 		}
@@ -51,43 +94,16 @@ var appFsm = new machina.Fsm({
 	mainView = new MainView( "#content" ),
 	itemView = new ItemView( "#items" );
 
-var getResources = function(bag, oldState, newState) {
-	if(newState === "initializing") {
-		infuser.get("main", function() {
-			appFsm.handle("mainTemplate.retrieved");
-		});
-
-		infuser.get("item", function() {
-			appFsm.handle("itemTemplate.retrieved");
-		});
-
-		$.ajax({
-			url: "http://api.ihackernews.com/page?format=jsonp",
-			dataType: "jsonp",
-			success: function( data ) {
-				itemView.model = data;
-			},
-			error: function( jqXHR, textStatus, errorThrown ) {
-				console.log( "O NOES! " + textStatus + ": " + errorThrown );
-			}
-		});
-
-		appFsm.off("Transitioned", getResources);
-	}
-};
-
-appFsm.on("Transitioned", getResources);
-
-appFsm.on("appReady", function() {
-	mainView.render();
-	itemView.render();
-});
-
 var app = window.loadApp = {
 	fsm: appFsm,
 	views: {
 		main: mainView,
 		items: itemView
+	},
+	start: function() {
+		postal.publish("application", "initialize", {});
 	}
 };
+
+app.start();
 

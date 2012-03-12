@@ -11,8 +11,6 @@ var PostalFsmProvider = function() {
 			fsm.messaging.eventPublisher = function(){
 				var topic = arguments[0],
 					payload = _.deepExtend({}, slice.call(arguments, 1));
-				payload.stateBag = payload[0];
-				delete payload[0];
 				if(eventTransformations[topic]) {
 					payload = eventTransformations[topic](payload);
 				}

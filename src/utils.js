@@ -38,19 +38,19 @@ var utils = {
 		};
 	},
 	standardEventTransforms: {
-		"Handling" : function(payload) {
+		Handling : function(payload) {
 			var newPayload = payload;
 			newPayload.eventType = newPayload[1];
 			delete newPayload[1];
 			return newPayload;
 		},
-		"Handled" : function(payload) {
+		Handled : function(payload) {
 			var newPayload = payload;
 			newPayload.eventType = newPayload[1];
 			delete newPayload[1];
 			return newPayload;
 		},
-		"Transitioned" : function(payload) {
+		Transitioned : function(payload) {
 			var newPayload = payload;
 			newPayload.oldState = newPayload[1];
 			newPayload.newState = newPayload[2];
@@ -58,7 +58,7 @@ var utils = {
 			delete newPayload[2];
 			return newPayload;
 		},
-		"InvalidState": function(payload) {
+		InvalidState: function(payload) {
 			var newPayload = payload;
 			newPayload.currentState = newPayload[1];
 			newPayload.attemptedState = newPayload[2];
