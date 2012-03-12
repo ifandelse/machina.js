@@ -62,7 +62,6 @@ var Router = function ( atm, nav, views, models ) {
 					views.result.model.fetch();
 					views.result.render();
 					nav.handle("result");
-					//delegateSubmit();
 				}
 			},
 

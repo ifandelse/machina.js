@@ -1,5 +1,5 @@
 var resourceGetter = {
-		getItemData: function() {
+		getNews: function() {
 			$.ajax({
 				url: "http://api.ihackernews.com/page?format=jsonp",
 				dataType: "jsonp",
@@ -73,7 +73,7 @@ var resourceGetter = {
 			},
 			waitingOnData: {
 				_onEnter: function() {
-					resourceGetter.getItemData();
+					resourceGetter.getNews();
 				},
 				"itemData.retrieved" : function(state) {
 					state.constraints.waitingOnData.checkList.haveItemData = true;
@@ -81,7 +81,7 @@ var resourceGetter = {
 				},
 				"itemData.getFailed" : function(state) {
 					this.fireEvent("dataGetFail", { attempts: ++state.constraints.waitingOnData.attempts });
-					setTimeout(resourceGetter.getItemData, 0);
+					resourceGetter.getNews();
 				}
 			},
 			"ready" : {
