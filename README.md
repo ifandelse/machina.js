@@ -91,7 +91,7 @@ Now that we've seen a quick example, let's do a whirlwind API tour.
 ## Whirlwind API Tour
 When you are creating a new FSM instance, `machina.Fsm` takes 1 argument - an options object.  Here's a breakdown of the members of this `options` object:
 
-`eventListeners` - Either a list of event names that the FSM can publish, or an object of event names, associated with the array of event handlers subscribed to them.
+`eventListeners` - Either a list of event names that the FSM can publish, or an object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers ahead of time.)
 
 ```javascript
 eventListeners: ["String", "List", "ofEvent", "names"]; // this is converted into an object similar to below
@@ -133,8 +133,8 @@ states: {
 ```javascript
 messaging: {
 	provider : "postal", // the name of the provider in machina.busProviders to use for message bus integration
-    exchange: "machina", // the "channel" or "exchange" name for messages sent/delivered to/from this FSM
-    topic: "sotrageFsm", // the "topic" prefix for messages sent/delivered to/from this FSM
+    eventNamespace: "myFsm.events", // the "channel" or "exchange" name for published events sent from this FSM
+    handlerNamespace: "myFsm", // the "channel" or "exchange" for messages sent to this FSM (messages intended to invoke a handler)
     subscriptions: [],   // a list of message bus subscription objects/callbacks for this FSM
 }
 ```
@@ -162,4 +162,7 @@ The top level `machina` object has the following members:
 	* `makeFsmNamespace` - function that provides a default topic prefix for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
 	* `getHandlerNames` - function that provides a flattened/distinct list of every handler name, under any state, an an FSM instance.
 	* `standardEventTransforms` - an object that provides default implementations for transforming event arguments into a meaningful message payload when an FSM instance has been tied into a message bus.  Effectively, they provide the difference between a payload that looks like this: `"data":{"0":{"_currentAction":"","_priorAction":"unauthorized.*"},"1":"unauthorized","2":"unauthorized"}` vs this: `"data":{"stateBag":{"_currentAction":"","_priorAction":"unauthorized.*"},"oldState":"unauthorized","newState":"unauthorized"}`
+* `on` - function used to subscribe a callback to top-level machina events (currently the only event published at this level is "newFsm")
+* `off` - function used to unsubscribe a callback to top-level machina events.
+* `eventListeners` - an object literal containing the top-level `fireEvent` call as well as susbcribers to any top-level events.
 
