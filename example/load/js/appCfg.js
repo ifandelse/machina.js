@@ -4,12 +4,15 @@
 	infuser.defaults = $.extend(true, infuserDefault, {
 		templateUrl: "templates",
 		bindingInstruction: function(template, model) {
-			return _.template(template, model);
+			return template(model);
 		},
 		render: function(target, template) {
 			$(target).html(template);
 		},
-		useLoadingTemplate: false
+		useLoadingTemplate: false,
+		templatePreProcessor: function(template) {
+			return _.template(template);
+		}
 	});
 
 })(jQuery, _, infuser);
