@@ -20,7 +20,7 @@ var machina = {
 	},
 	off: function(eventName, callback) {
 		if(this.eventListeners[eventName]){
-			_.without(this.eventListeners[eventName], callback);
+			this.eventListeners[eventName] = _.without(this.eventListeners[eventName], callback);
 		}
 		throw new Error("Invalid Event Name '" + eventName + "'.");
 	},

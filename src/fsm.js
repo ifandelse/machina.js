@@ -27,7 +27,7 @@ var Fsm = function(options) {
 };
 
 Fsm.prototype.fireEvent = function(eventName) {
-    var i = 0, len, args = arguments;
+    var args = arguments;
 	_.each(this.eventListeners["*"], function(callback) {
 		callback.apply(this,slice.call(args, 0));
 	});
@@ -112,6 +112,6 @@ Fsm.prototype.on = function(eventName, callback) {
 
 Fsm.prototype.off = function(eventName, callback) {
     if(this.eventListeners[eventName]){
-        _.without(this.eventListeners[eventName], callback);
+	    this.eventListeners[eventName] = _.without(this.eventListeners[eventName], callback);
     }
 };
