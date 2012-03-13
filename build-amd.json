@@ -6,7 +6,7 @@
     "gzip": {},
     "extensions": { "uglify": "min", "gzip": "gz" },
     "wrap": {
-        "prefix": "define(['jquery', 'underscore'], function($, _) {",
+        "prefix": "define(['underscore'], function(_) {",
         "suffix": "return machina;});"
     }
 }

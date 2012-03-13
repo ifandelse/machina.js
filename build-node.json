@@ -1,0 +1,11 @@
+{
+    "source": "src",
+    "output": "lib/node",
+    "lint": {},
+    "uglify": {},
+    "gzip": {},
+    "wrap": {
+        "prefix": "this._ = require('underscore');",
+        "suffix": "module.exports = machina;"
+    }
+}
