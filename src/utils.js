@@ -15,7 +15,7 @@ var utils = {
 		var machinaCount = 0;
 		return function() {
 			return "fsm." + machinaCount++;
-		}
+		};
 	})(),
 	getDefaultOptions: function() {
 		return {
@@ -32,7 +32,7 @@ var utils = {
 					eventNamespace: fsmNamespace + ".events",
 					handlerNamespace: fsmNamespace,
 					subscriptions: []
-				}
+				};
 			})()
 		};
 	},

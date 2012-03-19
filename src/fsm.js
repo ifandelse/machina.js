@@ -29,11 +29,23 @@ var Fsm = function(options) {
 Fsm.prototype.fireEvent = function(eventName) {
     var args = arguments;
 	_.each(this.eventListeners["*"], function(callback) {
-		callback.apply(this,slice.call(args, 0));
+		try {
+			callback.apply(this,slice.call(args, 0));
+		} catch(exception) {
+			if(console && typeof console.log !== "undefined") {
+				console.log(exception.toString());
+			}
+		}
 	});
     if(this.eventListeners[eventName]) {
         _.each(this.eventListeners[eventName], function(callback) {
-	        callback.apply(this,slice.call(args, 1));
+	        try {
+		        callback.apply(this,slice.call(args, 1));
+	        } catch(exception) {
+		        if(console && typeof console.log !== "undefined") {
+			        console.log(exception.toString());
+		        }
+	        }
         });
     }
 };
