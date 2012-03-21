@@ -4,9 +4,5 @@
     "lint": {},
     "uglify": {},
     "gzip": {},
-    "extensions": { "uglify": "min", "gzip": "gz" },
-    "wrap": {
-        "prefix": "var machina = (function(_, undefined) {",
-        "suffix": "return machina;})(_);"
-    }
+    "extensions": { "uglify": "min", "gzip": "gz" }
 }

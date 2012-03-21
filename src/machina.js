@@ -1,30 +1,35 @@
 //import("VersionHeader.js");
-//import("deepExtend.js");
-//import("helpers.js");
-//import("utils.js");
-//import("messageBusProvider.js");
-//import("postalProvider.js");
-//import("amplifyProvider.js");
-//import("fsm.js");
+(function(root, doc, factory) {
+	if (typeof define === "function" && define.amd) {
+		// AMD. Register as an anonymous module.
+		define(["underscore"], function(_) {
+			return factory(_, root, doc);
+		});
+	} else {
+		// Browser globals
+		factory(root._, root, doc);
+	}
+}(this, document, function(_, global, document, undefined) {
 
-var machina = {
-	Fsm: Fsm,
-	busProviders: messageBusProvider,
-	utils: utils,
-	on: function(eventName, callback) {
-		if(this.eventListeners[eventName]) {
+	//import("helpers.js");
+	//import("utils.js");
+	//import("fsm.js");
+
+	var machina = {
+		Fsm: Fsm,
+		bus: undefined,
+		utils: utils,
+		on: function(eventName, callback) {
+			if(!this.eventListeners[eventName]) {
+				this.eventListeners[eventName] = [];
+			}
 			this.eventListeners[eventName].push(callback);
-			return;
-		}
-		throw new Error("Invalid Event Name '" + eventName + "'.");
-	},
-	off: function(eventName, callback) {
-		if(this.eventListeners[eventName]){
-			this.eventListeners[eventName] = _.without(this.eventListeners[eventName], callback);
-		}
-		throw new Error("Invalid Event Name '" + eventName + "'.");
-	},
-	eventListeners: {
+		},
+		off: function(eventName, callback) {
+			if(this.eventListeners[eventName]){
+				this.eventListeners[eventName] = _.without(this.eventListeners[eventName], callback);
+			}
+		},
 		fireEvent: function(eventName) {
 			var i = 0, len, args = arguments;
 			if(this[eventName]) {
@@ -33,6 +38,11 @@ var machina = {
 				});
 			}
 		},
-		newFsm : []
-	}
-};
+		eventListeners: {
+			newFsm : []
+		}
+	};
+
+	global.machina = machina;
+	return machina;
+}));

@@ -126,16 +126,7 @@ states: {
 
 `initialState` - the state in which the FSM will start.  As soon as the instance is created, the FSM calls the `transition` method to transition into this state.
 
-`messaging` - an object used in wiring machina into a message bus
-
-```javascript
-messaging: {
-	provider : "postal", // the name of the provider in machina.busProviders to use for message bus integration
-    eventNamespace: "myFsm.events", // the "channel" or "exchange" name for published events sent from this FSM
-    handlerNamespace: "myFsm", // the "channel" or "exchange" for messages sent to this FSM (messages intended to invoke a handler)
-    subscriptions: [],   // a list of message bus subscription objects/callbacks for this FSM
-}
-```
+`namespace` - a name that indentifies the FSM if it's wired up to a message bus through a plugin.
 
 ## The machina.Fsm Prototype
 Each instance of an machina FSM has the following methods available via it's prototype:
@@ -154,12 +145,9 @@ The top level `machina` object has the following members:
 
 * `Fsm` - the constructor function used to create FSMs.
 * `busProviders` - an object containing providers for various message-bus frameworks, allowing machina to tie into them (postal.js and amplify are available out of the box).
-* `utils` - contains various helper functions that can be overridden to drastically change default behavior(s) in machina:
+* `utils` - contains helper functions that can be overridden to change default behavior(s) in machina:
 	* `getDefaultOptions` - returns the default options object for any machina instance
-	* `findProvider` - function that (by default) checks for postal and then amplify - if one is found, the FSM gets wired into the appropriate message bus.
 	* `makeFsmNamespace` - function that provides a default "channel" or "exchange" for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
-	* `getHandlerNames` - function that provides a flattened/distinct list of every handler name, under any state, an an FSM instance.
-	* `standardEventTransforms` - an object that provides default implementations for transforming event arguments into a meaningful message payload when an FSM instance has been tied into a message bus.  Effectively, they provide the difference between a payload that looks like this: `"data":{"0":{"_currentAction":"","_priorAction":"unauthorized.*"},"1":"unauthorized","2":"unauthorized"}` vs this: `"data":{"info":{"_currentAction":"","_priorAction":"unauthorized.*"},"oldState":"unauthorized","newState":"unauthorized"}`
 * `on` - function used to subscribe a callback to top-level machina events (currently the only event published at this level is "newFsm")
 * `off` - function used to unsubscribe a callback to top-level machina events.
 * `eventListeners` - an object literal containing the top-level `fireEvent` call as well as susbcribers to any top-level events.

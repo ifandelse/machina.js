@@ -11,14 +11,14 @@ var MainView = function( target ) {
 				model: self.model,
 				postRender: function() {
 					$('#refresh').on("click", function() {
-						postal.publish("application", "refresh", {});
+						postal.publish({}, { channel: "application", topic: "refresh" });
 					})
 				}
 			});
 		};
 
 		infuser.get("main", function(template) {
-			postal.publish("application", "mainTemplate.retrieved", {});
+			postal.publish({}, { channel: "application", topic: "mainTemplate.retrieved" });
 			self.render();
 		});
 	},
@@ -35,7 +35,7 @@ var MainView = function( target ) {
 		};
 
 		infuser.get("failure", function(template) {
-			postal.publish("application", "errorTemplate.retrieved", {});
+			postal.publish({}, { channel: "application", topic: "errorTemplate.retrieved" });
 		});
 	},
 	ItemView = function( target ) {
@@ -51,16 +51,24 @@ var MainView = function( target ) {
 			});
 		};
 
-		postal.subscribe("application.events", "dataGetFail", function(data, env){
-			errorNotice.render(data[0]);
+		postal.subscribe({
+			channel: "application.events",
+			topic: "dataGetFail",
+			callback: function(data, env){
+				errorNotice.render(data[0]);
+			}
 		});
 
-		postal.subscribe("application", "itemData.retrieved", function(data, env){
-			self.model = data;
-			self.render();
+		postal.subscribe({
+			channel: "application",
+			topic: "itemData.retrieved",
+			callback: function(data, env){
+				self.model = data;
+				self.render();
+			}
 		});
 
 		infuser.get("headlines", function(template) {
-			postal.publish("application", "itemTemplate.retrieved", {});
+			postal.publish({}, { channel: "application", topic: "itemTemplate.retrieved" });
 		});
 	};

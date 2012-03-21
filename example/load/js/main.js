@@ -1,3 +1,8 @@
+/*machina.bus.config = {
+	handlerChannelSuffix: "",
+	eventChannelSuffix: ""
+};*/
+
 var resourceGetter = {
 		getNews: function() {
 			$.ajax({
@@ -20,9 +25,7 @@ var resourceGetter = {
 		},
 
 		messaging: {
-			provider : "postal",
-			eventNamespace: "application.events",
-			handlerNamespace: "application"
+			namespace: "application"
 		},
 
 

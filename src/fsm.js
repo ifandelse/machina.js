@@ -13,17 +13,13 @@ var Fsm = function(options) {
 	delete opt.initialState;
 	_.extend(this,opt);
 
-	if(this.messaging.provider && messageBusProvider[this.messaging.provider]) {
-		messageBusProvider[this.messaging.provider].wireUp(this);
-	}
-
 	this.state = undefined;
 	this._priorAction = "";
 	this._currentAction = "";
 	if(initialState) {
 		this.transition(initialState);
 	}
-	machina.eventListeners.fireEvent("newFsm", this);
+	machina.fireEvent("newFsm", this);
 };
 
 Fsm.prototype.fireEvent = function(eventName) {

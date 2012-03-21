@@ -1,48 +1,27 @@
-(function(global, undefined) {
 /*
     postal.js
     Author: Jim Cowart
     License: Dual licensed MIT (http://www.opensource.org/licenses/mit-license) & GPL (http://www.opensource.org/licenses/gpl-license)
-    Version 0.4.0
+    Version 0.6.0
 */
 
-var DEFAULT_EXCHANGE = "/",
+(function(root, doc, factory) {
+	if (typeof define === "function" && define.amd) {
+		// AMD. Register as an anonymous module.
+		define(["underscore"], function(_) {
+			return factory(_, root, doc);
+		});
+	} else {
+		// Browser globals
+		factory(root._, root, doc);
+	}
+}(this, document, function(_, global, document, undefined) {
+
+var DEFAULT_CHANNEL = "/",
     DEFAULT_PRIORITY = 50,
     DEFAULT_DISPOSEAFTER = 0,
-    NO_OP = function() { },
-    parsePublishArgs = function(args) {
-        var parsed = { envelope: { } }, env;
-        switch(args.length) {
-            case 3:
-                if(typeof args[1] === "Object" && typeof args[2] === "Object") {
-                    parsed.envelope.exchange = DEFAULT_EXCHANGE;
-                    parsed.envelope.topic = args[0];
-                    parsed.payload = args[1];
-                    env = parsed.envelope;
-                    parsed.envelope = _.extend(env, args[2]);
-                }
-                else {
-                    parsed.envelope.exchange = args[0];
-                    parsed.envelope.topic = args[1];
-                    parsed.payload = args[2];
-                }
-                break;
-            case 4:
-                parsed.envelope.exchange = args[0];
-                parsed.envelope.topic = args[1];
-                parsed.payload = args[2];
-                env = parsed.envelope;
-                parsed.envelope = _.extend(env, args[3]);
-                break;
-            default:
-                parsed.envelope.exchange = DEFAULT_EXCHANGE;
-                parsed.envelope.topic = args[0];
-                parsed.payload = args[1];
-                break;
-        }
-        return parsed;
-    },
-	slice = [].slice;
+    SYSTEM_CHANNEL = "postal",
+    NO_OP = function() { };
 
 var DistinctPredicate = function() {
     var previous;
@@ -60,190 +39,161 @@ var DistinctPredicate = function() {
     };
 };
 
-var ChannelDefinition = function(exchange, topic) {
-    this.exchange = exchange;
-    this.topic = topic;
+var ChannelDefinition = function(channelName, defaultTopic) {
+    this.channel = channelName || DEFAULT_CHANNEL;
+    this.topic = defaultTopic || "";
 };
 
 ChannelDefinition.prototype = {
-    subscribe: function(callback) {
-        var subscription = new SubscriptionDefinition(this.exchange, this.topic, callback);
-        postal.configuration.bus.subscribe(subscription);
-        return subscription;
+    subscribe: function() {
+        var len = arguments.length;
+	    if(len === 1) {
+		    return new SubscriptionDefinition(this.channel, this.topic, arguments[0]);
+	    }
+	    else if (len === 2) {
+		    return new SubscriptionDefinition(this.channel, arguments[0], arguments[1]);
+	    }
     },
 
     publish: function(data, envelope) {
-        var env = _.extend({
-            exchange: this.exchange,
-            timeStamp: new Date(),
-            topic: this.topic
-        }, envelope);
+	    var env = (Object.prototype.toString.call(envelope) === "[object String]") ? { topic: envelope } : envelope || {};
+	    env.channel = this.channel;
+	    env.timeStamp = new Date();
+	    env.topic = env.topic || this.topic;
         postal.configuration.bus.publish(data, env);
     }
 };
 
-var SubscriptionDefinition = function(exchange, topic, callback) {
-    this.exchange = exchange;
-    this.topic = topic;
-    this.callback = callback;
-    this.priority = DEFAULT_PRIORITY;
-    this.constraints = [];
-    this.maxCalls = DEFAULT_DISPOSEAFTER;
-    this.onHandled = NO_OP;
-    this.context = null;
+var SubscriptionDefinition = function(channel, topic, callback) {
+	this.channel = channel;
+	this.topic = topic;
+	this.callback = callback;
+	this.priority = DEFAULT_PRIORITY;
+	this.constraints = new Array(0);
+	this.maxCalls = DEFAULT_DISPOSEAFTER;
+	this.onHandled = NO_OP;
+	this.context = null;
+	postal.publish({
+			event: "subscription.created",
+			channel: channel,
+			topic: topic
+		},{
+		channel: SYSTEM_CHANNEL,
+		topic: "subscription.created"
+	});
+
+	postal.configuration.bus.subscribe(this);
+
 };
 
 SubscriptionDefinition.prototype = {
-    unsubscribe: function() {
-        postal.configuration.bus.unsubscribe(this);
-    },
+	unsubscribe: function() {
+		postal.configuration.bus.unsubscribe(this);
+		postal.publish({
+				event: "subscription.removed",
+				channel: this.channel,
+				topic: this.topic
+			},{
+			channel: SYSTEM_CHANNEL,
+			topic: "subscription.removed"
+		});
+	},
 
-	aggregate: function(aggregateFn, initialState) {
-		if(! _.isFunction(aggregateFn)) {
-			throw "Value provided to 'aggregate' must be a function";
+	defer: function() {
+		var fn = this.callback;
+		this.callback = function(data) {
+			setTimeout(fn,0,data);
+		};
+		return this;
+	},
+
+	disposeAfter: function(maxCalls) {
+		if(_.isNaN(maxCalls) || maxCalls <= 0) {
+			throw "The value provided to disposeAfter (maxCalls) must be a number greater than zero.";
 		}
-		var fn = this.callback, newData, args;
-		this.callback = (function(){
-			var execCount = 0,
-				lastResult = initialState,
-				result,
-				canInvoke;
-			return function() {
-				args = slice.call(arguments, 0);
-				lastResult = aggregateFn.apply(this.context, [lastResult, ++execCount].concat(args));
-				result = typeof lastResult === 'object' && !_.isArray(lastResult) ? lastResult.data : lastResult;
-				canInvoke = typeof lastResult === 'object' && lastResult.hasOwnProperty("canInvoke") ? lastResult.canInvoke : true;
-				if(canInvoke) {
-					fn.apply(this.context, [result].concat(args.slice(1)));
-				}
-			};
-		})();
+
+		var fn = this.onHandled;
+		var dispose = _.after(maxCalls, _.bind(function() {
+			this.unsubscribe(this);
+		}, this));
+
+		this.onHandled = function() {
+			fn.apply(this.context, arguments);
+			dispose();
+		};
 		return this;
 	},
 
-	batchByCount: function(count) {
-		if(_.isNaN(count) || count <= 0) {
-			throw "The value provided to batchByCount must be a number greater than zero.";
+	ignoreDuplicates: function() {
+		this.withConstraint(new DistinctPredicate());
+		return this;
+	},
+
+	whenHandledThenExecute: function(callback) {
+		if(! _.isFunction(callback)) {
+			throw "Value provided to 'whenHandledThenExecute' must be a function";
 		}
-		this.aggregate((function(cnt){
-			var threshold = cnt,
-				current = 0,
-				batch = [],
-				args = slice.call(arguments,1);
-			return function(state, executionCount, data){
-				if(current >= threshold) {
-					current = 0;
-					state.data = [];
-				}
-				state.data.push(data);
-				current++;
-				state.canInvoke = current === threshold;
-				return state;
-			};
-		})(count), { data: [] });
+		this.onHandled = callback;
 		return this;
 	},
 
-    defer: function() {
-        var fn = this.callback;
-        this.callback = function(data) {
-            setTimeout(fn,0,data);
-        };
-        return this;
-    },
-
-    disposeAfter: function(maxCalls) {
-        if(_.isNaN(maxCalls) || maxCalls <= 0) {
-            throw "The value provided to disposeAfter (maxCalls) must be a number greater than zero.";
-        }
-
-        var fn = this.onHandled;
-        var dispose = _.after(maxCalls, _.bind(function() {
-                this.unsubscribe(this);
-            }, this));
-
-        this.onHandled = function() {
-            fn.apply(this.context, arguments);
-            dispose();
-        };
-        return this;
-    },
-
-    ignoreDuplicates: function() {
-        this.withConstraint(new DistinctPredicate());
-        return this;
-    },
-
-	once: function() {
-		this.disposeAfter(1);
+	withConstraint: function(predicate) {
+		if(! _.isFunction(predicate)) {
+			throw "Predicate constraint must be a function";
+		}
+		this.constraints.push(predicate);
 		return this;
 	},
 
-    whenHandledThenExecute: function(callback) {
-        if(! _.isFunction(callback)) {
-            throw "Value provided to 'whenHandledThenExecute' must be a function";
-        }
-        this.onHandled = callback;
-        return this;
-    },
+	withConstraints: function(predicates) {
+		var self = this;
+		if(_.isArray(predicates)) {
+			_.each(predicates, function(predicate) { self.withConstraint(predicate); } );
+		}
+		return self;
+	},
 
-    withConstraint: function(predicate) {
-        if(! _.isFunction(predicate)) {
-            throw "Predicate constraint must be a function";
-        }
-        this.constraints.push(predicate);
-        return this;
-    },
+	withContext: function(context) {
+		this.context = context;
+		return this;
+	},
 
-    withConstraints: function(predicates) {
-        var self = this;
-        if(_.isArray(predicates)) {
-            _.each(predicates, function(predicate) { self.withConstraint(predicate); } );
-        }
-        return self;
-    },
+	withDebounce: function(milliseconds) {
+		if(_.isNaN(milliseconds)) {
+			throw "Milliseconds must be a number";
+		}
+		var fn = this.callback;
+		this.callback = _.debounce(fn, milliseconds);
+		return this;
+	},
 
-    withContext: function(context) {
-        this.context = context;
-        return this;
-    },
+	withDelay: function(milliseconds) {
+		if(_.isNaN(milliseconds)) {
+			throw "Milliseconds must be a number";
+		}
+		var fn = this.callback;
+		this.callback = function(data) {
+			setTimeout(fn, milliseconds, data);
+		};
+		return this;
+	},
 
-    withDebounce: function(milliseconds) {
-        if(_.isNaN(milliseconds)) {
-            throw "Milliseconds must be a number";
-        }
-        var fn = this.callback;
-        this.callback = _.debounce(fn, milliseconds);
-        return this;
-    },
+	withPriority: function(priority) {
+		if(_.isNaN(priority)) {
+			throw "Priority must be a number";
+		}
+		this.priority = priority;
+		return this;
+	},
 
-    withDelay: function(milliseconds) {
-        if(_.isNaN(milliseconds)) {
-            throw "Milliseconds must be a number";
-        }
-        var fn = this.callback;
-        this.callback = function(data) {
-            setTimeout(fn, milliseconds, data);
-        };
-        return this;
-    },
-
-    withPriority: function(priority) {
-        if(_.isNaN(priority)) {
-            throw "Priority must be a number";
-        }
-        this.priority = priority;
-        return this;
-    },
-
-    withThrottle: function(milliseconds) {
-        if(_.isNaN(milliseconds)) {
-            throw "Milliseconds must be a number";
-        }
-        var fn = this.callback;
-        this.callback = _.throttle(fn, milliseconds);
-        return this;
-    }
+	withThrottle: function(milliseconds) {
+		if(_.isNaN(milliseconds)) {
+			throw "Milliseconds must be a number";
+		}
+		var fn = this.callback;
+		this.callback = _.throttle(fn, milliseconds);
+		return this;
+	}
 };
 
 var bindingsResolver = {
@@ -253,7 +203,10 @@ var bindingsResolver = {
         if(this.cache[topic] && this.cache[topic][binding]) {
             return true;
         }
-        var rgx = new RegExp("^" + this.regexify(binding) + "$"), // match from start to end of string
+	    //  binding.replace(/\./g,"\\.")             // escape actual periods
+	    //         .replace(/\*/g, ".*")             // asterisks match any value
+	    //         .replace(/#/g, "[A-Z,a-z,0-9]*"); // hash matches any alpha-numeric 'word'
+        var rgx = new RegExp("^" + binding.replace(/\./g,"\\.").replace(/\*/g, ".*").replace(/#/g, "[A-Z,a-z,0-9]*") + "$"),
             result = rgx.test(topic);
         if(result) {
             if(!this.cache[topic]) {
@@ -262,120 +215,161 @@ var bindingsResolver = {
             this.cache[topic][binding] = true;
         }
         return result;
-    },
-
-    regexify: function(binding) {
-        return binding.replace(/\./g,"\\.") // escape actual periods
-                      .replace(/\*/g, ".*") // asterisks match any value
-                      .replace(/#/g, "[A-Z,a-z,0-9]*"); // hash matches any alpha-numeric 'word'
     }
 };
 
 var localBus = {
 
-    subscriptions: {},
+	subscriptions: {},
 
-    wireTaps: [],
+	wireTaps: new Array(0),
 
-    publish: function(data, envelope) {
-        _.each(this.wireTaps,function(tap) {
-            tap(data, envelope);
-        });
+	publish: function(data, envelope) {
+		_.each(this.wireTaps,function(tap) {
+			tap(data, envelope);
+		});
 
-        _.each(this.subscriptions[envelope.exchange], function(topic) {
-            _.each(topic, function(binding){
-                if(postal.configuration.resolver.compare(binding.topic, envelope.topic)) {
-                    if(_.all(binding.constraints, function(constraint) { return constraint(data); })) {
-                        if(typeof binding.callback === 'function') {
-                            binding.callback.apply(binding.context, [data, envelope]);
-                            binding.onHandled();
-                        }
-                    }
-                }
-            });
-        });
-    },
+		_.each(this.subscriptions[envelope.channel], function(topic) {
+			_.each(topic, function(binding){
+				if(postal.configuration.resolver.compare(binding.topic, envelope.topic)) {
+					if(_.all(binding.constraints, function(constraint) { return constraint(data); })) {
+						if(typeof binding.callback === 'function') {
+							binding.callback.apply(binding.context, [data, envelope]);
+							binding.onHandled();
+						}
+					}
+				}
+			});
+		});
+	},
 
-    subscribe: function(subDef) {
-        var idx, found, fn;
+	subscribe: function(subDef) {
+		var idx, found, fn, channel = this.subscriptions[subDef.channel], subs;
 
-        if(!this.subscriptions[subDef.exchange]) {
-            this.subscriptions[subDef.exchange] = {};
-        }
-        if(!this.subscriptions[subDef.exchange][subDef.topic]) {
-            this.subscriptions[subDef.exchange][subDef.topic] = [];
-        }
+		if(!channel) {
+			channel = this.subscriptions[subDef.channel] = {};
+		}
+		subs = this.subscriptions[subDef.channel][subDef.topic];
+		if(!subs) {
+			subs = this.subscriptions[subDef.channel][subDef.topic] = new Array(0);
+		}
 
-        idx = this.subscriptions[subDef.exchange][subDef.topic].length - 1;
-        if(!_.any(this.subscriptions[subDef.exchange][subDef.topic], function(cfg) { return cfg === subDef; })) {
-            for(; idx >= 0; idx--) {
-                if(this.subscriptions[subDef.exchange][subDef.topic][idx].priority <= subDef.priority) {
-                    this.subscriptions[subDef.exchange][subDef.topic].splice(idx + 1, 0, subDef);
-                    found = true;
-                    break;
-                }
-            }
-            if(!found) {
-                this.subscriptions[subDef.exchange][subDef.topic].unshift(subDef);
-            }
-        }
+		idx = subs.length - 1;
+		for(; idx >= 0; idx--) {
+			if(subs[idx].priority <= subDef.priority) {
+				subs.splice(idx + 1, 0, subDef);
+				found = true;
+				break;
+			}
+		}
+		if(!found) {
+			subs.unshift(subDef);
+		}
+		return subDef;
+	},
 
-        return _.bind(function() { this.unsubscribe(subDef); }, this);
-    },
+	unsubscribe: function(config) {
+		if(this.subscriptions[config.channel][config.topic]) {
+			var len = this.subscriptions[config.channel][config.topic].length,
+				idx = 0;
+			for ( ; idx < len; idx++ ) {
+				if (this.subscriptions[config.channel][config.topic][idx] === config) {
+					this.subscriptions[config.channel][config.topic].splice( idx, 1 );
+					break;
+				}
+			}
+		}
+	},
 
-    unsubscribe: function(config) {
-        if(this.subscriptions[config.exchange][config.topic]) {
-            var len = this.subscriptions[config.exchange][config.topic].length,
-                idx = 0;
-            for ( ; idx < len; idx++ ) {
-                if (this.subscriptions[config.exchange][config.topic][idx] === config) {
-                    this.subscriptions[config.exchange][config.topic].splice( idx, 1 );
-                    break;
-                }
-            }
-        }
-    },
-
-    addWireTap: function(callback) {
-        this.wireTaps.push(callback);
-        return function() {
-            var idx = this.wireTaps.indexOf(callback);
-            if(idx !== -1) {
-                this.wireTaps.splice(idx,1);
-            }
-        };
-    }
+	addWireTap: function(callback) {
+		var self = this;
+		self.wireTaps.push(callback);
+		return function() {
+			var idx = self.wireTaps.indexOf(callback);
+			if(idx !== -1) {
+				self.wireTaps.splice(idx,1);
+			}
+		};
+	}
 };
+
+var publishPicker = {
+	"2" : function(data, envelope) {
+		if(!envelope.channel) {
+			envelope.channel = DEFAULT_CHANNEL;
+		}
+		postal.configuration.bus.publish(data, envelope);
+	},
+	"3" : function(channel, topic, payload) {
+		postal.configuration.bus.publish(payload, { channel: channel, topic: topic });
+	}
+};
+
+// save some setup time, albeit tiny
+localBus.subscriptions[SYSTEM_CHANNEL] = {};
 
 var postal = {
-    configuration: {
-        bus: localBus,
-        resolver: bindingsResolver
-    },
+	configuration: {
+		bus: localBus,
+		resolver: bindingsResolver
+	},
 
-    channel: function(exchange, topic) {
-        var exch = arguments.length === 2 ? exchange : DEFAULT_EXCHANGE,
-            tpc  = arguments.length === 2 ? topic : exchange;
-        return new ChannelDefinition(exch, tpc);
-    },
+	channel: function(options) {
+		var channel, tpc;
+		tpc = (Object.prototype.toString.call(options) === "[object String]") ? options : options.topic;
+		channel = options.channel || DEFAULT_CHANNEL;
+		return new ChannelDefinition(channel, tpc);
+	},
 
-    subscribe: function(exchange, topic, callback) {
-        var exch = arguments.length === 3 ? exchange : DEFAULT_EXCHANGE,
-            tpc  = arguments.length === 3 ? topic : exchange,
-            callbk  = arguments.length === 3 ? callback : topic;
-        var channel = this.channel(exch, tpc);
-        return channel.subscribe(callbk);
-    },
+	subscribe: function(options) {
+		var callback = options.callback,
+			topic = options.topic,
+			channel = options.channel || DEFAULT_CHANNEL;
+		return new SubscriptionDefinition(channel, topic, callback);
+	},
 
-    publish: function(exchange, topic, payload, envelopeOptions) {
-        var parsedArgs = parsePublishArgs([].slice.call(arguments,0));
-        var channel = this.channel(parsedArgs.envelope.exchange, parsedArgs.envelope.topic);
-        channel.publish(parsedArgs.payload, parsedArgs.envelope);
-    },
+	publish: function() {
+		var len = arguments.length;
+		if(publishPicker[len]) {
+			publishPicker[len].apply(this, arguments);
+		}
+	},
 
-    addWireTap: function(callback) {
-        this.configuration.bus.addWireTap(callback);
-    }
+	addWireTap: function(callback) {
+		return this.configuration.bus.addWireTap(callback);
+	},
+
+	linkChannels: function(sources, destinations) {
+		var result = [];
+		if(!_.isArray(sources)) {
+			sources = [sources];
+		}
+		if(!_.isArray(destinations)) {
+			destinations = [destinations];
+		}
+		_.each(sources, function(source){
+			var sourceTopic = source.topic || "*";
+			_.each(destinations, function(destination) {
+				var destChannel = destination.channel || DEFAULT_CHANNEL;
+				result.push(
+					postal.subscribe({
+						channel: source.channel || DEFAULT_CHANNEL,
+						topic: source.topic || "*",
+						callback : function(msg, env) {
+							var newEnv = env;
+							newEnv.topic = _.isFunction(destination.topic) ? destination.topic(env.topic) : destination.topic || env.topic;
+							newEnv.channel = destChannel;
+							postal.publish(msg, newEnv);
+						}
+					})
+				);
+			});
+		});
+		return result;
+	}
 };
 
-global.postal = postal; })(window);
+
+	global.postal = postal;
+	return postal;
+}));
