@@ -1,4 +1,10 @@
-//import("VersionHeader.js");
+/*
+    machina.postal.js
+    Author: Jim Cowart
+    License: Dual licensed MIT (http://www.opensource.org/licenses/mit-license) & GPL (http://www.opensource.org/licenses/gpl-license)
+    Version 0.1.0
+*/
+
 (function(root, doc, factory) {
 	if (typeof define === "function" && define.amd) {
 		// AMD. Register as an anonymous module.
@@ -12,39 +18,40 @@
 }(this, document, function(machina, postal, global, document, undefined) {
 
 	var bus = machina.bus = {
-
-		channels: {},
-
-		config: {
-			handlerChannelSuffix: "",
-			eventChannelSuffix: ".events"
-		},
-
-		wireHandlersToBus: function(fsm, handlerChannel) {
-			fsm.messaging.subscriptions.push(
-				bus.channels[handlerChannel].subscribe("*", function(data, envelope){
-					fsm.handle.call(fsm, envelope.topic, data);
-				})
-			);
-		},
-
-		wireEventsToBus: function(fsm, eventChannel) {
-			fsm.messaging.eventPublisher = function(){
-				bus.channels[eventChannel].publish(arguments[1], { channel: eventChannel, topic: arguments[0] });
-			};
-			fsm.on("*", fsm.messaging.eventPublisher);
-		},
-
-		wireUp: function(fsm) {
-			var handlerChannel = fsm.messaging.namespace + bus.config.handlerChannelSuffix,
-				eventChannel   = fsm.messaging.namespace + bus.config.eventChannelSuffix;
-			bus.channels[handlerChannel] = postal.channel({ channel: handlerChannel });
-			bus.channels[eventChannel] = postal.channel({ channel: eventChannel });
-			bus.wireHandlersToBus(fsm, handlerChannel);
-			bus.wireEventsToBus(fsm, eventChannel);
-		}
-	};
-
-	machina.on("newFsm", bus.wireUp);
+	channels: {},
+	config: {
+		handlerChannelSuffix: "",
+		eventChannelSuffix: ".events"
+	},
+	wireHandlersToBus: function(fsm, handlerChannel) {
+		bus.channels[handlerChannel]._subscriptions.push(
+			bus.channels[handlerChannel].subscribe("*", function(data, envelope){
+				fsm.handle.call(fsm, envelope.topic, data);
+			})
+		);
+	},
+	wireEventsToBus: function(fsm, eventChannel) {
+		var publisher = bus.channels[eventChannel].eventPublisher = function(){
+			try {
+				bus.channels[eventChannel].publish({ topic: arguments[0], data: arguments[1] || {} });
+			} catch(exception) {
+				if(console && typeof console.log !== "undefined") {
+					console.log(exception.toString());
+				}
+			}
+		};
+		fsm.on("*", publisher);
+	},
+	wireUp: function(fsm) {
+		var handlerChannel = fsm.namespace + bus.config.handlerChannelSuffix,
+			eventChannel   = fsm.namespace + bus.config.eventChannelSuffix;
+		bus.channels[handlerChannel] = postal.channel({ channel: handlerChannel });
+		bus.channels[eventChannel] = postal.channel({ channel: eventChannel });
+		bus.channels[handlerChannel]._subscriptions = [];
+		bus.wireHandlersToBus(fsm, handlerChannel);
+		bus.wireEventsToBus(fsm, eventChannel);
+	}
+};
+machina.on("newFsm", bus.wireUp);
 
 }));

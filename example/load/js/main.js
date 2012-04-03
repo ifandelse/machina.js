@@ -24,9 +24,7 @@ var resourceGetter = {
 			}
 		},
 
-		messaging: {
-			namespace: "application"
-		},
+		namespace: "application",
 
 
 		constraints: {

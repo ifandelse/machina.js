@@ -11,14 +11,14 @@ var MainView = function( target ) {
 				model: self.model,
 				postRender: function() {
 					$('#refresh').on("click", function() {
-						postal.publish({}, { channel: "application", topic: "refresh" });
+						postal.publish({ channel: "application", topic: "refresh" });
 					})
 				}
 			});
 		};
 
 		infuser.get("main", function(template) {
-			postal.publish({}, { channel: "application", topic: "mainTemplate.retrieved" });
+			postal.publish({ channel: "application", topic: "mainTemplate.retrieved" });
 			self.render();
 		});
 	},
@@ -35,7 +35,7 @@ var MainView = function( target ) {
 		};
 
 		infuser.get("failure", function(template) {
-			postal.publish({}, { channel: "application", topic: "errorTemplate.retrieved" });
+			postal.publish({ channel: "application", topic: "errorTemplate.retrieved" });
 		});
 	},
 	ItemView = function( target ) {
@@ -69,6 +69,6 @@ var MainView = function( target ) {
 		});
 
 		infuser.get("headlines", function(template) {
-			postal.publish({}, { channel: "application", topic: "itemTemplate.retrieved" });
+			postal.publish({ channel: "application", topic: "itemTemplate.retrieved" });
 		});
 	};
