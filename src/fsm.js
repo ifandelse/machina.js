@@ -14,6 +14,7 @@ var Fsm = function(options) {
 	_.extend(this,opt);
 
 	this.state = undefined;
+	this.priorState = undefined;
 	this._priorAction = "";
 	this._currentAction = "";
 	if(initialState) {
@@ -68,12 +69,12 @@ Fsm.prototype.handle = function(msgType) {
 
 Fsm.prototype.transition = function(newState) {
     if(this.states[newState]){
-        var oldState = this.state;
+        this.priorState = this.state;
         this.state = newState;
 	    if(this.states[newState]._onEnter) {
 		    this.states[newState]._onEnter.call( this );
 	    }
-        this.fireEvent.apply(this, ["Transitioned", oldState, this.state ]);
+        this.fireEvent.apply(this, ["Transitioned", this.priorState, this.state ]);
 	    this.processQueue(NEXT_TRANSITION);
         return;
     }
