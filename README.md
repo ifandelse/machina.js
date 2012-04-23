@@ -164,3 +164,7 @@ The top level `machina` object has the following members:
 * `off` - function used to unsubscribe a callback to top-level machina events.
 * `eventListeners` - an object literal containing the top-level `fireEvent` call as well as susbcribers to any top-level events.
 
+## Roadmap
+
+* machina.js version 0.2.0 is nearly done.  I plan to release it at the same time as postal.js v0.6.0
+* v0.2.0 of machina will separate the message-bus components into plugins, to keep those concerns out of the core source
