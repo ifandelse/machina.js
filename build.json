@@ -10,5 +10,14 @@
     "uglify": {
 	    "exclude": ["machina.node.js"]
     },
-    "extensions": { "uglify": "min" }
+    "extensions": { "uglify": "min" },
+	"host": true,
+	"hosts" : {
+		"/lib" : "./lib",
+		"/ext" : "./ext",
+		"/src" : "./src",
+		"/load" : "./example/load",
+		"/atm" : "./example/atm",
+		"/spec" : "./spec"
+	}
 }

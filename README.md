@@ -158,6 +158,24 @@ The top level `machina` object has the following members:
 * `off` - function used to unsubscribe a callback to top-level machina events.
 * `eventListeners` - an object literal containing the top-level `fireEvent` call as well as susbcribers to any top-level events.
 
+## Build, Tests & Examples
+machina.js uses [anvil.js](http://appendto.github.com/anvil.js/) to build.
+
+* Install node.js (and consider using [nvm](https://github.com/creationix/nvm) to manage your node versions)
+* Run `npm install -g anvil.js` to install anvil.js
+* Navigate to the root of this repository and run `anvil -b`
+* Build output will be placed in the lib folder.
+
+One great feature of [anvil.js](http://appendto.github.com/anvil.js/) is the ability to host your tests and other content using express in node.js.
+To run tests or examples:
+
+* Navigate to the root of this repository and run `anvil --host`
+* For tests, navigate to `http://localhost:3080/spec`
+* For the "atm" example, navigate to `http://localhost:3080/atm`
+	* check the source of Repository.js in this example for the account/pin information that can be used to log in.
+* For the "load" example, navigate to `http://localhost:3080/load`
+
+
 ## Release Notes
 
 ### v0.2.0
