@@ -169,7 +169,7 @@
 	 * alias: accounting.`parse(string)`
 	 *
 	 * Decimal must be included in the regular expression to match floats (default: "."), so if the number
-	 * uses a non-standard decimal separator, provide it as the second argument.
+	 * uses a non-browser decimal separator, provide it as the second argument.
 	 *
 	 * Also matches bracketed negatives (eg. "$ (1.99)" => -1.99)
 	 *
@@ -198,7 +198,7 @@
 				("" + value)
 				.replace(/\((.*)\)/, "-$1") // replace bracketed values with negatives
 				.replace(regex, '')         // strip out any cruft
-				.replace(decimal, '.')      // make sure decimal point is standard
+				.replace(decimal, '.')      // make sure decimal point is browser
 			);
 
 		// This will fail silently which may cause trouble, let's wait and see:

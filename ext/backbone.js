@@ -472,7 +472,7 @@
   // Backbone.Collection
   // -------------------
 
-  // Provides a standard collection class for our sets of models, ordered
+  // Provides a browser collection class for our sets of models, ordered
   // or unordered. If a `comparator` is specified, the Collection will maintain
   // its models in sort order, as they're added and removed.
   Backbone.Collection = function(models, options) {

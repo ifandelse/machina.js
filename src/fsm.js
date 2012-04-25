@@ -13,17 +13,14 @@ var Fsm = function(options) {
 	delete opt.initialState;
 	_.extend(this,opt);
 
-	if(this.messaging.provider && messageBusProvider[this.messaging.provider]) {
-		messageBusProvider[this.messaging.provider].wireUp(this);
-	}
-
 	this.state = undefined;
+	this.priorState = undefined;
 	this._priorAction = "";
 	this._currentAction = "";
 	if(initialState) {
 		this.transition(initialState);
 	}
-	machina.eventListeners.fireEvent("newFsm", this);
+	machina.fireEvent("newFsm", this);
 };
 
 Fsm.prototype.fireEvent = function(eventName) {
@@ -72,12 +69,12 @@ Fsm.prototype.handle = function(msgType) {
 
 Fsm.prototype.transition = function(newState) {
     if(this.states[newState]){
-        var oldState = this.state;
+        this.priorState = this.state;
         this.state = newState;
 	    if(this.states[newState]._onEnter) {
 		    this.states[newState]._onEnter.call( this );
 	    }
-        this.fireEvent.apply(this, ["Transitioned", oldState, this.state ]);
+        this.fireEvent.apply(this, ["Transitioned", this.priorState, this.state ]);
 	    this.processQueue(NEXT_TRANSITION);
         return;
     }

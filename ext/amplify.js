@@ -232,7 +232,7 @@ for ( var webStorageType in { localStorage: 1, sessionStorage: 1 } ) {
 }
 
 // globalStorage
-// non-standard: Firefox 2+
+// non-browser: Firefox 2+
 // https://developer.mozilla.org/en/dom/storage#globalStorage
 if ( window.globalStorage ) {
 	// try/catch for file protocol in Firefox
@@ -249,7 +249,7 @@ if ( window.globalStorage ) {
 }
 
 // userData
-// non-standard: IE 5+
+// non-browser: IE 5+
 // http://msdn.microsoft.com/en-us/library/ms531424(v=vs.85).aspx
 (function() {
 	// IE 9 has quirks in userData that are a huge pain

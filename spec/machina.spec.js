@@ -19,44 +19,8 @@ QUnit.specify("machina.js", function(){
 			it("states should default to empty object", function(){
 				assert(_.isEmpty(options.state)).equals(true);
 			});
-			it("messaging should default to expected values", function(){
-				assert(rgx.test(options.messaging.handlerNamespace)).equals(true);
-				assert(rgx.test(options.messaging.eventNamespace)).equals(true);
-				assert(options.messaging.subscriptions.length).equals(0);
-			});
-		});
-		describe("With defaulted FSM", function(){
-			var fsmB;
-			fsm = new machina.Fsm();
-			fsmB = new machina.Fsm();
-			describe("When calling machina.utils.getQualifiedHandlerNames", function() {
-				var handlers = machina.utils.getHandlerNames(fsm);
-				it("should return an empty array", function(){
-					assert(handlers.length).equals(0);
-				});
-			});
-		});
-		describe("With custom FSM", function(){
-			fsm = new machina.Fsm({
-				states: {
-					"one" : {
-						"a": function() { },
-						"b": function() { }
-					},
-					"two" : {
-						"b": function() { },
-						"c": function() { }
-					}
-				}
-			});
-			describe("When calling machina.utils.getQualifiedHandlerNames", function() {
-				var handlers = machina.utils.getHandlerNames(fsm);
-				it("should return an array with three handler names", function(){
-					assert(handlers[0]).equals("a");
-					assert(handlers[1]).equals("b");
-					assert(handlers[2]).equals("c");
-					assert(handlers.length).equals(3);
-				});
+			it("namespace should default to expected pattern", function(){
+				assert(rgx.test(options.namespace)).equals(true);
 			});
 		});
 	});
