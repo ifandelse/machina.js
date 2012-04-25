@@ -10,11 +10,11 @@ Machina.js is a JavaScript framework for highly customizable finite state machin
 		* app "init" (bootstrapping your web client so that certain application behaviors are not available until all appropriate resources/data/behavior are present)
 		* persistence concerns - offline vs online.  Abstract persistence behind an fsm that simply listens for messages (commands) to persist data.  Depending on the state of the client (offline vs online), the FSM will handle the activity accordingly - calling code never needs to know.
 		* Often-changing-subsets of view or model elements.  Take a navigation menu, for example.  Depending on the context (i.e. - state), you may wish to show/hide certain menu options.  This usually turns out to be a handful of menu show-vs-hide combinations.  An FSM can abstract this well.
-* It's simple!  Machina makes the process of organizing the various states your fsm needs to know about, and the kinds of events each state can handle.
+* It's simple!  Machina makes the process of organizing the various states your fsm needs to know about - and the kinds of events each state can handle - intuitive to set up, and to read.
 * Powerful integration.  By using a plugin like [machina.postal](https://github.com/ifandelse/machina.postal), your FSM instances can auto-wire into [postal.js](https://github.com/ifandelse/postal.js) (a JavaScript message bus), enabling them decoupled communications with other components in your application.  This wires up both subscribers (for state handlers to be invoked) and publishers (to publish your FSM's events to the message bus).
 * Extend for more power.
 	* Writing your own message bus/eventing wire-up plugin is fairly simple.  Look at [machina.postal](https://github.com/ifandelse/machina.postal) for an example.
-	* Hook into the top level "newFsm" event to give other components in your app a handle to your FSM
+	* Hook into the top level "newFsm" event to give other components in your app a handle to your FSMs as they are created.
 
 ## How do I use it?
 (Be sure to check out the example folder in this repository for more in-depth demos).
@@ -139,6 +139,13 @@ Each instance of an machina FSM has the following methods available via it's pro
 * `processQueue()` - called internally during state transitions and after handler methods have been invoked.  This call processes any queued events (queued by use of `deferUntilTransition` and/or `deferUntilNextHandler`).
 * `on(eventName, callback)` - used to subscribe to events that the FSM generates.
 * `off(eventName, callback)` - used to unsubscribe to FSM events.
+
+In addition to the prototype members, every instance of an FSM has these instance-specific values as well:
+
+* `state` - string value of the current state of the FSM.  This will match one of the state names in the `states` object.  Do *not* change this value directly.  Use the `transition()` method on the prototype to change an FSM's state.
+* `priorState` - the last state in which the FSM was in before the current one.  This could be useful if you have conditional transition behavior as you move into a new state which depends on what state you're moving *from*.
+* `_currentAction` - concatenates "{state}.{handler}" for the operation in progress.  This is provided as a convenience for both logging (if needed) and if you need to check during an operation to see if the last action taken is the same action being taken now.
+* `_priorAction` - concatenates "{state}.{handler" for the last operation that took place.  See the above explanation for more context.
 
 ## The Top Level machina object
 The top level `machina` object has the following members:
