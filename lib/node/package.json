@@ -19,6 +19,14 @@
             "url" : "http://freshbrewedcode.com/jimcowart"
         }
     ],
+	"keywords" : [
+		"state machine",
+		"finite state machine",
+		"async",
+		"workflow",
+		"state",
+		"machina"
+	],
     "bugs" : {
         "email" : "jim@ifandelse.com",
         "url" : "http://github.com/ifandelse/machina.js/issues"
