@@ -156,4 +156,5 @@ The top level `machina` object has the following members:
 ### v0.2.0
 
 * Message bus integration has been removed from machina core, and now exists as plugins.  For integration with [postal.js](https://github.com/ifandelse/postal.js), see [machina.postal](https://github.com/ifandelse/machina.postal)
-* a "priorState" member has been added to the Fsm.
+* Due to the above change, the only "messaging-related" metadata on an FSM now is the "namespace" value that can be passed as the FSM is created.  This value is optional, and will be given a default if none is provided.  Messaging plugins can utilize this value as a channel/namespace name and/or topic prefix.
+* A "priorState" member has been added to the Fsm.
