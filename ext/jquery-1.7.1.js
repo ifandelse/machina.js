@@ -1489,7 +1489,7 @@ jQuery.support = (function() {
 
 	// Technique from Juriy Zaytsev
 	// http://perfectionkills.com/detecting-event-support-without-browser-sniffing/
-	// We only care about the case where non-standard event systems
+	// We only care about the case where non-browser event systems
 	// are used, namely in IE. Short-circuiting here helps us to
 	// avoid an eval call (in setAttribute) which can cause CSP
 	// to go haywire. See: https://developer.mozilla.org/en/Security/CSP
@@ -8032,7 +8032,7 @@ jQuery.ajaxSettings.xhr = window.ActiveXObject ?
 	function() {
 		return !this.isLocal && createStandardXHR() || createActiveXHR();
 	} :
-	// For all other browsers, use the standard XMLHttpRequest object
+	// For all other browsers, use the browser XMLHttpRequest object
 	createStandardXHR;
 
 // Determine support properties
@@ -8156,7 +8156,7 @@ if ( jQuery.support.ajax ) {
 										statusText = "";
 									}
 
-									// Filter status for non standard behaviors
+									// Filter status for non browser behaviors
 
 									// If the request is local and we have data: assume a success
 									// (success with no data won't get notified, that's the best we
@@ -8540,7 +8540,7 @@ function clearFxNow() {
 	fxNow = undefined;
 }
 
-// Generate parameters to create a standard animation
+// Generate parameters to create a browser animation
 function genFx( type, num ) {
 	var obj = {};
 

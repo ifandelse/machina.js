@@ -1,8 +1,14 @@
 {
     "source": "src",
-    "output": "lib/standard",
+    "output": "lib",
+	"name": {
+		"machina.browser.js"     : "browser/machina.js",
+		"machina.browser.min.js" : "browser/machina.min.js",
+		"machina.node.js" : "node/machina.js"
+	},
     "lint": {},
-    "uglify": {},
-    "gzip": {},
-    "extensions": { "uglify": "min", "gzip": "gz" }
+    "uglify": {
+	    "exclude": ["machina.node.js"]
+    },
+    "extensions": { "uglify": "min" }
 }

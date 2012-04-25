@@ -11,8 +11,10 @@ Machina.js is a JavaScript framework for highly customizable finite state machin
 		* persistence concerns - offline vs online.  Abstract persistence behind an fsm that simply listens for messages (commands) to persist data.  Depending on the state of the client (offline vs online), the FSM will handle the activity accordingly - calling code never needs to know.
 		* Often-changing-subsets of view or model elements.  Take a navigation menu, for example.  Depending on the context (i.e. - state), you may wish to show/hide certain menu options.  This usually turns out to be a handful of menu show-vs-hide combinations.  An FSM can abstract this well.
 * It's simple!  Machina makes the process of organizing the various states your fsm needs to know about, and the kinds of events each state can handle.
-* Powerful integration.  Out of the box, machina will auto-wire itself into postal.js (client side message bus) or amplify.js (specifically amplify.core, which houses a lightweight message bus), if one of them is present.  These allows your FSM to respond to messages, instead of state handlers being invoked directly, and it also allows your fsm to publish events over pub/sub.
-* Extend for more power.  You can support other pub/sub libraries by writing a provider for it (an object that defines a "wireUp" and a "addEventTransforms" call.  "wireUp" is where you tell your FSM how to talk to your pub/sub library.  "addEventTransforms" helps machina translate event message arguments into a more expressive message payload.
+* Powerful integration.  By using a plugin like [machina.postal](https://github.com/ifandelse/machina.postal), your FSM instances can auto-wire into [postal.js](https://github.com/ifandelse/postal.js) (a JavaScript message bus), enabling them decoupled communications with other components in your application.  This wires up both subscribers (for state handlers to be invoked) and publishers (to publish your FSM's events to the message bus).
+* Extend for more power.
+	* Writing your own message bus/eventing wire-up plugin is fairly simple.  Look at [machina.postal](https://github.com/ifandelse/machina.postal) for an example.
+	* Hook into the top level "newFsm" event to give other components in your app a handle to your FSM
 
 ## How do I use it?
 (Be sure to check out the example folder in this repository for more in-depth demos).
@@ -39,8 +41,6 @@ var storageFsm = new machina.Fsm({
 		}
 		return true;
 	},
-
-	eventListeners: [ "CustomerSyncComplete" ],
 
 	initialState: "offline",
 
@@ -80,7 +80,7 @@ var storageFsm = new machina.Fsm({
 
 In the above example, the developer has created an FSM with two possible states: `online` and `offline`.  While the fsm is in the `online` state, it will respond to `save.customer` and `sync.customer` events.  External code triggers these events by calling the `handle` method on the FSM.  For example `storageFsm.handle( "sync.customer", { other: "data" } )`.  The `handle` method first looks to see if a named handler exists matching the name of the one passed in, then also checks for a catch-all handler (indicated by the "*") if a named handler isn't found.  The `offline` state of the above FSM only responds to `save.customer` events.  If any other type of event name is passed to the `handle` method of the FSM, other than what each state explicitly handles, it is ignored.
 
-In addition to the state/handler definitions, the above code example as shows that the FSM will start in the `offline` state, and can generate a `CustomerSyncComplete` event.  It's worth noting that the `events` member can be an array of string event names, or an object where each handler name is the key, and the values are either empty arrays, or an array of callbacks.  (The array of string event names is converted into an object with the event name as the key, empty array as the value.)
+In addition to the state/handler definitions, the above code example as shows that the FSM will start in the `offline` state, and can generate a `CustomerSyncComplete` event.
 
 The `verifyState` and `applicationOffline` methods are custom to this instance of the FSM, and are not, of course, part of machina by default.
 
@@ -144,7 +144,6 @@ Each instance of an machina FSM has the following methods available via it's pro
 The top level `machina` object has the following members:
 
 * `Fsm` - the constructor function used to create FSMs.
-* `busProviders` - an object containing providers for various message-bus frameworks, allowing machina to tie into them (postal.js and amplify are available out of the box).
 * `utils` - contains helper functions that can be overridden to change default behavior(s) in machina:
 	* `getDefaultOptions` - returns the default options object for any machina instance
 	* `makeFsmNamespace` - function that provides a default "channel" or "exchange" for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
@@ -152,7 +151,9 @@ The top level `machina` object has the following members:
 * `off` - function used to unsubscribe a callback to top-level machina events.
 * `eventListeners` - an object literal containing the top-level `fireEvent` call as well as susbcribers to any top-level events.
 
-## Roadmap
+## Release Notes
 
-* machina.js version 0.2.0 is nearly done.  I plan to release it at the same time as postal.js v0.6.0
-* v0.2.0 of machina will separate the message-bus components into plugins, to keep those concerns out of the core source
+### v0.2.0
+
+* Message bus integration has been removed from machina core, and now exists as plugins.  For integration with [postal.js](https://github.com/ifandelse/postal.js), see [machina.postal](https://github.com/ifandelse/machina.postal)
+* a "priorState" member has been added to the Fsm.
