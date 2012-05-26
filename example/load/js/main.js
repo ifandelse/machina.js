@@ -46,7 +46,7 @@ var resourceGetter = {
 		},
 
 		states: {
-			"uninitialized": {
+			uninitialized: {
 				initialize : function(){
 					this.transition("waitingOnTemplates");
 				},
@@ -110,4 +110,3 @@ var app = window.loadApp = {
 };
 
 app.start();
-
