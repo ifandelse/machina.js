@@ -1,17 +1,13 @@
 {
     "name" : "machina",
     "description" : "A library for creating powerful and flexible finite state machines.  Loosely inspired by Erlang/OTP's gen_fsm behavior.",
-    "version" : "0.2.0",
+    "version" : "0.2.1",
     "homepage" : "http://machina-js.org/",
     "repository" : {
         "type" : "git",
         "url" : "git://github.com/ifandelse/machina.js.git"
     },
-	"author" : {
-        "name" : "Jim Cowart",
-        "email" : "jim@ifandelse.com",
-        "url" : "http://freshbrewedcode.com/jimcowart"
-    },
+	"author" : "Jim Cowart (http://freshbrewedcode.com/jimcowart)",
     "contributors": [
         {
             "name" : "Jim Cowart",
@@ -22,6 +18,7 @@
 	"keywords" : [
 		"state machine",
 		"finite state machine",
+		"fsm",
 		"async",
 		"workflow",
 		"state",

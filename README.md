@@ -1,7 +1,7 @@
 # machina.js
 
 ## What is it?
-Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been very heavily borrowed from the Erlang/OTP FSM behaviors.
+Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been loosely inspired by the Erlang/OTP FSM behaviors.
 
 ## Why would I use it?
 * Finite state machines offer a way to structure web client code in a very organized manner, and can make it much simpler to extend behavior for all or only key edge cases.
@@ -183,3 +183,10 @@ To run tests or examples:
 * Message bus integration has been removed from machina core, and now exists as plugins.  For integration with [postal.js](https://github.com/ifandelse/postal.js), see [machina.postal](https://github.com/ifandelse/machina.postal)
 * Due to the above change, the only "messaging-related" metadata on an FSM now is the "namespace" value that can be passed as the FSM is created.  This value is optional, and will be given a default if none is provided.  Messaging plugins can utilize this value as a channel/namespace name and/or topic prefix.
 * A "priorState" member has been added to the Fsm.
+
+### v0.2.1
+
+* build bits updated to latest anvil.js (0.8.9)
+* added beginnings of connectivity example
+* updated ext dependencies (postal, etc.)
+* added bower component.json

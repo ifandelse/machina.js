@@ -3,5 +3,5 @@ desktop.ini
 .eprj
 .idea
 .anvil
-*node_modules
+*node_modules*
 *npm-debug*
