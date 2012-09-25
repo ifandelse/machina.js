@@ -1,23 +1,19 @@
 {
-    "source": "src",
-    "output": "lib",
-	"name": {
-		"machina.browser.js"     : "browser/machina.js",
-		"machina.browser.min.js" : "browser/machina.min.js",
-		"machina.node.js" : "node/machina.js"
+	"anvil.uglify" : {
+		"exclude" : ["./node/machina.js"]
 	},
-    "lint": {},
-    "uglify": {
-	    "exclude": ["machina.node.js"]
-    },
-    "extensions": { "uglify": "min" },
-	"host": true,
-	"hosts" : {
-		"/lib" : "./lib",
-		"/ext" : "./ext",
-		"/src" : "./src",
-		"/load" : "./example/load",
-		"/atm" : "./example/atm",
-		"/spec" : "./spec"
-	}
+	"anvil.http" : {
+		"paths" : {
+			"/lib"  : "./lib",
+			"/ext"  : "./ext",
+			"/src"  : "./src",
+			"/load" : "./example/load",
+			"/atm"  : "./example/atm",
+			"/spec" : "./spec"
+		}
+	},
+	"anvil.jshint" : {
+		"all" : true
+	},
+	"dependencies" : [ "anvil.http", "anvil.uglify" ]
 }

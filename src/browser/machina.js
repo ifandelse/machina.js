@@ -1,4 +1,3 @@
-//import("VersionHeader.js");
 (function(root, doc, factory) {
 	if (typeof define === "function" && define.amd) {
 		// AMD. Register as an anonymous module.
@@ -11,7 +10,7 @@
 	}
 }(this, document, function(_, global, document, undefined) {
 
-	//import("machina.js");
+	//import("../machina.js");
 
 	global.machina = machina;
 	return machina;

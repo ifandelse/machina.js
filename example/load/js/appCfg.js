@@ -2,7 +2,7 @@
 	var infuserDefault = infuser.defaults;
 
 	infuser.defaults = $.extend(true, infuserDefault, {
-		templateUrl: "templates",
+		templateUrl: "/load/templates",
 		bindingInstruction: function(template, model) {
 			return template(model);
 		},

@@ -1,6 +1,5 @@
-//import("VersionHeader.js");
 var _ = require('underscore');
 
-//import("machina.js");
+//import("../machina.js");
 
 module.exports = machina;

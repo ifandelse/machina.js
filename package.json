@@ -25,14 +25,17 @@
 		"async",
 		"workflow",
 		"state",
-		"machina"
+		"machina",
+		"machina-js",
+		"machina.js",
+		"machinajs"
 	],
     "bugs" : {
         "email" : "jim@ifandelse.com",
         "url" : "http://github.com/ifandelse/machina.js/issues"
    },
-	"directories" : { "lib" : "./" },
-    "main" : "./machina.js",
+	"directories" : { "lib" : "lib/node" },
+    "main" : "lib/node/machina.js",
 	"engines" : {
 		"node" : ">=0.4.0"
 	},
