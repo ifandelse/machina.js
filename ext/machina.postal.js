@@ -2,7 +2,7 @@
  machina.postal
  Author: Jim Cowart (http://freshbrewedcode.com/jimcowart)
  License: Dual licensed MIT (http://www.opensource.org/licenses/mit-license) & GPL (http://www.opensource.org/licenses/gpl-license)
- Version 0.2.0
+ Version 0.2.1
  */
 (function ( root, doc, factory ) {
 	if ( typeof define === "function" && define.amd ) {
@@ -31,8 +31,10 @@
 		},
 		wireEventsToBus : function ( fsm, eventChannel ) {
 			var publisher = bus.channels[eventChannel].eventPublisher = function () {
+				var args = Array.prototype.slice.call(arguments, 0);
 				try {
-					bus.channels[eventChannel].publish( { topic : arguments[0], data : arguments[1] || {} } );
+					var data = args[0] === "Transitioned" ? { fromState: args[1], toState: args[2] } : args[1];
+					bus.channels[eventChannel].publish( { topic : args[0], data : data || {} } );
 				} catch ( exception ) {
 					if ( console && typeof console.log !== "undefined" ) {
 						console.log( exception.toString() );

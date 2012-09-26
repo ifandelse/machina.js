@@ -1,31 +1,20 @@
 define([
 	'bus',
     'connectivityFsm',
-    'stethoscope'
-], function( bus, ConnectivityFsm, Stethoscope ){
-	var app = {
-		monitor: new ConnectivityFsm( new Stethoscope({ url: "heartbeat" }) )
-	};
-
-	app.monitor.on("*", function() {
-		$('body' ).append("<div><pre>" + JSON.stringify(arguments, null, 4) + "</pre></div><hr />");
+    'stethoscope',
+    'mainView'
+], function( bus, ConnectivityFsm, Stethoscope, MainView ){
+	var stethoscope = new Stethoscope({ url: "heartbeat" });
+	stethoscope.on("checking-heartbeat", function() {
+		bus.heartbeat.publish({topic: "checking", data: {} });
 	});
 
-	/*
-	 the following commands can be issued via console (or whatever) to get an idea of how the FSM reacts:
+	var app = {
+		view: new MainView(),
+		monitor: new ConnectivityFsm( stethoscope )
+	};
 
-	 // go online
-	 monitor.handle("goOnline");
-
-	 // go offline
-	 monitor.handle("goOffline");
-
-	 // simulate window.offline event
-	 $(window).trigger("window.offline");
-
-	 etc., etc.
-
-	 */
+	app.view.render();
 
 	return app;
 });

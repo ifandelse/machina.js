@@ -16,6 +16,8 @@ define([
 
 		var fsm = new machina.Fsm({
 
+			namespace: 'connectivity',
+
 			initialState: "offline",
 
 			states: {

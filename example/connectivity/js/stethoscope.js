@@ -15,10 +15,10 @@ define([
 	_.extend(Stethoscope.prototype, Backbone.Events, {
 		checkHeartbeat: function() {
 			var self = this;
-
+			self.trigger('checking-heartbeat');
 			$.ajax(self.settings )
 				.done(function() {
-					self.trigger('heartbeat')
+					self.trigger('heartbeat');
 				})
 				.fail(function() {
 					self.trigger('no-heartbeat');

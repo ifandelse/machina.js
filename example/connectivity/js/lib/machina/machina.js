@@ -125,6 +125,7 @@
 	    if(this.states[newState]){
 	        this.priorState = this.state;
 	        this.state = newState;
+		    this.fireEvent.apply(this, ["Transitioning", this.priorState, this.state ]);
 		    if(this.states[newState]._onEnter) {
 			    this.states[newState]._onEnter.call( this );
 		    }
