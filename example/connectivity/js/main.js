@@ -1,31 +1,43 @@
-// mockjax setup
-// Mocked response for the heartbeat check
-$.mockjax( {
-	url : "heartbeat",
-	type : "GET",
-	status : 200,
-	statusText: "success",
-	responseText: { canYouHearMeNow: "good" }
+require.config( {
+	paths : {
+		text             : "lib/require/text",
+		backbone         : 'lib/backbone/backbone',
+		underscore       : 'lib/underscore/underscore-min',
+		mockjax          : 'lib/jquery.mockjax',
+		machina          : 'lib/machina/machina',
+		'machina.postal' : 'lib/machina/machina.postal',
+		postal           : 'lib/postal/postal',
+		'postal.diags'   : 'lib/postal/postal.diagnostics.min'
+	},
+	shim: {
+		mockjax : [ 'jquery' ]
+	},
+	baseUrl : 'js'
 } );
 
-var monitor = window.connectivity.monitor = new window.connectivity.ConnectivityFsm({ url: "heartbeat" });
+// This first require statement is pulling in foundational libraries
+require([
+		'jquery',
+		'underscore',
+        'mockjax',
+        'machina.postal',
+        'postal.diags'
+	],
+	function ( $, _ ) {
 
-monitor.on("*", function() {
-	$('body' ).append("<div><pre>" + JSON.stringify(arguments, null, 4) + "</pre></div><hr />");
-});
+		// mockjax setup
+		// Mocked response for the heartbeat check
+		$.mockjax( {
+			url : "heartbeat",
+			type : "GET",
+			status : 200,
+			statusText: "success",
+			responseText: { canYouHearMeNow: "good" }
+		} );
 
-/*
-	the following commands can be issued via console (or whatever) to get an idea of how the FSM reacts:
+		require(['app'], function( app ) {
+			window.app = app;
+		});
 
-	// go online
-    monitor.handle("goOnline");
-
-	// go offline
-    monitor.handle("goOffline");
-
-    // simulate window.offline event
-	$(window).trigger("window.offline");
-
-	etc., etc.
-
- */
+	}
+);

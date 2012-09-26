@@ -1,14 +1,18 @@
-window.connectivity.ConnectivityFsm = (function($, machina, amplify) {
+define([
+	'jquery',
+    'machina',
+    'underscore'
+], function($, machina, _) {
 
-	return function(heartbeatDef) {
+	return function(stethoscope) {
 
-		var settings = $.extend(true, {
-			type: "GET",
-			dataType: "json",
-			timeout: 5000
-		}, heartbeatDef);
-
-		amplify.request.define("heartbeat-check", "ajax", settings);
+		var useStethoscope = function(fsm, steth) {
+			_.each(['heartbeat', 'no-heartbeat'], function(eventName){
+				steth.on(eventName, function(){
+					fsm.handle(eventName);
+				});
+			});
+		};
 
 		var fsm = new machina.Fsm({
 
@@ -18,25 +22,16 @@ window.connectivity.ConnectivityFsm = (function($, machina, amplify) {
 				probing: {
 					_onEnter: function() {
 						var self = this;
-						amplify.request({
-							resourceId: "heartbeat-check",
-							success: function() {
-								self.handle("heartbeat");
-							},
-							"error": function() {
-								self.handle("no-heartbeat");
-							}
-						});
-						self.heartbeatTimeout = setTimeout(function() {
-							self.handle("no-heartbeat");
-						}, settings.timeout);
+						if(!self.wiredUp) {
+							useStethoscope(self, stethoscope);
+							self.wiredUp = true;
+						}
+						stethoscope.checkHeartbeat();
 					},
 					heartbeat: function() {
-						clearTimeout(this.heartbeatTimeout);
 						this.transition("online");
 					},
 					"no-heartbeat": function() {
-						clearTimeout(this.heartbeatTimeout);
 						this.transition("disconnected");
 					},
 					"*": function() {
@@ -103,5 +98,4 @@ window.connectivity.ConnectivityFsm = (function($, machina, amplify) {
 
 		return fsm;
 	};
-
-})(jQuery, machina, amplify, undefined);
+});
