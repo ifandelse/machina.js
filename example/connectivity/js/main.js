@@ -25,17 +25,22 @@ require([
 	],
 	function ( $, _ ) {
 
-		// mockjax setup
-		// Mocked response for the heartbeat check
-		$.mockjax( {
-			url : "heartbeat",
-			type : "GET",
-			status : 200,
-			statusText: "success",
-			responseText: { canYouHearMeNow: "good" }
-		} );
-
 		require(['app'], function( app ) {
+			// mockjax setup
+			// Mocked response for the heartbeat check
+			$.mockjax( {
+				url : "heartbeat",
+				type : "GET",
+				response: function ( settings ) {
+					if ( app.simulateDisconnect ) {
+						this.isTimeout = true;
+					} else {
+						this.responseText = { canYouHearMeNow: "good" }
+					}
+				}
+			} );
+
+
 			window.app = app;
 		});
 

@@ -12,7 +12,7 @@ define([
 			'click .slow-mo'      : 'toggleSlowMo', // change this to whatever.  it just indicates an event that gets fired when we want to switch to/from slow-motion
 			'click .go-offline'   : 'goOffline',
 			'click .go-online'    : 'goOnline',
-			'click .fake-offline' : 'simulateWindowOffline'
+			'click .toggle-offline' : 'toggleWindowOffline'
 		},
 
 		initialize: function() {
@@ -36,8 +36,8 @@ define([
 		goOnline: function() {
 			bus.connectivityInput.publish({ topic: "goOnline", data: {} });
 		},
-		simulateWindowOffline: function() {
-			$(window).trigger("offline");
+		toggleWindowOffline: function() {
+			app.toggleDisconnectSimulation();
 		},
 
 		// LISTENING TO THE FSM OUTPUT (& STETHOSCOPE)
