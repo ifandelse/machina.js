@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
     <title>Machina.js by ifandelse</title>
-    
+
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/pygment_trac.css">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
@@ -17,11 +17,14 @@
       <header>
         <h1>Machina.js</h1>
         <p>js ex machina - finite state machines in JavaScript</p>
-        <p class="view"><a target="_blank" href="http://github.com/ifandelse/machina.js">View the Project on GitHub <small>ifandelse/machina.js</small></a></p>
+
+        <p class="view"><a href="https://github.com/ifandelse/machina.js">View the Project on GitHub <small>ifandelse/machina.js</small></a></p>
+
+
         <ul>
-          <li><a target="_blank" href="http://github.com/ifandelse/machina.js/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a target="_blank" href="http://github.com/ifandelse/machina.js/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a target="_blank" href="http://github.com/ifandelse/machina.js">Fork On <strong>GitHub</strong></a></li>
+          <li><a href="https://github.com/ifandelse/machina.js/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/ifandelse/machina.js/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/ifandelse/machina.js">View On <strong>GitHub</strong></a></li>
         </ul>
       </header>
       <section>
@@ -29,7 +32,7 @@
 
 <h2>What is it?</h2>
 
-<p>Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been loosely inspired the Erlang/OTP FSM behaviors.</p>
+<p>Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been loosely inspired by the Erlang/OTP FSM behaviors.</p>
 
 <h2>Why would I use it?</h2>
 
@@ -48,13 +51,13 @@
 </li>
 </ul>
 </li>
-<li>It's simple!  Machina makes the process of organizing the various states your fsm needs to know about, and the kinds of events each state can handle.</li>
-<li>Powerful integration.  By using a plugin like <a target="_blank" href="http://github.com/ifandelse/machina.postal">machina.postal</a>, your FSM instances can auto-wire into <a target="_blank" href="http://github.com/ifandelse/postal.js">postal.js</a> (a JavaScript message bus), enabling decoupled communications with other components in your application.  This wires up both subscribers (for state handlers to be invoked) and publishers (to publish your FSM's events to the message bus).</li>
+<li>It's simple!  Machina makes the process of organizing the various states your fsm needs to know about - and the kinds of events each state can handle - intuitive to set up, and to read.</li>
+<li>Powerful integration.  By using a plugin like <a href="https://github.com/ifandelse/machina.postal">machina.postal</a>, your FSM instances can auto-wire into <a href="https://github.com/ifandelse/postal.js">postal.js</a> (a JavaScript message bus), enabling them decoupled communications with other components in your application.  This wires up both subscribers (for state handlers to be invoked) and publishers (to publish your FSM's events to the message bus).</li>
 <li>Extend for more power.
 
 <ul>
-<li>Writing your own message bus/eventing wire-up plugin is fairly simple.  Look at <a target="_blank" href="http://github.com/ifandelse/machina.postal">machina.postal</a> for an example.</li>
-<li>Hook into the top level "newFsm" event to give other components in your app a handle to your FSM</li>
+<li>Writing your own message bus/eventing wire-up plugin is fairly simple.  Look at <a href="https://github.com/ifandelse/machina.postal">machina.postal</a> for an example.</li>
+<li>Hook into the top level "newFsm" event to give other components in your app a handle to your FSMs as they are created.</li>
 </ul>
 </li>
 </ul><h2>How do I use it?</h2>
@@ -63,8 +66,7 @@
 
 <p>Creating an FSM:</p>
 
-<div class="highlight">
-<pre><span class="kd">var</span> <span class="nx">storageFsm</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">machina</span><span class="p">.</span><span class="nx">Fsm</span><span class="p">({</span>
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">storageFsm</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">machina</span><span class="p">.</span><span class="nx">Fsm</span><span class="p">({</span>
     <span class="nx">applicationOffline</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
         <span class="kd">var</span> <span class="nx">offline</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
         <span class="c1">// checks window.navigator.online and more, sets the offline value</span>
@@ -118,9 +120,7 @@
         <span class="p">}</span>
     <span class="p">}</span>
 <span class="p">});</span>
-</pre>
-</div>
-
+</pre></div>
 
 <p>In the above example, the developer has created an FSM with two possible states: <code>online</code> and <code>offline</code>.  While the fsm is in the <code>online</code> state, it will respond to <code>save.customer</code> and <code>sync.customer</code> events.  External code triggers these events by calling the <code>handle</code> method on the FSM.  For example <code>storageFsm.handle( "sync.customer", { other: "data" } )</code>.  The <code>handle</code> method first looks to see if a named handler exists matching the name of the one passed in, then also checks for a catch-all handler (indicated by the "*") if a named handler isn't found.  The <code>offline</code> state of the above FSM only responds to <code>save.customer</code> events.  If any other type of event name is passed to the <code>handle</code> method of the FSM, other than what each state explicitly handles, it is ignored.</p>
 
@@ -138,21 +138,17 @@
 
 <p><code>eventListeners</code> - Either a list of event names that the FSM can publish, or an object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers ahead of time.)</p>
 
-<div class="highlight">
-<pre><span class="nx">eventListeners</span><span class="o">:</span> <span class="p">[</span><span class="s2">"String"</span><span class="p">,</span> <span class="s2">"List"</span><span class="p">,</span> <span class="s2">"ofEvent"</span><span class="p">,</span> <span class="s2">"names"</span><span class="p">];</span> <span class="c1">// this is converted into an object similar to below</span>
+<div class="highlight"><pre><span class="nx">eventListeners</span><span class="o">:</span> <span class="p">[</span><span class="s2">"String"</span><span class="p">,</span> <span class="s2">"List"</span><span class="p">,</span> <span class="s2">"ofEvent"</span><span class="p">,</span> <span class="s2">"names"</span><span class="p">];</span> <span class="c1">// this is converted into an object similar to below</span>
 <span class="c1">// OR</span>
 <span class="nx">eventListeners</span><span class="o">:</span> <span class="p">{</span>
     <span class="nx">MyEvent1</span><span class="o">:</span> <span class="p">[],</span>
     <span class="nx">MyEvent2</span><span class="o">:</span> <span class="p">[</span><span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span> <span class="p">}]</span>
 <span class="p">}</span>
-</pre>
-</div>
-
+</pre></div>
 
 <p><code>states</code> - an object detailing the possible states the FSM can be in, plus the kinds of events/messages each state can handle.  States can have normal "handlers" as well as a catch-all handler ("*"), and an _onEnter handler invoked when the FSM has transitioned into that state.</p>
 
-<div class="highlight">
-<pre><span class="nx">states</span><span class="o">:</span> <span class="p">{</span>
+<div class="highlight"><pre><span class="nx">states</span><span class="o">:</span> <span class="p">{</span>
         <span class="s2">"uninitialized"</span> <span class="o">:</span> <span class="p">{</span>
             <span class="nx">_onEnter</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
                 <span class="c1">// do stuff immediately after we transition into uninitialized</span>
@@ -169,9 +165,7 @@
                 <span class="c1">// unless it matches another "ready" handler exactly.</span>
             <span class="p">}</span>
         <span class="p">}</span>
-</pre>
-</div>
-
+</pre></div>
 
 <p><code>initialState</code> - the state in which the FSM will start.  As soon as the instance is created, the FSM calls the <code>transition</code> method to transition into this state.</p>
 
@@ -198,6 +192,17 @@
 <code>on(eventName, callback)</code> - used to subscribe to events that the FSM generates.</li>
 <li>
 <code>off(eventName, callback)</code> - used to unsubscribe to FSM events.</li>
+</ul><p>In addition to the prototype members, every instance of an FSM has these instance-specific values as well:</p>
+
+<ul>
+<li>
+<code>state</code> - string value of the current state of the FSM.  This will match one of the state names in the <code>states</code> object.  Do <em>not</em> change this value directly.  Use the <code>transition()</code> method on the prototype to change an FSM's state.</li>
+<li>
+<code>priorState</code> - the last state in which the FSM was in before the current one.  This could be useful if you have conditional transition behavior as you move into a new state which depends on what state you're moving <em>from</em>.</li>
+<li>
+<code>_currentAction</code> - concatenates "{state}.{handler}" for the operation in progress.  This is provided as a convenience for both logging (if needed) and if you need to check during an operation to see if the last action taken is the same action being taken now.</li>
+<li>
+<code>_priorAction</code> - concatenates "{state}.{handler" for the last operation that took place.  See the above explanation for more context.</li>
 </ul><h2>The Top Level machina object</h2>
 
 <p>The top level <code>machina</code> object has the following members:</p>
@@ -221,25 +226,58 @@
 <code>off</code> - function used to unsubscribe a callback to top-level machina events.</li>
 <li>
 <code>eventListeners</code> - an object literal containing the top-level <code>fireEvent</code> call as well as susbcribers to any top-level events.</li>
+</ul><h2>Build, Tests &amp; Examples</h2>
+
+<p>machina.js uses <a href="http://appendto.github.com/anvil.js/">anvil.js</a> to build.</p>
+
+<ul>
+<li>Install node.js (and consider using <a href="https://github.com/creationix/nvm">nvm</a> to manage your node versions)</li>
+<li>Run <code>npm install -g anvil.js</code> to install anvil.js</li>
+<li>Navigate to the root of this repository and run <code>anvil -b</code>
+</li>
+<li>Build output will be placed in the lib folder.</li>
+</ul><p>One great feature of <a href="http://appendto.github.com/anvil.js/">anvil.js</a> is the ability to host your tests and other content using express in node.js.
+To run tests or examples:</p>
+
+<ul>
+<li>Navigate to the root of this repository and run <code>anvil --host</code>
+</li>
+<li>For tests, navigate to <code>http://localhost:3080/spec</code>
+</li>
+<li>For the "atm" example, navigate to <code>http://localhost:3080/atm</code>
+
+<ul>
+<li>check the source of Repository.js in this example for the account/pin information that can be used to log in.</li>
+</ul>
+</li>
+<li>For the "load" example, navigate to <code>http://localhost:3080/load</code>
+</li>
 </ul><h2>Release Notes</h2>
 
 <h3>v0.2.0</h3>
 
 <ul>
-<li>Message bus integration has been removed from machina core, and now exists as plugins.  For integration with <a target="_blank" href="http://github.com/ifandelse/postal.js">postal.js</a>, see <a target="_blank" href="http://github.com/ifandelse/machina.postal">machina.postal</a>
+<li>Message bus integration has been removed from machina core, and now exists as plugins.  For integration with <a href="https://github.com/ifandelse/postal.js">postal.js</a>, see <a href="https://github.com/ifandelse/machina.postal">machina.postal</a>
 </li>
 <li>Due to the above change, the only "messaging-related" metadata on an FSM now is the "namespace" value that can be passed as the FSM is created.  This value is optional, and will be given a default if none is provided.  Messaging plugins can utilize this value as a channel/namespace name and/or topic prefix.</li>
 <li>A "priorState" member has been added to the Fsm.</li>
+</ul><h3>v0.2.1</h3>
+
+<ul>
+<li>build bits updated to latest anvil.js (0.8.9)</li>
+<li>added beginnings of connectivity example</li>
+<li>updated ext dependencies (postal, etc.)</li>
+<li>added bower component.json</li>
 </ul>
       </section>
       <footer>
-        <p>This project is maintained by <a target="_blank" href="http://github.com/ifandelse">ifandelse</a></p>
-        <p><small>Hosted on GitHub Pages &mdash; Theme by <a target="_blank" href="http://github.com/orderedlist">orderedlist</a></small></p>
+        <p>This project is maintained by <a href="https://github.com/ifandelse">ifandelse</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
       </footer>
     </div>
     <script src="javascripts/scale.fix.js"></script>
               <script type="text/javascript">
-            var gaJsHost = (("http:" == document.location.protocol) ? "http://ssl." : "http://www.");
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
             document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
           </script>
           <script type="text/javascript">

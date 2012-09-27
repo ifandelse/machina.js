@@ -2,8 +2,8 @@
 
 body {
   padding:50px;
-  font:16px/1.5 Lato, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  color:#333;
+  font:14px/1.5 Lato, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color:#777;
   font-weight:300;
 }
 
@@ -171,7 +171,7 @@ small {
 
 hr {
   border:0;
-  background:#aaa;
+  background:#e5e5e5;
   height:1px;
   margin:0 0 20px;
 }
