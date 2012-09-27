@@ -82,7 +82,6 @@ body {
 	        transform-origin: left bottom;
 	-webkit-transition: all linear 300ms;
 	   -moz-transition: all linear 300ms;
-	    -ms-transition: all linear 300ms;
 	     -o-transition: all linear 300ms;
 	        transition: all linear 300ms;
 }
@@ -93,11 +92,11 @@ body {
 }
 
 .internet-disconnected .internet-connector {
-	-webkit-transform: scale(1) rotate(0deg) translateX(0px) translateY(0px) skewX(-25deg) skewY(0deg);
-	   -moz-transform: scale(1) rotate(0deg) translateX(0px) translateY(0px) skewX(-25deg) skewY(0deg);
-	    -ms-transform: scale(1) rotate(0deg) translateX(0px) translateY(0px) skewX(-25deg) skewY(0deg);
-	     -o-transform: scale(1) rotate(0deg) translateX(0px) translateY(0px) skewX(-25deg) skewY(0deg);
-	        transform: scale(1) rotate(0deg) translateX(0px) translateY(0px) skewX(-25deg) skewY(0deg);
+	-webkit-transform: skewX(-25deg);
+	   -moz-transform: skewX(-25deg);
+	    -ms-transform: skewX(-25deg);
+	     -o-transform: skewX(-25deg);
+	        transform: skewX(-25deg);
 	height: 15%;
 }
 
@@ -119,14 +118,16 @@ body {
 	background: radial-gradient(ellipse at center,  rgba(0,0,0,0) 0%,rgba(0,0,0,1) 100%); /* W3C */
 	-webkit-transition: opacity ease-in-out 500ms;
 	   -moz-transition: opacity ease-in-out 500ms;
-	    -ms-transition: opacity ease-in-out 500ms;
 	     -o-transition: opacity ease-in-out 500ms;
 	        transition: opacity ease-in-out 500ms;
 	-webkit-transition-delay: 1s;
 	   -moz-transition-delay: 1s;
-	    -ms-transition-delay: 1s;
 	     -o-transition-delay: 1s;
 	        transition-delay: 1s;
+}
+
+.no-pointerevents .offline-overlay {
+	z-index: 1;
 }
 
 .offline .offline-overlay {
@@ -144,6 +145,7 @@ body {
 	background: #888;
 	border-radius: 4px;
 	cursor: pointer;
+	z-index: 10;
 }
 
 .switch-plate:before {
@@ -173,12 +175,11 @@ body {
 	background: -ms-linear-gradient(top,  rgba(246,248,249,1) 0%,rgba(229,235,238,1) 50%,rgba(215,222,227,1) 51%,rgba(245,247,249,1) 100%); /* IE10+ */
 	background: linear-gradient(to bottom,  rgba(246,248,249,1) 0%,rgba(229,235,238,1) 50%,rgba(215,222,227,1) 51%,rgba(245,247,249,1) 100%); /* W3C */
 	-webkit-transition: all ease-in-out 200ms;
-	-moz-transition: all ease-in-out 200ms;
-	-ms-transition: all ease-in-out 200ms;
-	-o-transition: all ease-in-out 200ms;
-	transition: all ease-in-out 200ms;
+	   -moz-transition: all ease-in-out 200ms;
+	     -o-transition: all ease-in-out 200ms;
+	        transition: all ease-in-out 200ms;
 	-webkit-box-shadow: rgba(0,0,0,0.2) 2px 2px 5px;
-	box-shadow: rgba(0,0,0,0.2) 2px 2px 5px;
+	        box-shadow: rgba(0,0,0,0.2) 2px 2px 5px;
 }
 
 .switch-on .switch {
@@ -229,7 +230,7 @@ body {
 .equipment-bottom {
 	position: absolute;
 	top: 72px;
-	bottom: 0;
+	height: 109px;
 	right: 0;
 	left: 0;
 	z-index: 5;
@@ -243,12 +244,27 @@ body {
 	        transition: all ease-in-out 500ms;
 }
 
-.equipment-open .equipment-bottom {
+.csstransforms3d .equipment-open .equipment-bottom {
 	-webkit-transform: translate3d(0,85px,0);
-	-moz-transform: translate3d(0,85px,0);
-	-ms-transform: translate3d(0,85px,0);
-	-o-transform: translate3d(0,85px,0);
-	transform: translate3d(0,85px,0);
+	   -moz-transform: translate3d(0,85px,0);
+	    -ms-transform: translate3d(0,85px,0);
+	     -o-transform: translate3d(0,85px,0);
+	        transform: translate3d(0,85px,0);
+}
+
+.no-csstransforms3d.csstransforms .equipment-open .equipment-bottom {
+	-webkit-transform: translateY(85px);
+	   -moz-transform: translateY(85px);
+	    -ms-transform: translateY(85px);
+	     -o-transform: translateY(85px);
+	        transform: translateY(85px);
+}
+
+.no-csstransforms3d.no-csstransforms .equipment-open .equipment-bottom {
+	top: 157px;
+}
+
+.equipment-open .equipment-bottom {
 	-webkit-box-shadow: inset rgba(0,0,0,0.2) 0 -5px 10px, rgba(0,0,0,0.2) 0 5px 15px;
 	        box-shadow: inset rgba(0,0,0,0.2) 0 -5px 10px, rgba(0,0,0,0.2) 0 5px 15px;
 }
@@ -324,11 +340,13 @@ body {
 .equipment-light {
 	-webkit-transition: all ease-in-out 300ms;
 	   -moz-transition: all ease-in-out 300ms;
+	     -o-transition: all ease-in-out 300ms;
 	        transition: all ease-in-out 300ms;
 
 	-webkit-animation: 1s pulse infinite alternate;
-	-moz-animation: 1s pulse infinite alternate;
-	animation: 1s pulse infinite alternate;
+	   -moz-animation: 1s pulse infinite alternate;
+	     -o-animation: 1s pulse infinite alternate;
+	        animation: 1s pulse infinite alternate;
 
 	opacity: 0.2;
 	z-index: 10;
@@ -355,9 +373,9 @@ body {
 
 .online .equipment-light {
 	background-color: #52ff12;
-	-webkit-box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #318210 0 0 2px, rgba(82,255,18,1.0) 0 0 30px;
-	   -moz-box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #318210 0 0 2px, rgba(82,255,18,1.0) 0 0 30px;
-	        box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #318210 0 0 2px, rgba(82,255,18,1.0) 0 0 30px;
+	-webkit-box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #318210 0 0 2px, rgba(82,255,18,1.0) 0 0 40px;
+	   -moz-box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #318210 0 0 2px, rgba(82,255,18,1.0) 0 0 40px;
+	        box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #318210 0 0 2px, rgba(82,255,18,1.0) 0 0 40px;
 }
 
 .disconnected .equipment-light {
@@ -381,6 +399,11 @@ body {
 }
 
 @-moz-keyframes pulse {
+	from { opacity: 0.2; }
+	to   { opacity: 1.0; }
+}
+
+@-o-keyframes pulse {
 	from { opacity: 0.2; }
 	to   { opacity: 1.0; }
 }
