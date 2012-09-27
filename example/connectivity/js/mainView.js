@@ -9,7 +9,7 @@ define([
 		el: 'body',
 
 		slowMotion: false,
-		slowMotionDelay: 1000,
+		slowMotionDelay: 2000,
 		online: false,
 		animating: false,
 
@@ -119,7 +119,7 @@ define([
 			this.updateLed( data.toState );
 		},
 		handling: function(data) {
-
+      this.updateLed( data );
 		},
 		handled: function(data) {
 
@@ -138,7 +138,7 @@ define([
 		toggleOnline: function() {
 			this.online = !this.online;
 			this.$switchPlate.toggleClass( "switch-on", this.online );
-			bus.connectivityInput.publish({ topic: this.online ? "goOnline" : "goOffline", data: {} });
+			bus.connectivityInput.publish({ topic: this.online ? "go.online" : "go.offline", data: {} });
 		},
 		toggleWindowDisconnect: function() {
 			app.toggleDisconnectSimulation();

@@ -39,7 +39,7 @@ define([
 					"*": function() {
 						this.deferUntilTransition();
 					},
-					goOffline: function() {
+          "go.offline": function() {
 						this.transition("offline");
 					}
 				},
@@ -54,7 +54,7 @@ define([
 					"request.timeout": function() {
 						this.transition("probing");
 					},
-					goOffline: function() {
+					"go.offline": function() {
 						this.transition("offline");
 					}
 				},
@@ -66,16 +66,16 @@ define([
 					"appCache.downloading": function() {
 						this.transition("probing");
 					},
-					goOnline: function() {
+          "go.online": function() {
 						this.transition("probing");
 					},
-					goOffline: function() {
+          "go.offline": function() {
 						this.transition("offline");
 					}
 				},
 
 				offline: {
-					goOnline: function() {
+					"go.online": function() {
 						this.transition("probing");
 					}
 				}
