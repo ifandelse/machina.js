@@ -14,26 +14,23 @@ define([
 		animating: false,
 
 		events: {
-			'click .equipment'      : 'toggleSlowMo', // change this to whatever.  it just indicates an event that gets fired when we want to switch to/from slow-motion
-			'click .toggle-online'    : 'toggleOnline',
+			'click .equipment'         : 'toggleSlowMotion',
+			'click .toggle-online'     : 'toggleOnline',
 			'click .toggle-disconnect' : 'toggleWindowDisconnect'
 		},
 
 		initialize: function() {
 			_.bindAll(this);
 			this.template = _.template(template);
-			this.slowMotion = false; // use this however you need.....
 			bus.connectivityOutput.subscribe( this.routeEvents ).withContext(this);
 			bus.heartbeat.subscribe( this.routeEvents ).withContext(this);
 		},
 
-		// PLEASE blow this away - I'm just putting crap on the screen for now....
 		render: function() {
 			this.$el.html(this.template({}));
-			this.$messages = this.$('#messages');
 			this.$switchPlate = this.$('.switch-plate');
-			this.$internet = this.$( '.internet' );
-			this.$led = this.$( '.equipment-led' );
+			this.$internet    = this.$( '.internet' );
+			this.$led         = this.$( '.equipment-led' );
 		},
 
 		dequeue: function () {
@@ -107,20 +104,6 @@ define([
 			}
 		},
 
-		// SENDING INPUT TO THE FSM
-		goOffline: function() {
-			bus.connectivityInput.publish({ topic: "goOffline", data: {} });
-		},
-		toggleOnline: function() {
-			this.online = !this.online;
-			this.$switchPlate.toggleClass( "switch-on", this.online );
-			bus.connectivityInput.publish({ topic: this.online ? "goOnline" : "goOffline", data: {} });
-		},
-		toggleWindowDisconnect: function() {
-			app.toggleDisconnectSimulation();
-			this.$internet.toggleClass( "internet-disconnected", app.simulateDisconnect );
-		},
-
 		// LISTENING TO THE FSM OUTPUT (& STETHOSCOPE)
 		routeEvents: function(data, envelope) {
 			var handler = envelope.topic.toLowerCase();
@@ -133,10 +116,7 @@ define([
 		},
 		transitioned: function(data) {
 			this.updateClass( data.toState );
-
 			this.updateLed( data.toState );
-
-
 		},
 		handling: function(data) {
 
@@ -150,10 +130,19 @@ define([
 		},
 
 		// Reacting to events origination from DOM
-		toggleSlowMo: function() {
+		toggleSlowMotion: function() {
 			this.slowMotion = !this.slowMotion;
 			this.resetQueue();
 			this.$el.toggleClass( "equipment-open", this.slowMotion );
+		},
+		toggleOnline: function() {
+			this.online = !this.online;
+			this.$switchPlate.toggleClass( "switch-on", this.online );
+			bus.connectivityInput.publish({ topic: this.online ? "goOnline" : "goOffline", data: {} });
+		},
+		toggleWindowDisconnect: function() {
+			app.toggleDisconnectSimulation();
+			this.$internet.toggleClass( "internet-disconnected", app.simulateDisconnect );
 		}
 	});
 });
