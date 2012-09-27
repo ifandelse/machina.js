@@ -1,18 +1,17 @@
 define([
 	'backbone',
-    'underscore',
     'jquery'
-], function( Backbone, _, $ ) {
+], function( Backbone, $ ) {
 
 	var Stethoscope = function(heartbeatDef) {
-		this.settings = $.extend(true, {
+		this.settings = $.extend({
 			type: "GET",
 			dataType: "json",
 			timeout: 5000
 		}, heartbeatDef);
 	};
 
-	_.extend(Stethoscope.prototype, Backbone.Events, {
+  $.extend(Stethoscope.prototype, Backbone.Events, {
 		checkHeartbeat: function() {
 			var self = this;
 			self.trigger('checking-heartbeat');
