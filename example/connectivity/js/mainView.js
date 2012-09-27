@@ -130,25 +130,23 @@ define([
 		},
 		transitioning: function(data) {
 			this.updateLed( data.fromState + " &rarr; " + data.toState );
-			this.$messages.append("<div>FSM is transitioning from '" + data.fromState + "' to '" + data.toState + "'.</div>");
 		},
 		transitioned: function(data) {
 			this.updateClass( data.toState );
 
 			this.updateLed( data.toState );
 
-			this.$messages.append("<div>FSM completed transition from '" + data.fromState + "' to '" + data.toState + "'.</div>");
+
 		},
 		handling: function(data) {
-			this.$messages.append("<div>FSM is currently handling the '" + data + "' event.</div>");
+
 		},
 		handled: function(data) {
-			this.$messages.append("<div>FSM has handled the '" + data + "' event.</div><div>-</div>");
+
 		},
 		checking: function() {
 			this.updateClass( "probing" );
 			this.updateLed( "Heartbeat Check" );
-			this.$messages.append("<div>Heartbeat check in progress.</div>");
 		},
 
 		// Reacting to events origination from DOM

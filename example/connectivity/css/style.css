@@ -103,6 +103,7 @@ body {
 
 .offline-overlay {
 	/*display: none;*/
+    opacity: 0.0;
 	position: fixed;
 	pointer-events: none;
 	z-index: 1000;
@@ -128,9 +129,8 @@ body {
 	        transition-delay: 1s;
 }
 
-.disconnected .offline-overlay,
-.online .offline-overlay {
-	opacity: 0.0;
+.offline .offline-overlay {
+	opacity: 1.0;
 }
 
 .switch-plate {
