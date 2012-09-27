@@ -29,7 +29,7 @@ define([
 
 		// PLEASE blow this away - I'm just putting crap on the screen for now....
 		render: function() {
-			this.$el.html(this.template({})).addClass( "offline" );
+			this.$el.html(this.template({}));
 			this.$messages = this.$('#messages');
 			this.$switchPlate = this.$('.switch-plate');
 			this.$internet = this.$( '.internet' );
