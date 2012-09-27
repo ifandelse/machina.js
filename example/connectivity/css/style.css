@@ -1,5 +1,16 @@
 @import url( "normalize.css" );
 
+@font-face {
+    font-family: 'DigitaldreamNarrowRegular';
+    src: url('../font/DIGITALDREAMNARROW-webfont.eot');
+    src: url('../font/DIGITALDREAMNARROW-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../font/DIGITALDREAMNARROW-webfont.woff') format('woff'),
+         url('../font/DIGITALDREAMNARROW-webfont.ttf') format('truetype'),
+         url('../font/DIGITALDREAMNARROW-webfont.svg#DigitaldreamNarrowRegular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
 html, body {
 	height: 100%;
 }
@@ -12,9 +23,8 @@ body {
 	background: -o-radial-gradient(center, ellipse cover,  #aaa 0%,#999 100%); /* Opera 12+ */
 	background: -ms-radial-gradient(center, ellipse cover,  #aaa 0%,#999 100%); /* IE10+ */
 	background: radial-gradient(ellipse at center,  #aaa 0%,#999 100%); /* W3C */
+	-webkit-tap-highlight-color: rgba(0,0,0,0);
 }
-
-
 
 .internet {
 	width: 66px;
@@ -23,6 +33,7 @@ body {
 	margin-left: -33px;
 	top: 0;
 	height: 50%;
+	cursor: pointer;
 }
 
 .wires,
@@ -179,6 +190,7 @@ body {
 }
 
 .equipment {
+	cursor: pointer;
 	width: 325px;
 	height: 181px;
 	position: absolute;
@@ -271,7 +283,14 @@ body {
 	background: -ms-linear-gradient(top,  rgba(11,12,12,1) 0%,rgba(30,33,32,1) 50%,rgba(10,14,10,1) 51%,rgba(10,8,9,1) 100%); /* IE10+ */
 	background: linear-gradient(to bottom,  rgba(11,12,12,1) 0%,rgba(30,33,32,1) 50%,rgba(10,14,10,1) 51%,rgba(10,8,9,1) 100%); /* W3C */
 
+	color: #F7931E;
+	line-height: 40px;
+	font-size: 16px;
+	text-align: center;
+	letter-spacing: 1px;
+	font-family: DigitaldreamNarrowRegular, sans-serif;
 	z-index: 4;
+	white-space: nowrap;
 }
 
 .equipment-led:before {
@@ -302,7 +321,7 @@ body {
 }
 
 .equipment-light {
-	background-color: #52FF12;
+	background-color: #777;
 	-webkit-background-clip: border-box;
 	-moz-background-clip: border-box;
 	background-clip: border-box;
@@ -315,9 +334,9 @@ body {
 	-webkit-border-radius: 30px;
 	   -moz-border-radius: 30px;
 	        border-radius: 30px;	
-	-webkit-box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #318210 0 0 2px, rgba(82,255,18,0.5) 0 0 30px;
-	   -moz-box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #318210 0 0 2px, rgba(82,255,18,0.5) 0 0 30px;
-	        box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #318210 0 0 2px, rgba(82,255,18,0.5) 0 0 30px;
+	-webkit-box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #444 0 0 2px;
+	   -moz-box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #444 0 0 2px;
+	        box-shadow: inset rgba(0,0,0,0.8) 0 0 30px, inset #444 0 0 2px;
 	-webkit-animation-duration: 1s;
 	-webkit-animation-iteration-count: infinite;
 	-webkit-animation-direction: alternate;
