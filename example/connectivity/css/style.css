@@ -34,6 +34,7 @@ body {
 	top: 0;
 	height: 50%;
 	cursor: pointer;
+	z-index: 6;
 }
 
 .wires,
@@ -187,6 +188,7 @@ body {
 }
 
 .equipment {
+	z-index: 10;
 	cursor: pointer;
 	width: 325px;
 	height: 181px;
@@ -204,7 +206,7 @@ body {
 .equipment:before {
 	content: "";
 	position: absolute;
-	z-index: 5;
+	z-index: 6;
 	top: 0;
 	left: 0;
 	right: 0;
@@ -368,6 +370,26 @@ body {
 
 	opacity: 0.2;
 	z-index: 10;
+}
+
+.no-borderradius .equipment-light-back,
+.no-borderradius .equipment-light {
+	width: 59px;
+	height: 59px;
+	top: 41px;
+	margin-left: -29px;
+}
+
+.no-borderradius .equipment-light-back {
+	z-index: 4;
+}
+
+.no-borderradius .equipment-light {
+	z-index: 5;
+}
+
+.no-cssanimations .equipment-light {
+	opacity: 1.0;
 }
 
 .equipment-light:after,
