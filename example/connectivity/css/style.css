@@ -209,10 +209,28 @@ body {
 	left: 0;
 	right: 0;
 	height: 72px;
-	background: url(../img/equipment-front.png) no-repeat;
 	border-radius: 10px 10px 0 0;
 	-webkit-box-shadow: inset rgba(0,0,0,0.2) 0 5px 10px;
 	        box-shadow: inset rgba(0,0,0,0.2) 0 5px 10px;
+}
+
+.equipment:before,
+.equipment-bottom {
+	background-image: url(../img/equipment-front.png);
+	background-repeat: no-repeat;
+}
+
+@media only screen and (-webkit-min-device-pixel-ratio: 2 ),
+       only screen and (-moz-min-device-pixel-ratio: 2 ),
+       only screen and (-o-min-device-pixel-ratio: 2/1 ),
+       only screen and (min-device-pixel-ratio ) {
+       	.equipment:before,
+		.equipment-bottom {
+			background-image: url(../img/equipment-front-2x.png);
+			background-repeat: no-repeat;
+			-webkit-background-size: 325px 181px;
+			        background-size: 325px 181px;
+		}
 }
 
 .equipment:after {
@@ -234,7 +252,7 @@ body {
 	right: 0;
 	left: 0;
 	z-index: 5;
-	background: url(../img/equipment-front.png) left bottom no-repeat;
+	background-position: left bottom;
 	border-radius: 0 0 10px 10px;
 	-webkit-box-shadow: inset rgba(0,0,0,0.2) 0 -5px 10px;
 	        box-shadow: inset rgba(0,0,0,0.2) 0 -5px 10px;
