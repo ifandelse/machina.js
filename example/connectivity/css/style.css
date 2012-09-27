@@ -330,6 +330,7 @@ body {
 	-moz-animation: 1s pulse infinite alternate;
 	animation: 1s pulse infinite alternate;
 
+	opacity: 0.2;
 	z-index: 10;
 }
 
