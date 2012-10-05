@@ -91,13 +91,11 @@ Now that we've seen a quick example, let's do a whirlwind API tour.
 ## Whirlwind API Tour
 When you are creating a new FSM instance, `machina.Fsm` takes 1 argument - an options object.  Here's a breakdown of the members of this `options` object:
 
-`eventListeners` - Either a list of event names that the FSM can publish, or an object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers ahead of time.)
+`eventListeners` - An object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers ahead of time.)
 
 ```javascript
-eventListeners: ["String", "List", "ofEvent", "names"]; // this is converted into an object similar to below
-// OR
 eventListeners: {
-	MyEvent1: [],
+	MyEvent1: [function(data) { console.log(data); }],
 	MyEvent2: [function(data) { console.log(data); }]
 }
 ```
@@ -131,12 +129,13 @@ states: {
 ## The machina.Fsm Prototype
 Each instance of an machina FSM has the following methods available via it's prototype:
 
-* `fireEvent(eventName, [other args...])` - looks in the `events` object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to `fireEvent`.
+* `trigger(eventName, [other args...])` - looks in the `events` object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to `trigger`. (NOTE: - this call is currently aliased as `emit` as well.)
 * `handle(msgType, [other args...])` - This is the main way you should be interacting with an FSM instance (assuming no message bus is present).  It will try to find a matching eventName/msgType under the current state and invoke it, if one exists.  Otherwise it will look for a catch-all handler, or simply ignore the message and raise the "NoHandler" event.
 * `transition(newState)` - Called when transitioning into a new state.
 * `deferUntilTransition(stateName)` - calling this within a state handler function will queue the handler's arguments to be executed at a later time.  If you don't provide the `stateName` argument, it will replay the event after the next state transition.  Providing the `stateName` argument will queue the event until the FSM transitions into that state.
 * `deferUntilNextHandler()` - calling this within a state handler function will queue the handler's arguments to be executed after the next handler is invoked.
 * `processQueue()` - called internally during state transitions and after handler methods have been invoked.  This call processes any queued events (queued by use of `deferUntilTransition` and/or `deferUntilNextHandler`).
+* `clearQueue(type, name)` - allows you to clear out queued events that have been deferred either until another handler or another state transition. The `type` parameter can be either "transition" or "handler".  If you pass "transition" for the `type`, then the optional `name` parameter allows you to clear events queued for a specific state transition. Not providing a `name` when the `type` is "transition" will clear out all events queued for *any* state transition.
 * `on(eventName, callback)` - used to subscribe to events that the FSM generates.
 * `off(eventName, callback)` - used to unsubscribe to FSM events.
 
@@ -163,7 +162,7 @@ machina.js uses [anvil.js](http://appendto.github.com/anvil.js/) to build.
 
 * Install node.js (and consider using [nvm](https://github.com/creationix/nvm) to manage your node versions)
 * Run `npm install -g anvil.js` to install anvil.js
-* Navigate to the root of this repository and run `anvil -b`
+* Navigate to the root of this repository and run `anvil`
 * Build output will be placed in the lib folder.
 
 One great feature of [anvil.js](http://appendto.github.com/anvil.js/) is the ability to host your tests and other content using express in node.js.
@@ -190,3 +189,10 @@ To run tests or examples:
 * added beginnings of connectivity example
 * updated ext dependencies (postal, etc.)
 * added bower component.json
+
+### v0.2.2
+
+* event names are now all lower case
+* FSM constructor only handles an eventListeners object (not the old array of strings to pre-populate event names)
+* bug fixed where event queue would still be replayed on a state that transitioned during its entry action
+* transitioned and transitioning events are now just a single "transition" event
