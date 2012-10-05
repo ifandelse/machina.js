@@ -24,31 +24,6 @@ QUnit.specify("machina.js", function(){
 			});
 		});
 	});
-	describe("helpers", function(){
-		var list = ["One", "Two", "Three"],
-			result = transformEventListToObject(list);
-		describe("When calling transformEventListToObject", function() {
-			it("should transform the array into an object", function(){
-				assert(result.One.length).equals(0);
-				assert(result.Two.length).equals(0);
-				assert(result.Three.length).equals(0);
-			});
-		});
-		describe("When calling parseEvents on an array of event names", function() {
-			var res = parseEventListeners(list);
-			it("should transform the array into an object", function(){
-				assert(result.One.length).equals(0);
-				assert(result.Two.length).equals(0);
-				assert(result.Three.length).equals(0);
-			});
-		});
-		describe("When calling parseEvents on an events object", function() {
-			var res = parseEventListeners(result);
-			it("should return the events object", function(){
-				assert(result).equals(res);
-			});
-		});
-	});
 	describe("machina.Fsm", function() {
 		describe("When creating a new Fsm", function(){
 			var event1 = 0,
@@ -83,12 +58,12 @@ QUnit.specify("machina.js", function(){
 						}
 					},
 					eventListeners: {
-						"NoHandler": [function() { noHandlerInvoked = true; }],
-						"Transitioned": [function() { transitionedHandler = true; }],
-						"Handling": [function() { handlingHandler = true; }],
-						"Handled": [function() { handledHandler = true; }],
-						"InvalidState": [function() { invalidStateHandler = true; }],
-						"CustomEvent": [function() { customEventInvoked = true; }]
+						"nohandler"    : [function() { noHandlerInvoked = true;    }],
+						"transition"   : [function() { transitionedHandler = true; }],
+						"handling"     : [function() { handlingHandler = true;     }],
+						"handled"      : [function() { handledHandler = true;      }],
+						"invalidstate" : [function() { invalidStateHandler = true; }],
+						"CustomEvent"  : [function() { customEventInvoked = true;  }]
 					}
 				});
 			xfsm.handle("nothingwillgetthis");
@@ -97,16 +72,16 @@ QUnit.specify("machina.js", function(){
 			xfsm.handle("event3");
 			xfsm.transition("NoSuchState");
 
-			it("should fire the Transitioned event", function(){
+			it("should fire the transition event", function(){
 				assert(transitionedHandler).equals(true);
 			});
-			it("should fire the NoHandler event", function(){
+			it("should fire the nohandler event", function(){
 				assert(noHandlerInvoked).equals(true);
 			});
-			it("should fire the Handling event", function(){
+			it("should fire the handling event", function(){
 				assert(handlingHandler).equals(true);
 			});
-			it("should fire the Handled event", function(){
+			it("should fire the handled event", function(){
 				assert(handledHandler).equals(true);
 			});
 			it("should fire the CustomEvent event", function(){
@@ -115,7 +90,7 @@ QUnit.specify("machina.js", function(){
 			it("should fire the OnEnter handler", function(){
 				assert(onEnterInvoked).equals(true);
 			});
-			it("should fire the InvalidState handler", function(){
+			it("should fire the invalidstate handler", function(){
 				assert(invalidStateHandler).equals(true);
 			});
 			it("should have invoked handlers", function(){
@@ -144,7 +119,7 @@ QUnit.specify("machina.js", function(){
 						}
 					},
 					eventListeners: {
-						"Deferred": [function() { deferredInvoked = true; }]
+						"deferred": [function() { deferredInvoked = true; }]
 					}
 				});
 			xfsm.handle("event2");
@@ -186,7 +161,7 @@ QUnit.specify("machina.js", function(){
 						}
 					},
 					eventListeners: {
-						"Deferred": [function() { deferredInvoked = true; }]
+						"deferred": [function() { deferredInvoked = true; }]
 					}
 				});
 			xfsm.handle("event2");
@@ -229,7 +204,7 @@ QUnit.specify("machina.js", function(){
 						}
 					},
 					eventListeners: {
-						"Deferred": [function() { deferredInvoked = true; }]
+						"deferred": [function() { deferredInvoked = true; }]
 					}
 				});
 			xfsm.handle("event2");
