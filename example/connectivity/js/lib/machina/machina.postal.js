@@ -17,10 +17,7 @@
 }( this, document, function ( machina, postal, global, document, undefined ) {
 
 	var dataParser = {
-		transitioned: function(data) {
-			return { fromState: data[0], toState: data[1] };
-		},
-		transitioning: function(data) {
+		transition: function(data) {
 			return { fromState: data[0], toState: data[1] };
 		}
 	};
@@ -63,6 +60,6 @@
 			bus.wireEventsToBus( fsm, eventChannel );
 		}
 	};
-	machina.on( "newFsm", bus.wireUp );
+	machina.on( "newfsm", bus.wireUp );
 
 } ));

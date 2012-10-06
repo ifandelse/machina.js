@@ -1,16 +1,17 @@
+/*
+  This FSM generates the following custom events:
+   "Initialized",
+   "Authorized",
+   "UnAuthorized",
+   "Deposit",
+   "Withdrawal",
+   "OverLimit",
+   "Result"
+ */
 var Atm = function( ) {
 	var fsm;
 	fsm = new machina.Fsm({
 		initialState: "uninitialized",
-		events: [
-			"Initialized",
-			"Authorized",
-			"UnAuthorized",
-			"Deposit",
-			"Withdrawal",
-			"OverLimit",
-			"Result"
-		],
 		states: {
 			"uninitialized" : {
 				"initialize" : function() {
