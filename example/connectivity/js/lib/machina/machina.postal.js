@@ -2,7 +2,7 @@
  machina.postal
  Author: Jim Cowart (http://freshbrewedcode.com/jimcowart)
  License: Dual licensed MIT (http://www.opensource.org/licenses/mit-license) & GPL (http://www.opensource.org/licenses/gpl-license)
- Version 0.2.1
+ Version 0.2.3
  */
 (function ( root, doc, factory ) {
 	if ( typeof define === "function" && define.amd ) {

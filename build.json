@@ -16,5 +16,11 @@
 	"anvil.jshint" : {
 		"all" : true
 	},
+	"output": {
+		"full": "lib",
+		"partial": {
+			"/browser/machina.*" : [ "./example/connectivity/js/lib/machina" ]
+		}
+	},
 	"dependencies" : [ "anvil.http", "anvil.uglify" ]
 }
