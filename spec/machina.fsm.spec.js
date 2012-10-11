@@ -12,6 +12,8 @@ QUnit.specify( "machina.js", function () {
 				invalidStateHandler = false,
 				customEventInvoked = false,
 				onEnterInvoked = false,
+				onExitInvoked = false,
+				enterExitOrder = [],
 				xfsm = new machina.Fsm( {
 					states : {
 						"uninitialized" : {
@@ -19,11 +21,16 @@ QUnit.specify( "machina.js", function () {
 								event1++;
 								this.fireEvent( "CustomEvent" );
 								this.transition( "initialized" );
+							},
+							_onExit: function () {
+								onExitInvoked = true;
+								enterExitOrder.push( "exit" );
 							}
 						},
 						"initialized" : {
 							_onEnter : function () {
 								onEnterInvoked = true;
+								enterExitOrder.push( "enter" );
 							},
 							"event2" : function () {
 								event2++;
@@ -78,6 +85,13 @@ QUnit.specify( "machina.js", function () {
 			it( "should fire the OnEnter handler", function () {
 				assert( onEnterInvoked ).equals( true );
 			} );
+			it( "should fire the OnExit handler", function () {
+				assert( onExitInvoked ).equals( true );
+			} );
+			it( "should fire the OnExit handler before the OnEnter handler", function () {
+				assert( enterExitOrder[ 0 ] ).equals( "exit" );
+				assert( enterExitOrder[ 1 ] ).equals( "enter" );
+			});
 			it( "should fire the invalidstate handler", function () {
 				assert( invalidStateHandler ).equals( true );
 			} );

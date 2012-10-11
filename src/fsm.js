@@ -64,6 +64,9 @@ Fsm.prototype.transition = function ( newState ) {
 		this.priorState = this.state;
 		this.state = newState;
 		oldState = this.priorState;
+		if ( this.states[oldState] && this.states[oldState]._onExit ) {
+			this.states[oldState]._onExit.call( this );
+		}
 		this.fireEvent.apply( this, [TRANSITION, oldState, newState ] );
 		if ( this.states[newState]._onEnter ) {
 			this.states[newState]._onEnter.call( this );

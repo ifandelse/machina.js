@@ -84,7 +84,7 @@ In addition to the state/handler definitions, the above code example as shows th
 
 The `verifyState` and `applicationOffline` methods are custom to this instance of the FSM, and are not, of course, part of machina by default.
 
-You can see in the above example that anytime the FSM handles an event, it first checks to see if the state needs to be transitioned between offline and online (via the `verifyState` call).  States can also have an `_onEnter` method - which is fired immediately after the FSM transitions into that state.
+You can see in the above example that anytime the FSM handles an event, it first checks to see if the state needs to be transitioned between offline and online (via the `verifyState` call).  States can also have `_onEnter` and `_onExit` methods. `_onEnter` is fired immediately after the FSM transitions into that state and `_onExit` is fired immediately before transitioning to a new state.
 
 Now that we've seen a quick example, let's do a whirlwind API tour.
 
@@ -100,7 +100,7 @@ eventListeners: {
 }
 ```
 
-`states` - an object detailing the possible states the FSM can be in, plus the kinds of events/messages each state can handle.  States can have normal "handlers" as well as a catch-all handler ("*"), and an _onEnter handler invoked when the FSM has transitioned into that state.
+`states` - an object detailing the possible states the FSM can be in, plus the kinds of events/messages each state can handle.  States can have normal "handlers" as well as a catch-all handler ("*"), an `_onEnter` handler invoked when the FSM has transitioned into that state and an `_onExit` handler invoked when transitioning out of that state.
 
 ```javascript
 states: {
@@ -111,6 +111,10 @@ states: {
 
 			"initialize" : function( payload ) {
 				// handle an "initialize" event
+			},
+
+			_onExit: function() {
+				// do stuff immediately before we transition out of uninitialized
 			}
 		},
 
