@@ -271,5 +271,50 @@ QUnit.specify( "machina.js", function () {
 				assert( haiCount ).equals( 1 );
 			} );
 		} );
+
+		describe( "When creating an instance from an extended constructor function", function(){
+			var SomeFsm = machina.Fsm.extend({
+				initialState: "notStarted",
+				states: {
+					"notStarted" :{
+						start : function() {
+							this.transition("started");
+						}
+					},
+					"started" : {
+						finish : function() {
+							this.transition("finished");
+						}
+					},
+					"finished" : {
+						_onEnter: function() {
+
+						}
+					}
+				}
+			});
+			window.FSM = SomeFsm;
+			window.ALT = SomeFsm.extend({
+				states: {
+					"gotcha" : {
+						hai: function() {}
+					}
+				}
+			});
+			var fsm = new SomeFsm();
+			window.fsm = fsm;
+			it( "should produce an FSM instance", function() {
+				assert( typeof fsm.transition ).equals('function');
+				assert( typeof fsm.processQueue ).equals('function');
+				assert( typeof fsm.trigger ).equals('function');
+				assert( typeof fsm.emit ).equals('function');
+				assert( typeof fsm.on ).equals('function');
+				assert( typeof fsm.off ).equals('function');
+				assert( typeof fsm.states ).equals('object');
+				assert( typeof fsm.states.notStarted ).equals('object');
+				assert( typeof fsm.states.started ).equals('object');
+				assert( typeof fsm.states.finished ).equals('object');
+			});
+		});
 	} );
 } );

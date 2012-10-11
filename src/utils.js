@@ -17,13 +17,18 @@ var utils = {
 	})(),
 	getDefaultOptions: function() {
 		return {
-			initialState: "uninitialized",
-			eventListeners: {
+			initialState      : "uninitialized",
+			eventListeners    : {
 				"*" : []
 			},
-			states: {},
-			eventQueue: [],
-			namespace: utils.makeFsmNamespace()
+			//states            : {},
+			eventQueue        : [],
+			namespace         : utils.makeFsmNamespace(),
+			targetReplayState : "",
+			state             : undefined,
+			priorState        : undefined,
+			_priorAction      : "",
+			_currentAction    : ""
 		};
 	}
 };
