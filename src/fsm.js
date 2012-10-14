@@ -33,13 +33,18 @@ _.extend(Fsm.prototype, utils.getDefaultOptions(), {
   handle: function ( msgType ) {
     if(!this.inExitHandler) {
       // vars to avoid a "this." fest
-      var states = this.states, current = this.state, args = slice.call( arguments, 0 ), handlerName;
+      var states = this.states, current = this.state, args = slice.call( arguments, 0 ), handlerName, handler;
       this.currentActionArgs = args;
       if ( states[current] && (states[current][msgType] || states[current]["*"]) ) {
         handlerName = states[current][msgType] ? msgType : "*";
+        handler = states[current][handlerName];
         this._currentAction = current + "." + handlerName;
         this.fireEvent.apply( this, [HANDLING].concat( args ) );
-        states[current][handlerName].apply( this, args.slice( 1 ) );
+        if(Object.prototype.toString.call(handler) === "[object String]") {
+          this.transition(handler);
+        } else {
+          handler.apply( this, args.slice( 1 ) );
+        }
         this.fireEvent.apply( this, [HANDLED].concat( args ) );
         this._priorAction = this._currentAction;
         this._currentAction = "";

@@ -325,6 +325,29 @@ QUnit.specify( "machina.js", function () {
       } );
     });
 
+    describe( "When using string handler values instead of functions", function() {
+      var transitioned = false;
+      var fsm = new machina.Fsm( {
+        initialState : "notstarted",
+        states : {
+          notstarted : {
+            "start" : "started"
+          },
+          started : {
+            _onEnter : function () {
+              transitioned = true;
+            }
+          }
+        }
+      } );
+
+      fsm.handle( "start" );
+
+      it( "should transition into the started state", function () {
+        assert( transitioned ).equals( true );
+      } );
+    } );
+
 		describe( "When creating an instance from an extended constructor function", function(){
 			var SomeFsm = machina.Fsm.extend({
 				initialState: "notStarted",
