@@ -47,9 +47,7 @@ var resourceGetter = {
 
 		states: {
 			uninitialized: {
-				initialize : function(){
-					this.transition("waitingOnTemplates");
-				},
+				initialize : "waitingOnTemplates",
 				"*" : function() {
 					this.deferUntilTransition();
 				}
@@ -89,9 +87,7 @@ var resourceGetter = {
 				_onEnter: function() {
 					this.fireEvent("appReady");
 				},
-				refresh : function() {
-					this.transition("waitingOnData");
-				}
+				refresh : "waitingOnData"
 			}
 		}
 	}),

@@ -30,54 +30,30 @@ define([
 						}
 						stethoscope.checkHeartbeat();
 					},
-					heartbeat: function() {
-						this.transition("online");
-					},
-					"no-heartbeat": function() {
-						this.transition("disconnected");
-					},
+					heartbeat      : "online",
+					"no-heartbeat" : "disconnected",
+          "go.offline"   : "offline",
 					"*": function() {
 						this.deferUntilTransition();
-					},
-          "go.offline": function() {
-						this.transition("offline");
 					}
 				},
 
 				online: {
-					"window.offline": function() {
-						this.transition("probing");
-					},
-					"appCache.error": function() {
-						this.transition("probing");
-					},
-					"request.timeout": function() {
-						this.transition("probing");
-					},
-					"go.offline": function() {
-						this.transition("offline");
-					}
+					"window.offline"  : "probing",
+					"appCache.error"  : "probing",
+					"request.timeout" : "probing",
+					"go.offline"      : "offline"
 				},
 
 				disconnected: {
-					"window.online": function() {
-						this.transition("probing");
-					},
-					"appCache.downloading": function() {
-						this.transition("probing");
-					},
-          "go.online": function() {
-						this.transition("probing");
-					},
-          "go.offline": function() {
-						this.transition("offline");
-					}
+					"window.online"        : "probing",
+					"appCache.downloading" : "probing",
+          "go.online"            : "probing",
+          "go.offline"           : "offline"
 				},
 
 				offline: {
-					"go.online": function() {
-						this.transition("probing");
-					}
+					"go.online" : "probing"
 				}
 			}
 		});
