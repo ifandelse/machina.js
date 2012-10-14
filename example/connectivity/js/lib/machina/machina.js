@@ -39,7 +39,6 @@
 				eventListeners    : {
 					"*" : []
 				},
-				states            : {},
 				eventQueue        : [],
 				namespace         : utils.makeFsmNamespace(),
 				targetReplayState : "",
@@ -53,7 +52,7 @@
 	var Fsm = function ( options ) {
 		_.extend( this, this._configureOptions( options || {} ) );
 		if ( this.initialState ) {
-			this.transition( this.options.initialState );
+			this.transition( this.initialState );
 		}
 		machina.fireEvent( NEW_FSM, this );
 	};

@@ -21,7 +21,6 @@ var utils = {
 			eventListeners    : {
 				"*" : []
 			},
-			//states            : {},
 			eventQueue        : [],
 			namespace         : utils.makeFsmNamespace(),
 			targetReplayState : "",

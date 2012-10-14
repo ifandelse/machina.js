@@ -299,7 +299,8 @@ QUnit.specify( "machina.js", function () {
 					"gotcha" : {
 						hai: function() {}
 					}
-				}
+				},
+        namespace: "Alt.namespace"
 			});
 			var fsm = new SomeFsm();
 			window.fsm = fsm;
