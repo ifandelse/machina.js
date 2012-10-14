@@ -21,27 +21,27 @@ QUnit.specify( "machina.js", function () {
 			it( "namespace should default to expected pattern", function () {
 				assert( rgx.test( options.namespace ) ).equals( true );
 			} );
-      it( "states object should be empty", function () {
-        assert(_.isEmpty(options.states) ).equals( true );
-      } );
-      it( "event queue should be empty", function () {
-        assert( options.eventQueue.length ).equals( 0 );
-      } );
-      it( "targetReplayState should be empty", function () {
-        assert( options.targetReplayState ).equals( "" );
-      } );
-      it( "state should be undefined", function () {
-        assert( options.state === undefined ).equals( true );
-      } );
-      it( "prior state should be undefined", function () {
-        assert( options.priorState === undefined ).equals( true );
-      } );
-      it( "prior action should be empty", function () {
-        assert( options._priorAction ).equals( "" );
-      } );
-      it( "current action should be empty", function () {
-        assert( options._currentAction ).equals( "" );
-      } );
+			it( "states object should be empty", function () {
+				assert( _.isEmpty( options.states ) ).equals( true );
+			} );
+			it( "event queue should be empty", function () {
+				assert( options.eventQueue.length ).equals( 0 );
+			} );
+			it( "targetReplayState should be empty", function () {
+				assert( options.targetReplayState ).equals( "" );
+			} );
+			it( "state should be undefined", function () {
+				assert( options.state === undefined ).equals( true );
+			} );
+			it( "prior state should be undefined", function () {
+				assert( options.priorState === undefined ).equals( true );
+			} );
+			it( "prior action should be empty", function () {
+				assert( options._priorAction ).equals( "" );
+			} );
+			it( "current action should be empty", function () {
+				assert( options._currentAction ).equals( "" );
+			} );
 		} );
 	} );
-});
+} );

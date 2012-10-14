@@ -1,20 +1,20 @@
 var AccountView;
 (function ( $, Backbone, infuser, undefined ) {
 	AccountView = Backbone.View.extend( {
-		tagName: "div",
+		tagName : "div",
 
-		initialize: function() {
+		initialize : function () {
 			_.bindAll( this, "render" );
 		},
 
-		render:function () {
+		render : function () {
 			var self = this;
 			infuser.infuse( "account", {
-				target: self.$el,
-				model: self.model.toJSON(),
-				preRender: function() {
-					infuser.defaults.preRender.apply(this, arguments);
-					$(self.options.target).html(self.$el);
+				target : self.$el,
+				model : self.model.toJSON(),
+				preRender : function () {
+					infuser.defaults.preRender.apply( this, arguments );
+					$( self.options.target ).html( self.$el );
 				}
 			} );
 		}

@@ -1,12 +1,12 @@
-var AccountInfo = Backbone.Model.extend({
-	defaults: {
-		modelType: "accountInfo",
-		name: "",
-		balance: 0,
-		limit: 0
+var AccountInfo = Backbone.Model.extend( {
+	defaults : {
+		modelType : "accountInfo",
+		name      : "",
+		balance   : 0,
+		limit     : 0
 	},
 
-	initialize: function() {
+	initialize : function () {
 		this.fetch();
 	}
-});
+} );

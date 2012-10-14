@@ -1,17 +1,17 @@
-(function(root, doc, factory) {
-	if (typeof define === "function" && define.amd) {
+(function ( root, factory ) {
+	if ( typeof define === "function" && define.amd ) {
 		// AMD. Register as an anonymous module.
-		define(["underscore"], function(_) {
-			return factory(_, root, doc);
-		});
+		define( ["underscore"], function ( _ ) {
+			return factory( _, root );
+		} );
 	} else {
 		// Browser globals
-		factory(root._, root, doc);
+		factory( root._, root );
 	}
-}(this, document, function(_, global, document, undefined) {
+}( this, function ( _, global, undefined ) {
 
 	//import("../machina.js");
 
 	global.machina = machina;
 	return machina;
-}));
+} ));

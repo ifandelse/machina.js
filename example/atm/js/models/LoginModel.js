@@ -1,7 +1,7 @@
-var LoginModel = Backbone.Model.extend({
-	defaults: {
-		acct: "",
-		pin: "" ,
-		error: ""
+var LoginModel = Backbone.Model.extend( {
+	defaults : {
+		acct  : "",
+		pin   : "",
+		error : ""
 	}
-});
+} );

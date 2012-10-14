@@ -1,52 +1,52 @@
 var DepositView;
 (function ( $, Backbone, infuser, undefined ) {
 	DepositView = Backbone.View.extend( {
-		tagName: "div",
+		tagName : "div",
 
-		model: new DepositModel(),
+		model : new DepositModel(),
 
-		events: {
-			"change #amount"   : "handleAmountChange"
+		events : {
+			"change #amount" : "handleAmountChange"
 		},
 
-		initialize: function() {
+		initialize : function () {
 			_.bindAll( this, "render", "handleSubmit", "handleAmountChange", "handleModelChange" );
 			this.model.on( "change", this.handleModelChange );
 		},
 
-		render:function () {
+		render : function () {
 			var self = this;
 			infuser.infuse( "deposit", {
-				target: self.$el,
-				model: self.model.toJSON(),
-				preRender: function() {
-					infuser.defaults.preRender.apply(this, arguments);
-					$(self.options.target).html(self.$el);
+				target : self.$el,
+				model : self.model.toJSON(),
+				preRender : function () {
+					infuser.defaults.preRender.apply( this, arguments );
+					$( self.options.target ).html( self.$el );
 				},
-				postRender: function() {
-					infuser.defaults.postRender.apply(this, arguments);
-					self.delegateEvents(self.events);
+				postRender : function () {
+					infuser.defaults.postRender.apply( this, arguments );
+					self.delegateEvents( self.events );
 				}
 			} );
 		},
 
-		handleModelChange: function() {
+		handleModelChange : function () {
 			this.render();
 		},
 
-		handleSubmit: function() {
-			var amount = this.model.get("amount");
-			if(amount > 0) {
-				this.trigger("Deposit", amount);
-				this.model.set("amount", 0);
+		handleSubmit : function () {
+			var amount = this.model.get( "amount" );
+			if ( amount > 0 ) {
+				this.trigger( "Deposit", amount );
+				this.model.set( "amount", 0 );
 				return;
 			}
-			this.model.set("error", "Deposit amount must be greater than $0.");
+			this.model.set( "error", "Deposit amount must be greater than $0." );
 		},
 
-		handleAmountChange: function(evnt) {
-			this.model.set({ error: ""}, { silent: true });
-			this.model.set( { amount: parseFloat($(evnt.target).val()) } );
+		handleAmountChange : function ( evnt ) {
+			this.model.set( { error : ""}, { silent : true } );
+			this.model.set( { amount : parseFloat( $( evnt.target ).val() ) } );
 		}
 	} );
 })( jQuery, Backbone, infuser );

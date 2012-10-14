@@ -1,20 +1,20 @@
 var ResultView = Backbone.View.extend( {
-	tagName: "div",
+	tagName : "div",
 
-	model: new ResultModel(),
+	model : new ResultModel(),
 
-	initialize: function() {
+	initialize : function () {
 		_.bindAll( this, "render" );
 	},
 
-	render:function () {
+	render : function () {
 		var self = this;
 		infuser.infuse( "result", {
-			target: self.$el,
-			model: self.model.toJSON(),
-			preRender: function() {
-				infuser.defaults.preRender.apply(this, arguments);
-				$(self.options.target).html(self.$el);
+			target : self.$el,
+			model : self.model.toJSON(),
+			preRender : function () {
+				infuser.defaults.preRender.apply( this, arguments );
+				$( self.options.target ).html( self.$el );
 			}
 		} );
 	}

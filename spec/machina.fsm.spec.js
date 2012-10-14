@@ -22,7 +22,7 @@ QUnit.specify( "machina.js", function () {
 								this.fireEvent( "CustomEvent" );
 								this.transition( "initialized" );
 							},
-							_onExit: function () {
+							_onExit : function () {
 								onExitInvoked = true;
 								enterExitOrder.push( "exit" );
 							}
@@ -91,7 +91,7 @@ QUnit.specify( "machina.js", function () {
 			it( "should fire the OnExit handler before the OnEnter handler", function () {
 				assert( enterExitOrder[ 0 ] ).equals( "exit" );
 				assert( enterExitOrder[ 1 ] ).equals( "enter" );
-			});
+			} );
 			it( "should fire the invalidstate handler", function () {
 				assert( invalidStateHandler ).equals( true );
 			} );
@@ -286,155 +286,155 @@ QUnit.specify( "machina.js", function () {
 			} );
 		} );
 
-    describe( "When transitioning from a state with an onExit handler", function() {
-      var onExitCalled = false;
-      var stateOneEntry = false;
-      var stateTwoEntry = false;
-      var fsm = new machina.Fsm( {
-        initialState : "notstarted",
-        states : {
-          notstarted : {
-            _onEnter : function () {
-              this.transition( "one" );
-            },
-            _onExit: function() {
-              onExitCalled = true;
-              this.transition("two");
-            }
-          },
-          one : {
-            _onEnter : function () {
-              stateOneEntry = true;
-            }
-          },
-          two : {
-            _onEnter : function () {
-              stateTwoEntry = true;
-            }
-          }
-        }
-      } );
-      it( "should call onExit handler", function () {
-        assert( onExitCalled ).equals( true );
-      } );
-      it( "should call State One Entry handler", function () {
-        assert( stateOneEntry ).equals( true );
-      } );
-      it( "should NOT call State Two Entry handler", function () {
-        assert( stateTwoEntry ).equals( false );
-      } );
-    });
+		describe( "When transitioning from a state with an onExit handler", function () {
+			var onExitCalled = false;
+			var stateOneEntry = false;
+			var stateTwoEntry = false;
+			var fsm = new machina.Fsm( {
+				initialState : "notstarted",
+				states : {
+					notstarted : {
+						_onEnter : function () {
+							this.transition( "one" );
+						},
+						_onExit : function () {
+							onExitCalled = true;
+							this.transition( "two" );
+						}
+					},
+					one : {
+						_onEnter : function () {
+							stateOneEntry = true;
+						}
+					},
+					two : {
+						_onEnter : function () {
+							stateTwoEntry = true;
+						}
+					}
+				}
+			} );
+			it( "should call onExit handler", function () {
+				assert( onExitCalled ).equals( true );
+			} );
+			it( "should call State One Entry handler", function () {
+				assert( stateOneEntry ).equals( true );
+			} );
+			it( "should NOT call State Two Entry handler", function () {
+				assert( stateTwoEntry ).equals( false );
+			} );
+		} );
 
-    describe( "When using string handler values instead of functions", function() {
-      var transitioned = false;
-      var fsm = new machina.Fsm( {
-        initialState : "notstarted",
-        states : {
-          notstarted : {
-            "start" : "started"
-          },
-          started : {
-            _onEnter : function () {
-              transitioned = true;
-            }
-          }
-        }
-      } );
+		describe( "When using string handler values instead of functions", function () {
+			var transitioned = false;
+			var fsm = new machina.Fsm( {
+				initialState : "notstarted",
+				states : {
+					notstarted : {
+						"start" : "started"
+					},
+					started : {
+						_onEnter : function () {
+							transitioned = true;
+						}
+					}
+				}
+			} );
 
-      fsm.handle( "start" );
+			fsm.handle( "start" );
 
-      it( "should transition into the started state", function () {
-        assert( transitioned ).equals( true );
-      } );
-    } );
+			it( "should transition into the started state", function () {
+				assert( transitioned ).equals( true );
+			} );
+		} );
 
-		describe( "When creating an instance from an extended constructor function", function(){
-			var SomeFsm = machina.Fsm.extend({
-				initialState: "notStarted",
-				states: {
-					"notStarted" :{
-						start : function() {
-							this.transition("started");
+		describe( "When creating an instance from an extended constructor function", function () {
+			var SomeFsm = machina.Fsm.extend( {
+				initialState : "notStarted",
+				states : {
+					"notStarted" : {
+						start : function () {
+							this.transition( "started" );
 						}
 					},
 					"started" : {
-						finish : function() {
-							this.transition("finished");
+						finish : function () {
+							this.transition( "finished" );
 						}
 					},
 					"finished" : {
-						_onEnter: function() {
+						_onEnter : function () {
 
 						}
 					}
 				}
-			});
+			} );
 			var fsm = new SomeFsm();
-      it( "should produce an FSM instance", function() {
-        assert( typeof fsm.transition ).equals('function');
-        assert( typeof fsm.processQueue ).equals('function');
-        assert( typeof fsm.trigger ).equals('function');
-        assert( typeof fsm.emit ).equals('function');
-        assert( typeof fsm.on ).equals('function');
-        assert( typeof fsm.off ).equals('function');
-        assert( typeof fsm.states ).equals('object');
-        assert( typeof fsm.states.notStarted ).equals('object');
-        assert( typeof fsm.states.started ).equals('object');
-        assert( typeof fsm.states.finished ).equals('object');
-      });
-		});
+			it( "should produce an FSM instance", function () {
+				assert( typeof fsm.transition ).equals( 'function' );
+				assert( typeof fsm.processQueue ).equals( 'function' );
+				assert( typeof fsm.trigger ).equals( 'function' );
+				assert( typeof fsm.emit ).equals( 'function' );
+				assert( typeof fsm.on ).equals( 'function' );
+				assert( typeof fsm.off ).equals( 'function' );
+				assert( typeof fsm.states ).equals( 'object' );
+				assert( typeof fsm.states.notStarted ).equals( 'object' );
+				assert( typeof fsm.states.started ).equals( 'object' );
+				assert( typeof fsm.states.finished ).equals( 'object' );
+			} );
+		} );
 
-    describe( "When extending an FSM constructor function with existing states & handlers", function(){
-      var SomeFsm = machina.Fsm.extend({
-        initialState: "notStarted",
-        states: {
-          "notStarted" :{
-            start : function() {
-              this.transition("started");
-            }
-          },
-          "started" : {
-            finish : function() {
-              this.transition("finished");
-            }
-          },
-          "finished" : {
-            _onEnter: function() {
+		describe( "When extending an FSM constructor function with existing states & handlers", function () {
+			var SomeFsm = machina.Fsm.extend( {
+				initialState : "notStarted",
+				states : {
+					"notStarted" : {
+						start : function () {
+							this.transition( "started" );
+						}
+					},
+					"started" : {
+						finish : function () {
+							this.transition( "finished" );
+						}
+					},
+					"finished" : {
+						_onEnter : function () {
 
-            }
-          }
-        }
-      });
-      var NewerFsm = SomeFsm.extend({
-        states: {
-          "inProgress" : {
-            "something" : function() {
+						}
+					}
+				}
+			} );
+			var NewerFsm = SomeFsm.extend( {
+				states : {
+					"inProgress" : {
+						"something" : function () {
 
-            }
-          },
-          started: {
-            "keep.going" : function() {
+						}
+					},
+					started : {
+						"keep.going" : function () {
 
-            }
-          }
-        }
-      });
-      var fsm = new NewerFsm();
-      it( "should produce an FSM instance", function() {
-        assert( typeof fsm.transition ).equals('function');
-        assert( typeof fsm.processQueue ).equals('function');
-        assert( typeof fsm.trigger ).equals('function');
-        assert( typeof fsm.emit ).equals('function');
-        assert( typeof fsm.on ).equals('function');
-        assert( typeof fsm.off ).equals('function');
-        assert( typeof fsm.states ).equals('object');
-        assert( typeof fsm.states.notStarted ).equals('object');
-        assert( typeof fsm.states.started ).equals('object');
-        assert( typeof fsm.states.finished ).equals('object');
-        assert( typeof fsm.states.inProgress ).equals('object');
-        assert( typeof fsm.states.inProgress.something ).equals('function');
-        assert( typeof fsm.states.started["keep.going"] ).equals('function');
-      });
-    } );
+						}
+					}
+				}
+			} );
+			var fsm = new NewerFsm();
+			it( "should produce an FSM instance", function () {
+				assert( typeof fsm.transition ).equals( 'function' );
+				assert( typeof fsm.processQueue ).equals( 'function' );
+				assert( typeof fsm.trigger ).equals( 'function' );
+				assert( typeof fsm.emit ).equals( 'function' );
+				assert( typeof fsm.on ).equals( 'function' );
+				assert( typeof fsm.off ).equals( 'function' );
+				assert( typeof fsm.states ).equals( 'object' );
+				assert( typeof fsm.states.notStarted ).equals( 'object' );
+				assert( typeof fsm.states.started ).equals( 'object' );
+				assert( typeof fsm.states.finished ).equals( 'object' );
+				assert( typeof fsm.states.inProgress ).equals( 'object' );
+				assert( typeof fsm.states.inProgress.something ).equals( 'function' );
+				assert( typeof fsm.states.started["keep.going"] ).equals( 'function' );
+			} );
+		} );
 	} );
 } );

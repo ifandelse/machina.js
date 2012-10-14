@@ -1,5 +1,5 @@
-var ResultModel = Backbone.Model.extend({
-	defaults:{
-		modelType: "result"
+var ResultModel = Backbone.Model.extend( {
+	defaults : {
+		modelType : "result"
 	}
-});
+} );

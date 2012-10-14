@@ -1,33 +1,33 @@
-var NavFsm = function(appFsm, navView) {
-	var fsm = new machina.Fsm({
-		initialState: "unauthorized",
-		states: {
+var NavFsm = function ( appFsm, navView ) {
+	var fsm = new machina.Fsm( {
+		initialState : "unauthorized",
+		states : {
 			"unauthorized" : {
-				_onEnter: function() {
+				_onEnter : function () {
 					navView.unAuthLayout();
 				},
-				"*" : function() {
+				"*" : function () {
 					navView.unAuthLayout();
 				}
 			},
-			"authorized": {
-				"*" : function() {
+			"authorized" : {
+				"*" : function () {
 					navView.authLayout();
 				},
-				"deposit" : function() {
+				"deposit" : function () {
 					navView.depositLayout();
 				},
-				"withdrawal" : function() {
+				"withdrawal" : function () {
 					navView.withdrawalLayout();
 				}
 			}
 		}
-	});
-	appFsm.on("Authorized", function() {
-		fsm.transition("authorized");
-	});
-	appFsm.on("UnAuthorized", function() {
-		fsm.transition("unauthorized");
-	});
+	} );
+	appFsm.on( "Authorized", function () {
+		fsm.transition( "authorized" );
+	} );
+	appFsm.on( "UnAuthorized", function () {
+		fsm.transition( "unauthorized" );
+	} );
 	return fsm;
 };
