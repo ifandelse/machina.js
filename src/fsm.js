@@ -143,7 +143,7 @@ var inherits = function(parent, protoProps, staticProps) {
 	}
 
 	// Inherit class (static) properties from parent.
-	_.extend(fsm, parent);
+	_.deepExtend(fsm, parent);
 
 	// Set the prototype chain to inherit from `parent`, without calling
 	// `parent`'s constructor function.
@@ -153,12 +153,12 @@ var inherits = function(parent, protoProps, staticProps) {
 	// Add prototype properties (instance properties) to the subclass,
 	// if supplied.
 	if (protoProps) {
-		_.extend(fsm.prototype, protoProps);
+		_.deepExtend(fsm.prototype, protoProps);
 	}
 
 	// Add static properties to the constructor function, if supplied.
 	if (staticProps) {
-		_.extend(fsm, staticProps);
+		_.deepExtend(fsm, staticProps);
 	}
 
 	// Correctly set child's `prototype.constructor`.
