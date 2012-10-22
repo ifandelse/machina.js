@@ -436,5 +436,76 @@ QUnit.specify( "machina.js", function () {
 				assert( typeof fsm.states.started["keep.going"] ).equals( 'function' );
 			} );
 		} );
+
+		describe( "When providing a global catch-all handler", function () {
+			var catchAllHandled = [],
+				stateSpecificCatchAllHandled = [];
+
+			var fsm = new machina.Fsm({
+				"*": function ( action ) {
+					catchAllHandled.push( action );
+				},
+				initialState: "off",
+				states: {
+					off: { },
+					on: {
+						switchoff: function () { }
+					},
+					waiting: {
+						"*": function ( action ) {
+							stateSpecificCatchAllHandled.push( action );
+						}
+					}
+				}
+			});
+
+			before( function () {
+				catchAllHandled = [];
+				stateSpecificCatchAllHandled = [];
+			});
+
+			it( "should globally catch unhandled events", function () {
+				fsm.transition( "off" );
+				fsm.handle( "switchon" );
+				fsm.handle( "switchoff" );
+
+				fsm.transition( "on" );
+				fsm.handle( "switchon" );
+				fsm.handle( "switchoff" );
+
+				assert( catchAllHandled.length ).equals( 3 );
+			});
+
+			it( "should not globally catch unhandled events for which there is a state specific catch all handler", function () {
+				fsm.transition( "waiting" );
+				fsm.handle( "switchon" );
+				fsm.handle( "switchoff" );
+
+				assert( catchAllHandled.length ).equals( 0 );
+				assert( stateSpecificCatchAllHandled.length ).equals( 2 );
+			});
+
+			it( "should receive the action name as the first argument", function () {
+				fsm.transition( "off" );
+				fsm.handle( "switchon" );
+				fsm.handle( "switchoff" );
+
+				fsm.transition( "on" );
+				fsm.handle( "switchon" );
+				fsm.handle( "switchoff" );
+
+				fsm.transition( "waiting" );
+				fsm.handle( "switchon" );
+				fsm.handle( "switchoff" );
+
+				assert( catchAllHandled[0] ).equals( "switchon" );
+				assert( catchAllHandled[1] ).equals( "switchoff" );
+				assert( catchAllHandled[2] ).equals( "switchon" );
+
+				assert( stateSpecificCatchAllHandled[0] ).equals( "switchon" );
+				assert( stateSpecificCatchAllHandled[1] ).equals( "switchoff" );
+			});
+
+		});
 	} );
 } );
