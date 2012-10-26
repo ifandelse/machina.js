@@ -1,7 +1,7 @@
-QUnit.specify( "machina.js", function () {
-	var fsm;
-	describe( "machina.Fsm", function () {
-		describe( "When creating a new Fsm", function () {
+var fsm;
+describe( "machina.Fsm", function () {
+	describe( "When creating a new Fsm", function () {
+		describe( "When verifying core behavior", function() {
 			var event1 = 0,
 				event2 = 0,
 				event3 = 0,
@@ -68,444 +68,503 @@ QUnit.specify( "machina.js", function () {
 			xfsm.transition( "NoSuchState" );
 
 			it( "should fire the transition event", function () {
-				assert( transitionedHandler ).equals( true );
+				expect( transitionedHandler ).to.be( true );
 			} );
 			it( "should fire the nohandler event", function () {
-				assert( noHandlerInvoked ).equals( true );
+				expect( noHandlerInvoked ).to.be( true );
 			} );
 			it( "should fire the handling event", function () {
-				assert( handlingHandler ).equals( true );
+				expect( handlingHandler ).to.be( true );
 			} );
 			it( "should fire the handled event", function () {
-				assert( handledHandler ).equals( true );
+				expect( handledHandler ).to.be( true );
 			} );
 			it( "should fire the CustomEvent event", function () {
-				assert( customEventInvoked ).equals( true );
+				expect( customEventInvoked ).to.be( true );
 			} );
 			it( "should fire the OnEnter handler", function () {
-				assert( onEnterInvoked ).equals( true );
+				expect( onEnterInvoked ).to.be( true );
 			} );
 			it( "should fire the OnExit handler", function () {
-				assert( onExitInvoked ).equals( true );
+				expect( onExitInvoked ).to.be( true );
 			} );
 			it( "should fire the OnExit handler before the OnEnter handler", function () {
-				assert( enterExitOrder[ 0 ] ).equals( "exit" );
-				assert( enterExitOrder[ 1 ] ).equals( "enter" );
+				expect( enterExitOrder[ 0 ] ).to.be( "exit" );
+				expect( enterExitOrder[ 1 ] ).to.be( "enter" );
 			} );
 			it( "should fire the invalidstate handler", function () {
-				assert( invalidStateHandler ).equals( true );
+				expect( invalidStateHandler ).to.be( true );
 			} );
 			it( "should have invoked handlers", function () {
-				assert( event1 ).equals( true );
-				assert( event2 ).equals( true );
-				assert( event3 ).equals( true );
+				expect( !!event1 ).to.be( true );
+				expect( !!event2 ).to.be( true );
+				expect( !!event3 ).to.be( true );
 			} );
-		} );
+		});
 
-		describe( "When deferring until after the next transition", function () {
-			var event2 = 0,
-				deferredInvoked = false,
-				xfsm = new machina.Fsm( {
-					states : {
-						"uninitialized" : {
-							"event1" : function () {
-								this.transition( "initialized" );
-							},
-							"event2" : function () {
-								this.deferUntilTransition();
-							}
-						},
-						"initialized" : {
-							"event2" : function () {
-								event2++;
-							}
-						}
-					},
-					eventListeners : {
-						"deferred" : [function () {
-							deferredInvoked = true;
-						}]
-					}
-				} );
-			xfsm.handle( "event2" );
-			xfsm.handle( "event1" );
+		describe( "When defaulting all values (other than states)", function() {
+			var rgx = /.*\.[0-9]*/;
+			var fsm;
+			fsm = new machina.Fsm({ states: { uninitialized: {} }});
 
-			it( "should fire the Deferred event", function () {
-				assert( deferredInvoked ).equals( true );
+			it( "state should default to uninitialized", function () {
+				expect( fsm.state ).to.be( "uninitialized" );
 			} );
-			it( "should have invoked the handler on replay", function () {
-				assert( event2 ).equals( 1 );
+			it( "events should default to 1 empty arrays", function () {
+				console.log("HERE");
+				console.log(fsm);
+				expect( fsm.eventListeners["*"].length ).to.be( 0 );
 			} );
-		} );
-
-		describe( "When deferring until a specific state", function () {
-			var event2 = 0,
-				deferredInvoked = false,
-				xfsm = new machina.Fsm( {
-					states : {
-						"uninitialized" : {
-							"event1" : function () {
-								this.transition( "initialized" );
-							},
-							"event2" : function () {
-								this.deferUntilTransition( "ready" );
-							}
-						},
-						"initialized" : {
-							"event1" : function () {
-								this.transition( "ready" );
-							},
-							"event2" : function () {
-								event2++;
-							}
-						},
-						"ready" : {
-							"event2" : function () {
-								event2++;
-							}
-						}
-					},
-					eventListeners : {
-						"deferred" : [function () {
-							deferredInvoked = true;
-						}]
-					}
-				} );
-			xfsm.handle( "event2" );
-			xfsm.handle( "event1" );
-			xfsm.handle( "event1" );
-
-			it( "should fire the Deferred event", function () {
-				assert( deferredInvoked ).equals( true );
+			it( "namespace should default to expected pattern", function () {
+				expect( rgx.test( fsm.namespace ) ).to.be( true );
 			} );
-			it( "should have invoked the handler once in 'ready' state", function () {
-				assert( event2 ).equals( 1 );
+			it( "event queue should be empty", function () {
+				expect( fsm.eventQueue.length ).to.be( 0 );
 			} );
-		} );
-
-		describe( "When deferring until the next handler call", function () {
-			var event2 = 0,
-				deferredInvoked = false,
-				xfsm = new machina.Fsm( {
-					states : {
-						"uninitialized" : {
-							"event1" : function () {
-								this.transition( "initialized" );
-							},
-							"event2" : function () {
-								this.deferUntilNextHandler();
-							}
-						},
-						"initialized" : {
-							"event1" : function () {
-								this.transition( "ready" );
-							},
-							"event2" : function () {
-								event2++;
-							}
-						},
-						"ready" : {
-							"event2" : function () {
-								event2++;
-							}
-						}
-					},
-					eventListeners : {
-						"deferred" : [function () {
-							deferredInvoked = true;
-						}]
-					}
-				} );
-			xfsm.handle( "event2" );
-			xfsm.handle( "event1" );
-			xfsm.handle( "event1" );
-
-			it( "should fire the Deferred event", function () {
-				assert( deferredInvoked ).equals( true );
+			it( "targetReplayState should be uninitialized", function () {
+				expect( fsm.targetReplayState ).to.be( "uninitialized" );
 			} );
-			it( "should have invoked the handler once", function () {
-				assert( event2 ).equals( 1 );
+			it( "prior state should be undefined", function () {
+				expect( fsm.priorState === undefined ).to.be( true );
 			} );
-		} );
+			it( "prior action should be empty", function () {
+				expect( fsm._priorAction ).to.be( "" );
+			} );
+			it( "current action should be empty", function () {
+				expect( fsm._currentAction ).to.be( "" );
+			} );
+		});
+	} );
 
-		describe( "When transitioning to new states from an entry action", function () {
-			var booCount = 0;
-			var haiCount = 0;
-			var fsm = new machina.Fsm( {
-				initialState : "notstarted",
+	describe( "When deferring until after the next transition", function () {
+		var event2 = 0,
+			deferredInvoked = false,
+			xfsm = new machina.Fsm( {
 				states : {
-					notstarted : {
-						"start" : function () {
-							this.transition( "one" );
+					"uninitialized" : {
+						"event1" : function () {
+							this.transition( "initialized" );
 						},
-						"*" : function () {
+						"event2" : function () {
 							this.deferUntilTransition();
 						}
 					},
-					one : {
-						_onEnter : function () {
-							this.transition( "two" );
-						},
-						"hai" : function () {
-							haiCount++;
-						},
-						"boo" : function () {
-							booCount++;
-						}
-					},
-					two : {
-						_onEnter : function () {
-							this.transition( "three" );
-						},
-						"hai" : function () {
-							haiCount++;
-						},
-						"boo" : function () {
-							booCount++;
-						}
-					},
-
-					three : {
-						"hai" : function () {
-							haiCount++;
-						},
-						"boo" : function () {
-							booCount++;
+					"initialized" : {
+						"event2" : function () {
+							event2++;
 						}
 					}
-				}
-			} );
-
-			fsm.handle( "boo" );
-			fsm.handle( "hai" );
-			fsm.handle( "start" );
-
-			it( "should only fire the boo and hai events once", function () {
-				assert( booCount ).equals( 1 );
-				assert( haiCount ).equals( 1 );
-			} );
-		} );
-
-		describe( "When transitioning from a state with an onExit handler", function () {
-			var onExitCalled = false;
-			var stateOneEntry = false;
-			var stateTwoEntry = false;
-			var fsm = new machina.Fsm( {
-				initialState : "notstarted",
-				states : {
-					notstarted : {
-						_onEnter : function () {
-							this.transition( "one" );
-						},
-						_onExit : function () {
-							onExitCalled = true;
-							this.transition( "two" );
-						}
-					},
-					one : {
-						_onEnter : function () {
-							stateOneEntry = true;
-						}
-					},
-					two : {
-						_onEnter : function () {
-							stateTwoEntry = true;
-						}
-					}
-				}
-			} );
-			it( "should call onExit handler", function () {
-				assert( onExitCalled ).equals( true );
-			} );
-			it( "should call State One Entry handler", function () {
-				assert( stateOneEntry ).equals( true );
-			} );
-			it( "should NOT call State Two Entry handler", function () {
-				assert( stateTwoEntry ).equals( false );
-			} );
-		} );
-
-		describe( "When using string handler values instead of functions", function () {
-			var transitioned = false;
-			var fsm = new machina.Fsm( {
-				initialState : "notstarted",
-				states : {
-					notstarted : {
-						"start" : "started"
-					},
-					started : {
-						_onEnter : function () {
-							transitioned = true;
-						}
-					}
-				}
-			} );
-
-			fsm.handle( "start" );
-
-			it( "should transition into the started state", function () {
-				assert( transitioned ).equals( true );
-			} );
-		} );
-
-		describe( "When creating an instance from an extended constructor function", function () {
-			var SomeFsm = machina.Fsm.extend( {
-				initialState : "notStarted",
-				states : {
-					"notStarted" : {
-						start : function () {
-							this.transition( "started" );
-						}
-					},
-					"started" : {
-						finish : function () {
-							this.transition( "finished" );
-						}
-					},
-					"finished" : {
-						_onEnter : function () {
-
-						}
-					}
-				}
-			} );
-			var fsm = new SomeFsm();
-			it( "should produce an FSM instance", function () {
-				assert( typeof fsm.transition ).equals( 'function' );
-				assert( typeof fsm.processQueue ).equals( 'function' );
-				assert( typeof fsm.trigger ).equals( 'function' );
-				assert( typeof fsm.emit ).equals( 'function' );
-				assert( typeof fsm.on ).equals( 'function' );
-				assert( typeof fsm.off ).equals( 'function' );
-				assert( typeof fsm.states ).equals( 'object' );
-				assert( typeof fsm.states.notStarted ).equals( 'object' );
-				assert( typeof fsm.states.started ).equals( 'object' );
-				assert( typeof fsm.states.finished ).equals( 'object' );
-			} );
-		} );
-
-		describe( "When extending an FSM constructor function with existing states & handlers", function () {
-			var SomeFsm = machina.Fsm.extend( {
-				initialState : "notStarted",
-				states : {
-					"notStarted" : {
-						start : function () {
-							this.transition( "started" );
-						}
-					},
-					"started" : {
-						finish : function () {
-							this.transition( "finished" );
-						}
-					},
-					"finished" : {
-						_onEnter : function () {
-
-						}
-					}
-				}
-			} );
-			var NewerFsm = SomeFsm.extend( {
-				states : {
-					"inProgress" : {
-						"something" : function () {
-
-						}
-					},
-					started : {
-						"keep.going" : function () {
-
-						}
-					}
-				}
-			} );
-			var fsm = new NewerFsm();
-			it( "should produce an FSM instance", function () {
-				assert( typeof fsm.transition ).equals( 'function' );
-				assert( typeof fsm.processQueue ).equals( 'function' );
-				assert( typeof fsm.trigger ).equals( 'function' );
-				assert( typeof fsm.emit ).equals( 'function' );
-				assert( typeof fsm.on ).equals( 'function' );
-				assert( typeof fsm.off ).equals( 'function' );
-				assert( typeof fsm.states ).equals( 'object' );
-				assert( typeof fsm.states.notStarted ).equals( 'object' );
-				assert( typeof fsm.states.started ).equals( 'object' );
-				assert( typeof fsm.states.finished ).equals( 'object' );
-				assert( typeof fsm.states.inProgress ).equals( 'object' );
-				assert( typeof fsm.states.inProgress.something ).equals( 'function' );
-				assert( typeof fsm.states.started["keep.going"] ).equals( 'function' );
-			} );
-		} );
-
-		describe( "When providing a global catch-all handler", function () {
-			var catchAllHandled = [],
-				stateSpecificCatchAllHandled = [];
-
-			var fsm = new machina.Fsm({
-				"*": function ( action ) {
-					catchAllHandled.push( action );
 				},
-				initialState: "off",
-				states: {
-					off: { },
-					on: {
-						switchoff: function () { }
+				eventListeners : {
+					"deferred" : [function () {
+						deferredInvoked = true;
+					}]
+				}
+			} );
+		xfsm.handle( "event2" );
+		xfsm.handle( "event1" );
+
+		it( "should fire the Deferred event", function () {
+			expect( deferredInvoked ).to.be( true );
+		} );
+		it( "should have invoked the handler on replay", function () {
+			expect( event2 ).to.be( 1 );
+		} );
+	} );
+
+	describe( "When deferring until a specific state", function () {
+		var event2 = 0,
+			deferredInvoked = false,
+			xfsm = new machina.Fsm( {
+				states : {
+					"uninitialized" : {
+						"event1" : function () {
+							this.transition( "initialized" );
+						},
+						"event2" : function () {
+							this.deferUntilTransition( "ready" );
+						}
 					},
-					waiting: {
-						"*": function ( action ) {
-							stateSpecificCatchAllHandled.push( action );
+					"initialized" : {
+						"event1" : function () {
+							this.transition( "ready" );
+						},
+						"event2" : function () {
+							event2++;
+						}
+					},
+					"ready" : {
+						"event2" : function () {
+							event2++;
 						}
 					}
+				},
+				eventListeners : {
+					"deferred" : [function () {
+						deferredInvoked = true;
+					}]
 				}
-			});
+			} );
+		xfsm.handle( "event2" );
+		xfsm.handle( "event1" );
+		xfsm.handle( "event1" );
 
-			before( function () {
-				catchAllHandled = [];
-				stateSpecificCatchAllHandled = [];
-			});
-
-			it( "should globally catch unhandled events", function () {
-				fsm.transition( "off" );
-				fsm.handle( "switchon" );
-				fsm.handle( "switchoff" );
-
-				fsm.transition( "on" );
-				fsm.handle( "switchon" );
-				fsm.handle( "switchoff" );
-
-				assert( catchAllHandled.length ).equals( 3 );
-			});
-
-			it( "should not globally catch unhandled events for which there is a state specific catch all handler", function () {
-				fsm.transition( "waiting" );
-				fsm.handle( "switchon" );
-				fsm.handle( "switchoff" );
-
-				assert( catchAllHandled.length ).equals( 0 );
-				assert( stateSpecificCatchAllHandled.length ).equals( 2 );
-			});
-
-			it( "should receive the action name as the first argument", function () {
-				fsm.transition( "off" );
-				fsm.handle( "switchon" );
-				fsm.handle( "switchoff" );
-
-				fsm.transition( "on" );
-				fsm.handle( "switchon" );
-				fsm.handle( "switchoff" );
-
-				fsm.transition( "waiting" );
-				fsm.handle( "switchon" );
-				fsm.handle( "switchoff" );
-
-				assert( catchAllHandled[0] ).equals( "switchon" );
-				assert( catchAllHandled[1] ).equals( "switchoff" );
-				assert( catchAllHandled[2] ).equals( "switchon" );
-
-				assert( stateSpecificCatchAllHandled[0] ).equals( "switchon" );
-				assert( stateSpecificCatchAllHandled[1] ).equals( "switchoff" );
-			});
-
-		});
+		it( "should fire the Deferred event", function () {
+			expect( deferredInvoked ).to.be( true );
+		} );
+		it( "should have invoked the handler once in 'ready' state", function () {
+			expect( event2 ).to.be( 1 );
+		} );
 	} );
+
+	describe( "When deferring until the next handler call", function () {
+		var event2 = 0,
+			deferredInvoked = false,
+			xfsm = new machina.Fsm( {
+				states : {
+					"uninitialized" : {
+						"event1" : function () {
+							this.transition( "initialized" );
+						},
+						"event2" : function () {
+							this.deferUntilNextHandler();
+						}
+					},
+					"initialized" : {
+						"event1" : function () {
+							this.transition( "ready" );
+						},
+						"event2" : function () {
+							event2++;
+						}
+					},
+					"ready" : {
+						"event2" : function () {
+							event2++;
+						}
+					}
+				},
+				eventListeners : {
+					"deferred" : [function () {
+						deferredInvoked = true;
+					}]
+				}
+			} );
+		xfsm.handle( "event2" );
+		xfsm.handle( "event1" );
+		xfsm.handle( "event1" );
+
+		it( "should fire the Deferred event", function () {
+			expect( deferredInvoked ).to.be( true );
+		} );
+		it( "should have invoked the handler once", function () {
+			expect( event2 ).to.be( 1 );
+		} );
+	} );
+
+	describe( "When transitioning to new states from an entry action", function () {
+		var booCount = 0;
+		var haiCount = 0;
+		var fsm = new machina.Fsm( {
+			initialState : "notstarted",
+			states : {
+				notstarted : {
+					"start" : function () {
+						this.transition( "one" );
+					},
+					"*" : function () {
+						this.deferUntilTransition();
+					}
+				},
+				one : {
+					_onEnter : function () {
+						this.transition( "two" );
+					},
+					"hai" : function () {
+						haiCount++;
+					},
+					"boo" : function () {
+						booCount++;
+					}
+				},
+				two : {
+					_onEnter : function () {
+						this.transition( "three" );
+					},
+					"hai" : function () {
+						haiCount++;
+					},
+					"boo" : function () {
+						booCount++;
+					}
+				},
+
+				three : {
+					"hai" : function () {
+						haiCount++;
+					},
+					"boo" : function () {
+						booCount++;
+					}
+				}
+			}
+		} );
+
+		fsm.handle( "boo" );
+		fsm.handle( "hai" );
+		fsm.handle( "start" );
+
+		it( "should only fire the boo and hai events once", function () {
+			expect( booCount ).to.be( 1 );
+			expect( haiCount ).to.be( 1 );
+		} );
+	} );
+
+	describe( "When transitioning from a state with an onExit handler", function () {
+		var onExitCalled = false;
+		var stateOneEntry = false;
+		var stateTwoEntry = false;
+		var fsm = new machina.Fsm( {
+			initialState : "notstarted",
+			states : {
+				notstarted : {
+					_onEnter : function () {
+						this.transition( "one" );
+					},
+					_onExit : function () {
+						onExitCalled = true;
+						this.transition( "two" );
+					}
+				},
+				one : {
+					_onEnter : function () {
+						stateOneEntry = true;
+					}
+				},
+				two : {
+					_onEnter : function () {
+						stateTwoEntry = true;
+					}
+				}
+			}
+		} );
+		it( "should call onExit handler", function () {
+			expect( onExitCalled ).to.be( true );
+		} );
+		it( "should call State One Entry handler", function () {
+			expect( stateOneEntry ).to.be( true );
+		} );
+		it( "should NOT call State Two Entry handler", function () {
+			expect( stateTwoEntry ).to.be( false );
+		} );
+	} );
+
+	describe( "When using string handler values instead of functions", function () {
+		var transitioned = false;
+		var fsm = new machina.Fsm( {
+			initialState : "notstarted",
+			states : {
+				notstarted : {
+					"start" : "started"
+				},
+				started : {
+					_onEnter : function () {
+						transitioned = true;
+					}
+				}
+			}
+		} );
+
+		fsm.handle( "start" );
+
+		it( "should transition into the started state", function () {
+			expect( transitioned ).to.be( true );
+		} );
+	} );
+
+	describe( "When creating an instance from an extended constructor function", function () {
+		var SomeFsm = machina.Fsm.extend( {
+			initialState : "notStarted",
+			states : {
+				"notStarted" : {
+					start : function () {
+						this.transition( "started" );
+					}
+				},
+				"started" : {
+					finish : function () {
+						this.transition( "finished" );
+					}
+				},
+				"finished" : {
+					_onEnter : function () {
+
+					}
+				}
+			}
+		} );
+		var fsm = new SomeFsm();
+		it( "should produce an FSM instance", function () {
+			expect( typeof fsm.transition ).to.be( 'function' );
+			expect( typeof fsm.processQueue ).to.be( 'function' );
+			expect( typeof fsm.trigger ).to.be( 'function' );
+			expect( typeof fsm.emit ).to.be( 'function' );
+			expect( typeof fsm.on ).to.be( 'function' );
+			expect( typeof fsm.off ).to.be( 'function' );
+			expect( typeof fsm.states ).to.be( 'object' );
+			expect( typeof fsm.states.notStarted ).to.be( 'object' );
+			expect( typeof fsm.states.started ).to.be( 'object' );
+			expect( typeof fsm.states.finished ).to.be( 'object' );
+		} );
+	} );
+
+	describe( "When extending an FSM constructor function with existing states & handlers", function () {
+		var SomeFsm = machina.Fsm.extend( {
+			initialState : "notStarted",
+			states : {
+				"notStarted" : {
+					start : function () {
+						this.transition( "started" );
+					}
+				},
+				"started" : {
+					finish : function () {
+						this.transition( "finished" );
+					}
+				},
+				"finished" : {
+					_onEnter : function () {
+
+					}
+				}
+			}
+		} );
+		var NewerFsm = SomeFsm.extend( {
+			states : {
+				"inProgress" : {
+					"something" : function () {
+
+					}
+				},
+				started : {
+					"keep.going" : function () {
+
+					}
+				}
+			}
+		} );
+		var fsm = new NewerFsm();
+		it( "should produce an FSM instance", function () {
+			expect( typeof fsm.transition ).to.be( 'function' );
+			expect( typeof fsm.processQueue ).to.be( 'function' );
+			expect( typeof fsm.trigger ).to.be( 'function' );
+			expect( typeof fsm.emit ).to.be( 'function' );
+			expect( typeof fsm.on ).to.be( 'function' );
+			expect( typeof fsm.off ).to.be( 'function' );
+			expect( typeof fsm.states ).to.be( 'object' );
+			expect( typeof fsm.states.notStarted ).to.be( 'object' );
+			expect( typeof fsm.states.started ).to.be( 'object' );
+			expect( typeof fsm.states.finished ).to.be( 'object' );
+			expect( typeof fsm.states.inProgress ).to.be( 'object' );
+			expect( typeof fsm.states.inProgress.something ).to.be( 'function' );
+			expect( typeof fsm.states.started["keep.going"] ).to.be( 'function' );
+		} );
+	} );
+
+	describe( "When providing a global catch-all handler", function () {
+		var catchAllHandled = [],
+			stateSpecificCatchAllHandled = [];
+
+		var fsm = new machina.Fsm({
+			"*": function ( action ) {
+				catchAllHandled.push( action );
+			},
+			initialState: "off",
+			states: {
+				off: { },
+				on: {
+					switchoff: function () { }
+				},
+				waiting: {
+					"*": function ( action ) {
+						stateSpecificCatchAllHandled.push( action );
+					}
+				}
+			}
+		});
+
+		beforeEach( function () {
+			catchAllHandled = [];
+			stateSpecificCatchAllHandled = [];
+		});
+
+		it( "should globally catch unhandled events", function () {
+			fsm.transition( "off" );
+			fsm.handle( "switchon" );
+			fsm.handle( "switchoff" );
+
+			fsm.transition( "on" );
+			fsm.handle( "switchon" );
+			fsm.handle( "switchoff" );
+
+			expect( catchAllHandled.length ).to.be( 3 );
+		});
+
+		it( "should not globally catch unhandled events for which there is a state specific catch all handler", function () {
+			fsm.transition( "waiting" );
+			fsm.handle( "switchon" );
+			fsm.handle( "switchoff" );
+
+			expect( catchAllHandled.length ).to.be( 0 );
+			expect( stateSpecificCatchAllHandled.length ).to.be( 2 );
+		});
+
+		it( "should receive the action name as the first argument", function () {
+			fsm.transition( "off" );
+			fsm.handle( "switchon" );
+			fsm.handle( "switchoff" );
+
+			fsm.transition( "on" );
+			fsm.handle( "switchon" );
+			fsm.handle( "switchoff" );
+
+			fsm.transition( "waiting" );
+			fsm.handle( "switchon" );
+			fsm.handle( "switchoff" );
+
+			expect( catchAllHandled[0] ).to.be( "switchon" );
+			expect( catchAllHandled[1] ).to.be( "switchoff" );
+			expect( catchAllHandled[2] ).to.be( "switchon" );
+
+			expect( stateSpecificCatchAllHandled[0] ).to.be( "switchon" );
+			expect( stateSpecificCatchAllHandled[1] ).to.be( "switchoff" );
+		});
+
+	});
+
+	describe( "When overriding the default eventListeners member", function() {
+		var someEventRaised = false;
+		fsm = new machina.Fsm({
+			eventListeners: { "someEvent" : [function() { someEventRaised = true; }]},
+			states : {
+				uninitialized: {
+					doStuff: function() {
+						this.fireEvent("someEvent");
+					}
+				}
+			}
+		});
+
+		fsm.handle("doStuff");
+
+		it( "should not show a '*' event placeholder", function () {
+			expect( fsm.eventListeners.hasOwnProperty("*") ).to.be( false );
+		});
+
+		it( "should show a 'someEvent' event placeholder", function () {
+			expect( fsm.eventListeners.hasOwnProperty("someEvent") ).to.be( true );
+			expect( fsm.eventListeners.someEvent.length ).to.be( 1 );
+			expect( someEventRaised ).to.be( true );
+		});
+	});
 } );

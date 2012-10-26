@@ -6,12 +6,11 @@
 		} );
 	} else {
 		// Browser globals
-		factory( root._, root );
+    root.machina = factory( root._, root );
 	}
 }( this, function ( _, global, undefined ) {
 
 	//import("../machina.js");
 
-	global.machina = machina;
 	return machina;
 } ));
