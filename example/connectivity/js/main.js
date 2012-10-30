@@ -1,18 +1,17 @@
 require.config( {
 	paths : {
-		text             : "lib/require/text",
-		backbone         : 'lib/backbone/backbone',
-		underscore       : 'lib/underscore/underscore-min',
-		mockjax          : 'lib/jquery.mockjax',
-		machina          : 'lib/machina/machina',
-		'machina.postal' : 'lib/machina/machina.postal',
-		postal           : 'lib/postal/postal',
-		'postal.diags'   : 'lib/postal/postal.diagnostics.min'
+		text             : "/connectivity/js/lib/require/text",
+		backbone         : '/connectivity/js/lib/backbone/backbone',
+		underscore       : '/connectivity/js/lib/underscore/underscore-min',
+		mockjax          : '/connectivity/js/lib/jquery.mockjax',
+		machina          : '/connectivity/js/lib/machina/machina',
+		'machina.postal' : '/connectivity/js/lib/machina/machina.postal',
+		postal           : '/connectivity/js/lib/postal/postal',
+		'postal.diags'   : '/connectivity/js/lib/postal/postal.diagnostics.min'
 	},
 	shim : {
 		mockjax : [ 'jquery' ]
-	},
-	baseUrl : 'js'
+	}
 } );
 
 // This first require statement is pulling in foundational libraries
