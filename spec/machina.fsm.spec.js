@@ -134,6 +134,38 @@ describe( "machina.Fsm", function () {
 				expect( fsm._currentAction ).to.be( "" );
 			} );
 		});
+
+		describe( "When providing an initialize function", function(){
+			var counter = 0;
+			var initializeInvoked = 0;
+			var onEnterInvoked = 0;
+			var newFsmInvoked = 0;
+			var newFsmFn = function() {
+				newFsmInvoked = counter;
+				counter++;
+				machina.off( "newfsm", newFsmFn );
+			};
+			machina.on( "newfsm", newFsmFn );
+			fsm = new machina.Fsm({
+				states: {
+					uninitialized: {
+						_onEnter: function() {
+							onEnterInvoked = counter;
+							counter++;
+						}
+					}
+				},
+				initialize: function() {
+					initializeInvoked = counter;
+					counter++;
+				}
+			});
+			it( "should have executed initialize, newfsm and transition in proper order", function () {
+				expect( initializeInvoked ).to.be( 0 );
+				expect( newFsmInvoked ).to.be( 1 );
+				expect( onEnterInvoked ).to.be( 2 );
+			} );
+		} );
 	} );
 
 	describe( "When deferring until after the next transition", function () {
