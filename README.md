@@ -131,11 +131,17 @@ states: {
 
 `namespace` - a name that indentifies the FSM if it's wired up to a message bus through a plugin.
 
+`initialize` - a function that will be executed as soon as the FSM instance has been created. This is the last step of the FSM's constructor function, prior to emitting that a new instance has been created, and transitioning (if applicable) into the initial state.
+
 ### Inheritance
 FSMs can be created via the `machina.Fsm` constructor function as described above, or you can create an 'extended' FSM constructor function by calling `machina.Fsm.extend()`.  If you are familiar with backbone.js, this will feel very similar to how backbone handles it. machina's inheritance is identical to how backbone objects work, except that machina performs a deep extend, which means you can inherit from an FSM, adding new handlers to a state defined by the base (and you can override already-declared handlers, etc.).  With this being the case, it's better to think of machina's inhertiance as "blending" and not just extending. Let's look at an example:
 
 ```javascript
 var BaseFsm = machina.Fsm.extend({
+    initialize: function() {
+        // do stuff here if you want to perform more setup work
+        // this executes prior to any state transitions or handler invocations
+    },
     states: {
         uninitialized: {
             start: function() {
