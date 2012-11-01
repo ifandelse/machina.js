@@ -1,11 +1,9 @@
 # Connectivity FSM Example
 
-### WARNING: This is a work in progress!
-
 The Connectivity FSM (under `js/connectivityFsm.js`) can be in one of the following states:
 
 * `probing` - the FSM will attempt to perform a heartbeat check via HTTP (we're currently using mockjax to mock the endpoint)
-    * `probing` state has an entry action, triggered by the `_onEnter` handler - which issues the command to check for a heartbeat.
+    * this state has an entry action, triggered by the `_onEnter` handler - which issues the command to check for a heartbeat.
 * `online` - the FSM is online, and will monitor for events to signal it should `go.offline` or into probing again.
 * `offline` - the FSM has been told to go offline intentionally and will listen for a `go.online` event
 * `disconnected` - the FSM has detected the connection has been lost, and will listen for events the signal it should `go.offline` or into probing.

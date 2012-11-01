@@ -187,7 +187,6 @@ var childFsm = new ChildFsm();
 
 ```
 
-
 ## The machina.Fsm Prototype
 Each instance of an machina FSM has the following methods available via it's prototype:
 
@@ -263,7 +262,7 @@ To run tests or examples:
 * transitioned and transitioning events are now just a single "transition" event
 
 ### v0.3.0
-* FSM constructor function supports inheritance via an `extend` function - working just like backbone.js objects.
+* FSM constructor function supports inheritance via an `extend` function - working mostly identical to backbone.js objects.
 * FSMs can have a top-level 'catch-all' ("*") handler defined, which would apply to any state, unless the state overrides it with a state-specific catch-all handler.
 * FSM states now have an `_onExit` handler.
 * The `fireEvent` method is deprecated.  Use `trigger` or the `emit` alias.
