@@ -170,6 +170,9 @@ var ChildFsm = BaseFsm.extend({
             handlerA : function() {
                 this.transition("second");
             }
+            handlerB : function() {
+                // do some work...
+            }
         },
         second: {
             handlerC : function() {
