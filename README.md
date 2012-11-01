@@ -80,7 +80,7 @@ var storageFsm = new machina.Fsm({
 
 In the above example, the developer has created an FSM with two possible states: `online` and `offline`.  While the fsm is in the `online` state, it will respond to `save.customer` and `sync.customer` events.  External code triggers these events by calling the `handle` method on the FSM.  For example `storageFsm.handle( "sync.customer", { other: "data" } )`.  The `handle` method first looks to see if a named handler exists matching the name of the one passed in, then also checks for a catch-all handler (indicated by the "*") if a named handler isn't found.  The `offline` state of the above FSM only responds to `save.customer` events.  If any other type of event name is passed to the `handle` method of the FSM, other than what each state explicitly handles, it is ignored.
 
-In addition to the state/handler definitions, the above code example as shows that the FSM will start in the `offline` state, and can generate a `CustomerSyncComplete` event.
+In addition to the state/handler definitions, the above code example as shows that this particular FSM will start in the `offline` state, and can generate a `CustomerSyncComplete` custom event.
 
 The `verifyState` and `applicationOffline` methods are custom to this instance of the FSM, and are not, of course, part of machina by default.
 
@@ -91,7 +91,7 @@ Now that we've seen a quick example, let's do a whirlwind API tour.
 ## Whirlwind API Tour
 When you are creating a new FSM instance, `machina.Fsm` takes 1 argument - an options object.  Here's a breakdown of the members of this `options` object:
 
-`eventListeners` - An object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers ahead of time.)
+`eventListeners` - An object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers as you create the instance.)
 
 ```javascript
 eventListeners: {
@@ -115,6 +115,7 @@ states: {
 
 			_onExit: function() {
 				// do stuff immediately before we transition out of uninitialized
+				// Note: you can't transition or invoke another inside _onExit
 			}
 		},
 
@@ -129,6 +130,54 @@ states: {
 `initialState` - the state in which the FSM will start.  As soon as the instance is created, the FSM calls the `transition` method to transition into this state.
 
 `namespace` - a name that indentifies the FSM if it's wired up to a message bus through a plugin.
+
+### Inheritance
+FSMs can be created via the `machina.Fsm` constructor function as described above, or you can create an 'extended' FSM constructor function by calling `machina.Fsm.extend()`.  If you are familiar with backbone.js, this will feel very similar to how backbone handles it. machina's inheritance is identical to how backbone objects work, except that machina performs a deep extend, which means you can inherit from an FSM, adding new handlers to a state defined by the base (and you can override already-declared handlers, etc.).  With this being the case, it's better to think of machina's inhertiance as "blending" and not just extending. Let's look at an example:
+
+```javascript
+var BaseFsm = machina.Fsm.extend({
+    states: {
+        uninitialized: {
+            start: function() {
+                this.transition("first");
+            }
+        },
+        first: {
+            handlerA : function() {
+                // do stuff
+            }
+        }
+    }
+});
+// getting an instance from our extended constructor function above
+var baseFsm = new BaseFsm();
+
+// taking the BaseFsm constructor function and doing more
+var ChildFsm = BaseFsm.extend({
+    states: {
+        uninitialized: {
+            skipToTheEnd: function() {
+                this.transition("second");
+            }
+        },
+        first: {
+            handlerA : function() {
+                this.transition("second");
+            }
+        },
+        second: {
+            handlerC : function() {
+                // do stuff
+            }
+        }
+    }
+});
+
+// This instance will have a blending of BaseFsm and ChildFsm's states/handlers
+var childFsm = new ChildFsm();
+
+```
+
 
 ## The machina.Fsm Prototype
 Each instance of an machina FSM has the following methods available via it's prototype:
@@ -145,10 +194,15 @@ Each instance of an machina FSM has the following methods available via it's pro
 
 In addition to the prototype members, every instance of an FSM has these instance-specific values as well:
 
-* `state` - string value of the current state of the FSM.  This will match one of the state names in the `states` object.  Do *not* change this value directly.  Use the `transition()` method on the prototype to change an FSM's state.
-* `priorState` - the last state in which the FSM was in before the current one.  This could be useful if you have conditional transition behavior as you move into a new state which depends on what state you're moving *from*.
 * `_currentAction` - concatenates "{state}.{handler}" for the operation in progress.  This is provided as a convenience for both logging (if needed) and if you need to check during an operation to see if the last action taken is the same action being taken now.
 * `_priorAction` - concatenates "{state}.{handler" for the last operation that took place.  See the above explanation for more context.
+* `eventListeners` - an object containing the event names (keys) and an array of subscribers listening to the event.  You should not need to interact with this directly. Instead, use the `on` and `off` prototype methods.
+* `eventQueue` - an array of input/events that have been deferred by calling `deferUntilTransition` or `deferUntilNextHandler`. This queue is processed automatically for you.
+* `namespace` - the namespace value you passed in during instantiaton, or a default value machina provides.
+* `priorState` - the last state in which the FSM was in before the current one.  This could be useful if you have conditional transition behavior as you move into a new state which depends on what state you're moving *from*.
+* `state` - string value of the current state of the FSM.  This will match one of the state names in the `states` object.  Do *not* change this value directly.  Use the `transition()` method on the prototype to change an FSM's state.
+* `states` - the object literal of states & handlers you passed in when you created the FSM.
+* `targetReplayState` - used internally during transitions to manage the proper replay of queued events if multiple transitions result from one initial transition.
 
 ## The Top Level machina object
 The top level `machina` object has the following members:
@@ -166,13 +220,11 @@ machina.js uses [anvil.js](http://appendto.github.com/anvil.js/) to build.
 
 * Install node.js (and consider using [nvm](https://github.com/creationix/nvm) to manage your node versions)
 * Run `npm install -g anvil.js` to install anvil.js
-* Navigate to the root of this repository and run `anvil`
+* Navigate to the root of this repository and run `anvil`.  Optionall run `anvil --ci --host --browser`.  This will open your browser to the root index.html of the repository, and anvil will be in continuous integration mode - changes to source and tests will causes tests to be refreshed automatically, etc.
 * Build output will be placed in the lib folder.
 
-One great feature of [anvil.js](http://appendto.github.com/anvil.js/) is the ability to host your tests and other content using express in node.js.
 To run tests or examples:
 
-* Navigate to the root of this repository and run `anvil --host`
 * For tests, navigate to `http://localhost:3080/spec`
 * For the "atm" example, navigate to `http://localhost:3080/atm`
 	* check the source of Repository.js in this example for the account/pin information that can be used to log in.
@@ -200,3 +252,11 @@ To run tests or examples:
 * FSM constructor only handles an eventListeners object (not the old array of strings to pre-populate event names)
 * bug fixed where event queue would still be replayed on a state that transitioned during its entry action
 * transitioned and transitioning events are now just a single "transition" event
+
+### v0.3.0
+* FSM constructor function supports inheritance via an `extend` function - working just like backbone.js objects.
+* FSMs can have a top-level 'catch-all' ("*") handler defined, which would apply to any state, unless the state overrides it with a state-specific catch-all handler.
+* FSM states now have an `_onExit` handler.
+* The `fireEvent` method is deprecated.  Use `trigger` or the `emit` alias.
+* State input handlers can now be a string value (indicating that a transition should occur to a state matching that string value) in addition to a function.
+
