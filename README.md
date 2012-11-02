@@ -104,27 +104,28 @@ eventListeners: {
 
 ```javascript
 states: {
-		"uninitialized" : {
-			_onEnter: function() {
-				// do stuff immediately after we transition into uninitialized
-			},
+    "uninitialized" : {
+        _onEnter: function() {
+            // do stuff immediately after we transition into uninitialized
+        },
 
-			"initialize" : function( payload ) {
-				// handle an "initialize" event
-			},
+        "initialize" : function( payload ) {
+            // handle an "initialize" event
+        },
 
-			_onExit: function() {
-				// do stuff immediately before we transition out of uninitialized
-				// Note: you can't transition or invoke another inside _onExit
-			}
-		},
+        _onExit: function() {
+            // do stuff immediately before we transition out of uninitialized
+            // Note: you can't transition or invoke another inside _onExit
+        }
+    },
 
-		"ready" : {
-			"*" : function( payload ) {
-				// any message that comes while in the "ready" state will get handled here
-				// unless it matches another "ready" handler exactly.
-            }
-		}
+    "ready" : {
+        "*" : function( payload ) {
+            // any message that comes while in the "ready" state will get handled here
+            // unless it matches another "ready" handler exactly.
+        }
+    }
+}
 ```
 
 `initialState` - the state in which the FSM will start.  As soon as the instance is created, the FSM calls the `transition` method to transition into this state.
