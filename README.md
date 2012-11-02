@@ -51,7 +51,7 @@ var storageFsm = new machina.Fsm({
 			},
 
 			"save.customer" : function( payload ) {
-				if( verifyState( payload ) ) {
+				if( verifyState() ) {
                     storage.saveToRemote( payload );
 				}
 			},
@@ -69,7 +69,7 @@ var storageFsm = new machina.Fsm({
 
 		"offline" : {
 			"save.customer" : function( payload ) {
-				if( verifyState( payload ) ) {
+				if( verifyState() ) {
                     storage.saveToLocal( payload );
 				}
             }
