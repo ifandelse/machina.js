@@ -229,7 +229,7 @@ machina.js uses [anvil.js](http://appendto.github.com/anvil.js/) to build.
 
 * Install node.js (and consider using [nvm](https://github.com/creationix/nvm) to manage your node versions)
 * Run `npm install -g anvil.js` to install anvil.js
-* Navigate to the root of this repository and run `anvil`.  Optionall run `anvil --ci --host --browser`.  This will open your browser to the root index.html of the repository, and anvil will be in continuous integration mode - changes to source and tests will causes tests to be refreshed automatically, etc.
+* Navigate to the root of this repository and run `anvil`.  Optionally run `anvil --ci --host --browser`.  This will open your browser to the root index.html of the repository, and run anvil in continuous integration mode (changes to source and tests will causes tests to be refreshed automatically, etc).
 * Build output will be placed in the lib folder.
 
 To run tests or examples:
