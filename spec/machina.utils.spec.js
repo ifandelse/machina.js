@@ -1,6 +1,6 @@
 var rgx = /.*\.[0-9]*/;
 describe( "machina.utils", function () {
-	describe( "When calling machina.utils.makeFsmExchange", function () {
+	describe( "When calling machina.utils.makeFsmNamespace", function () {
 		var name = machina.utils.makeFsmNamespace();
 		it( "should return fsm.{number}", function () {
 			expect( rgx.test( name ) ).to.be( true );
