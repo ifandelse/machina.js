@@ -9,6 +9,7 @@ var machina = {
 			this.eventListeners[eventName] = [];
 		}
 		this.eventListeners[eventName].push( callback );
+    return callback;
 	},
 	off : function ( eventName, callback ) {
 		if ( this.eventListeners[eventName] ) {
@@ -27,3 +28,5 @@ var machina = {
 		newFsm : []
 	}
 };
+
+machina.emit = machina.trigger;

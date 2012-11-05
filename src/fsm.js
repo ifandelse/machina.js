@@ -102,17 +102,20 @@ _.extend( Fsm.prototype, {
 		}, this );
 	},
 	clearQueue : function ( type, name ) {
-		var filter;
-		if ( type === NEXT_TRANSITION ) {
-			filter = function ( evnt ) {
-				return (evnt.type === NEXT_TRANSITION && (name ? evnt.untilState === name : true ));
-			};
-		} else if ( type === NEXT_HANDLER ) {
-			filter = function ( evnt ) {
-				return evnt.type === NEXT_HANDLER;
-			};
+		if(!type) {
+			this.eventQueue = [];
+		} else {var filter;
+			if ( type === NEXT_TRANSITION ) {
+				filter = function ( evnt ) {
+					return (evnt.type === NEXT_TRANSITION && (name ? evnt.untilState === name : true ));
+				};
+			} else if ( type === NEXT_HANDLER ) {
+				filter = function ( evnt ) {
+					return evnt.type === NEXT_HANDLER;
+				};
+			}
+			this.eventQueue = _.filter( this.eventQueue, filter );
 		}
-		this.eventQueue = _.filter( this.eventQueue, filter );
 	},
 	deferUntilTransition : function ( stateName ) {
 		if ( this.currentActionArgs ) {
@@ -129,14 +132,30 @@ _.extend( Fsm.prototype, {
 		}
 	},
 	on : function ( eventName, callback ) {
-		if ( !this.eventListeners[eventName] ) {
-			this.eventListeners[eventName] = [];
+		var self = this;
+		if ( !self.eventListeners[eventName] ) {
+			self.eventListeners[eventName] = [];
 		}
-		this.eventListeners[eventName].push( callback );
+		self.eventListeners[eventName].push( callback );
+    return {
+	    eventName: eventName,
+	    callback: callback,
+	    off: function() {
+		    self.off(eventName, callback);
+	    }
+    };
 	},
 	off : function ( eventName, callback ) {
-		if ( this.eventListeners[eventName] ) {
-			this.eventListeners[eventName] = _.without( this.eventListeners[eventName], callback );
+		if(!eventName) {
+			this.eventListeners = {};
+		} else {
+			if ( this.eventListeners[eventName] ) {
+				if(callback) {
+					this.eventListeners[eventName] = _.without( this.eventListeners[eventName], callback );
+				} else {
+					this.eventListeners[eventName] = [];
+				}
+			}
 		}
 	}
 } );

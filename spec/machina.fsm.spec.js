@@ -1,7 +1,7 @@
 var fsm;
 describe( "machina.Fsm", function () {
 	describe( "When creating a new Fsm", function () {
-		describe( "When verifying core behavior", function() {
+		describe( "When verifying core behavior", function () {
 			var event1 = 0,
 				event2 = 0,
 				event3 = 0,
@@ -100,19 +100,19 @@ describe( "machina.Fsm", function () {
 				expect( !!event2 ).to.be( true );
 				expect( !!event3 ).to.be( true );
 			} );
-		});
+		} );
 
-		describe( "When defaulting all values (other than states)", function() {
+		describe( "When defaulting all values (other than states)", function () {
 			var rgx = /.*\.[0-9]*/;
 			var fsm;
-			fsm = new machina.Fsm({ states: { uninitialized: {} }});
+			fsm = new machina.Fsm( { states : { uninitialized : {} }} );
 
 			it( "state should default to uninitialized", function () {
 				expect( fsm.state ).to.be( "uninitialized" );
 			} );
 			it( "events should default to 1 empty arrays", function () {
-				console.log("HERE");
-				console.log(fsm);
+				console.log( "HERE" );
+				console.log( fsm );
 				expect( fsm.eventListeners["*"].length ).to.be( 0 );
 			} );
 			it( "namespace should default to expected pattern", function () {
@@ -133,33 +133,35 @@ describe( "machina.Fsm", function () {
 			it( "current action should be empty", function () {
 				expect( fsm._currentAction ).to.be( "" );
 			} );
-		});
+		} );
 
-		describe( "When providing an initialize function", function(){
+		describe( "When providing an initialize function", function () {
 			var counter = 0;
 			var initializeInvoked = 0;
 			var onEnterInvoked = 0;
 			var newFsmInvoked = 0;
-			var newFsmFn = function() {
+			var newFsmFn = machina.on( "newfsm", function () {
 				newFsmInvoked = counter;
 				counter++;
 				machina.off( "newfsm", newFsmFn );
-			};
-			machina.on( "newfsm", newFsmFn );
-			fsm = new machina.Fsm({
-				states: {
-					uninitialized: {
-						_onEnter: function() {
+			} );
+			fsm = new machina.Fsm( {
+				states : {
+					uninitialized : {
+						_onEnter : function () {
 							onEnterInvoked = counter;
 							counter++;
 						}
 					}
 				},
-				initialize: function() {
+				initialize : function () {
 					initializeInvoked = counter;
 					counter++;
 				}
-			});
+			} );
+			it( "should have returned the subscriber callback when calling machina.on", function () {
+
+			} );
 			it( "should have executed initialize, newfsm and transition in proper order", function () {
 				expect( initializeInvoked ).to.be( 0 );
 				expect( newFsmInvoked ).to.be( 1 );
@@ -507,28 +509,29 @@ describe( "machina.Fsm", function () {
 		var catchAllHandled = [],
 			stateSpecificCatchAllHandled = [];
 
-		var fsm = new machina.Fsm({
-			"*": function ( action ) {
+		var fsm = new machina.Fsm( {
+			"*" : function ( action ) {
 				catchAllHandled.push( action );
 			},
-			initialState: "off",
-			states: {
-				off: { },
-				on: {
-					switchoff: function () { }
+			initialState : "off",
+			states : {
+				off : { },
+				on : {
+					switchoff : function () {
+					}
 				},
-				waiting: {
-					"*": function ( action ) {
+				waiting : {
+					"*" : function ( action ) {
 						stateSpecificCatchAllHandled.push( action );
 					}
 				}
 			}
-		});
+		} );
 
 		beforeEach( function () {
 			catchAllHandled = [];
 			stateSpecificCatchAllHandled = [];
-		});
+		} );
 
 		it( "should globally catch unhandled events", function () {
 			fsm.transition( "off" );
@@ -540,7 +543,7 @@ describe( "machina.Fsm", function () {
 			fsm.handle( "switchoff" );
 
 			expect( catchAllHandled.length ).to.be( 3 );
-		});
+		} );
 
 		it( "should not globally catch unhandled events for which there is a state specific catch all handler", function () {
 			fsm.transition( "waiting" );
@@ -549,7 +552,7 @@ describe( "machina.Fsm", function () {
 
 			expect( catchAllHandled.length ).to.be( 0 );
 			expect( stateSpecificCatchAllHandled.length ).to.be( 2 );
-		});
+		} );
 
 		it( "should receive the action name as the first argument", function () {
 			fsm.transition( "off" );
@@ -570,33 +573,157 @@ describe( "machina.Fsm", function () {
 
 			expect( stateSpecificCatchAllHandled[0] ).to.be( "switchon" );
 			expect( stateSpecificCatchAllHandled[1] ).to.be( "switchoff" );
-		});
+		} );
 
-	});
+	} );
 
-	describe( "When overriding the default eventListeners member", function() {
+	describe( "When overriding the default eventListeners member", function () {
 		var someEventRaised = false;
-		fsm = new machina.Fsm({
-			eventListeners: { "someEvent" : [function() { someEventRaised = true; }]},
+		fsm = new machina.Fsm( {
+			eventListeners : { "someEvent" : [function () {
+				someEventRaised = true;
+			}]},
 			states : {
-				uninitialized: {
-					doStuff: function() {
-						this.fireEvent("someEvent");
+				uninitialized : {
+					doStuff : function () {
+						this.fireEvent( "someEvent" );
 					}
 				}
 			}
-		});
+		} );
 
-		fsm.handle("doStuff");
+		fsm.handle( "doStuff" );
 
 		it( "should not show a '*' event placeholder", function () {
-			expect( fsm.eventListeners.hasOwnProperty("*") ).to.be( false );
-		});
+			expect( fsm.eventListeners.hasOwnProperty( "*" ) ).to.be( false );
+		} );
 
 		it( "should show a 'someEvent' event placeholder", function () {
-			expect( fsm.eventListeners.hasOwnProperty("someEvent") ).to.be( true );
+			expect( fsm.eventListeners.hasOwnProperty( "someEvent" ) ).to.be( true );
 			expect( fsm.eventListeners.someEvent.length ).to.be( 1 );
 			expect( someEventRaised ).to.be( true );
-		});
-	});
+		} );
+	} );
+
+	describe( "When subscribing and unsubscribing events", function () {
+		var SomeFsm = machina.Fsm.extend( {
+			states : {
+				uninitialized : {
+					doStuff : function () {
+						this.fireEvent( "someEvent" );
+					}
+				}
+			}
+		} );
+
+		describe( "With single subscribe and unsubscribe", function(){
+			var fsm = new SomeFsm();
+			it( "should subscribe and unsubscribe (via off) a single listener", function () {
+				var sub = fsm.on("someEvent", function() { });
+				expect( fsm.eventListeners.someEvent.length ).to.be( 1 );
+				fsm.off(sub.eventName, sub.callback);
+				expect( fsm.eventListeners.someEvent.length ).to.be( 0 );
+			} );
+			it( "should subscribe and unsubscribe (via ret object) a single listener", function () {
+				var sub = fsm.on("someEvent", function() { });
+				expect( fsm.eventListeners.someEvent.length ).to.be( 1 );
+				sub.off();
+				expect( fsm.eventListeners.someEvent.length ).to.be( 0 );
+			} );
+		} );
+
+		describe( "With multiple subscribe and single unsubscribe", function(){
+			it( "should subscribe and unsubscribe (via off) a single listener", function () {
+				var fsm = new SomeFsm();
+				var subA = fsm.on("someEvent", function() { });
+				var subB = fsm.on("someEvent", function() { });
+				var subC = fsm.on("someEvent", function() { });
+				expect( fsm.eventListeners.someEvent.length ).to.be( 3 );
+				fsm.off(subA.eventName, subA.callback);
+				expect( fsm.eventListeners.someEvent.length ).to.be( 2 );
+			} );
+			it( "should subscribe and unsubscribe (via ret object) a single listener", function () {
+				var fsm = new SomeFsm();
+				var subA = fsm.on("someEvent", function() { });
+				var subB = fsm.on("someEvent", function() { });
+				var subC = fsm.on("someEvent", function() { });
+				expect( fsm.eventListeners.someEvent.length ).to.be( 3 );
+				subA.off();
+				expect( fsm.eventListeners.someEvent.length ).to.be( 2 );
+			} );
+		} );
+
+		describe( "With multiple subscribe and multiple unsubscribe on one event", function(){
+			it( "should subscribe and unsubscribe (via off)", function () {
+				var fsm = new SomeFsm();
+				var subA = fsm.on("someEvent", function() { });
+				var subB = fsm.on("someEvent", function() { });
+				var subC = fsm.on("someEvent", function() { });
+				expect( fsm.eventListeners.someEvent.length ).to.be( 3 );
+				fsm.off(subA.eventName);
+				expect( fsm.eventListeners.someEvent.length ).to.be( 0 );
+			} );
+			it( "should subscribe and unsubscribe (via ret object) a single listener", function () {
+				var fsm = new SomeFsm();
+				var subA = fsm.on("someEvent", function() { });
+				var subB = fsm.on("someEvent", function() { });
+				var subC = fsm.on("someEvent", function() { });
+				expect( fsm.eventListeners.someEvent.length ).to.be( 3 );
+				subA.off();
+				subB.off();
+				subC.off();
+				expect( fsm.eventListeners.someEvent.length ).to.be( 0 );
+			} );
+		} );
+
+		describe( "With multiple subscribe and multiple unsubscribe on multiple events", function(){
+			it( "should subscribe and unsubscribe (via off)", function () {
+				var fsm = new SomeFsm();
+				var subA = fsm.on("someEvent", function() { });
+				var subB = fsm.on("someEvent", function() { });
+				var subC = fsm.on("someEvent2", function() { });
+				expect( fsm.eventListeners.someEvent.length ).to.be( 2 );
+				expect( fsm.eventListeners.someEvent2.length ).to.be( 1 );
+				fsm.off(subA.eventName, subA.callback);
+				expect( fsm.eventListeners.someEvent.length ).to.be( 1 );
+				expect( fsm.eventListeners.someEvent2.length ).to.be( 1 );
+			} );
+			it( "should subscribe and unsubscribe (via ret object) a single listener", function () {
+				var fsm = new SomeFsm();
+				var subA = fsm.on("someEvent", function() { });
+				var subB = fsm.on("someEvent", function() { });
+				var subC = fsm.on("someEvent2", function() { });
+				expect( fsm.eventListeners.someEvent.length ).to.be( 2 );
+				expect( fsm.eventListeners.someEvent2.length ).to.be( 1 );
+				subA.off();
+				expect( fsm.eventListeners.someEvent.length ).to.be( 1 );
+				expect( fsm.eventListeners.someEvent2.length ).to.be( 1 );
+			} );
+		} );
+
+		describe( "With multiple subscribe and global unsubscribe on a single event", function(){
+			it( "should subscribe and unsubscribe (via off)", function () {
+				var fsm = new SomeFsm();
+				var subA = fsm.on("someEvent", function() { });
+				var subB = fsm.on("someEvent", function() { });
+				var subC = fsm.on("someEvent", function() { });
+				expect( fsm.eventListeners.someEvent.length ).to.be( 3 );
+				fsm.off();
+				expect( _.isEmpty( fsm.eventListeners ) ).to.be( true );
+			} );
+		} );
+
+		describe( "With multiple subscribe and global unsubscribe on multiple events", function(){
+			it( "should subscribe and unsubscribe (via off)", function () {
+				var fsm = new SomeFsm();
+				var subA = fsm.on("someEvent", function() { });
+				var subB = fsm.on("someEvent", function() { });
+				var subC = fsm.on("someEvent2", function() { });
+				expect( fsm.eventListeners.someEvent.length ).to.be( 2 );
+				expect( fsm.eventListeners.someEvent2.length ).to.be( 1 );
+				fsm.off();
+				expect( _.isEmpty( fsm.eventListeners ) ).to.be( true );
+			} );
+		} );
+	} );
 } );
