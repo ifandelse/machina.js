@@ -13,6 +13,11 @@
             "name" : "Jim Cowart",
             "email" : "jim@ifandelse.com",
             "url" : "http://freshbrewedcode.com/jimcowart"
+        },
+        {
+            "name" : "Doug Neiner",
+            "email" : "doug@dougneiner.com",
+            "url" : "http://code.dougneiner.com"
         }
     ],
 	"keywords" : [
