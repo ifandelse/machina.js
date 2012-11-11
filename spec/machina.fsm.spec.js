@@ -19,7 +19,7 @@ describe( "machina.Fsm", function () {
 						"uninitialized" : {
 							"event1" : function () {
 								event1++;
-								this.fireEvent( "CustomEvent" );
+								this.emit( "CustomEvent" );
 								this.transition( "initialized" );
 							},
 							_onExit : function () {
@@ -452,6 +452,48 @@ describe( "machina.Fsm", function () {
 		} );
 	} );
 
+  describe("When creating two instances from the same extended constructor function", function(){
+    var eventAFired = 0, eventBFired = 0;
+    var SomeFsm = machina.Fsm.extend({
+      initialState: "notStarted",
+      states: {
+        "notStarted" : {
+          start : function () {
+            this.trigger("customAEvent");
+            this.transition( "started" );
+          }
+        },
+        "started" : {
+          finish : function () {
+            this.trigger("customBEvent");
+            this.transition( "finished" );
+          }
+        },
+        "finished" : {
+          _onEnter : function () {
+
+          }
+        }
+      }
+    });
+    var fsmA = new SomeFsm();
+    var fsmB = new SomeFsm({ initialState: "started" });
+    fsmA.on("customAEvent", function(){
+      eventAFired++;
+    });
+    fsmB.on("customBEvent", function(){
+      eventBFired++;
+    });
+    fsmA.handle("start");
+    fsmB.handle("finish");
+    it("should not share events", function(){
+      expect(fsmA.state).to.be("started");
+      expect(fsmB.state).to.be("finished");
+      expect(eventAFired).to.be(1);
+      expect(eventBFired).to.be(1);
+    });
+  });
+
 	describe( "When extending an FSM constructor function with existing states & handlers", function () {
 		var SomeFsm = machina.Fsm.extend( {
 			initialState : "notStarted",
@@ -586,7 +628,7 @@ describe( "machina.Fsm", function () {
 			states : {
 				uninitialized : {
 					doStuff : function () {
-						this.fireEvent( "someEvent" );
+						this.emit( "someEvent" );
 					}
 				}
 			}
@@ -610,7 +652,7 @@ describe( "machina.Fsm", function () {
 			states : {
 				uninitialized : {
 					doStuff : function () {
-						this.fireEvent( "someEvent" );
+						this.emit( "someEvent" );
 					}
 				}
 			}

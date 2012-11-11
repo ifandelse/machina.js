@@ -16,16 +16,16 @@ var Atm = function () {
 			"uninitialized" : {
 				"initialize" : function () {
 					// TODO: any other init work here...
-					this.fireEvent( "Initialized" );
+					this.emit( "Initialized" );
 					this.transition( "unauthorized" );
 				}
 			},
 			"unauthorized" : {
 				_onEnter : function () {
-					this.fireEvent( "UnAuthorized", { msg : "Please enter your account and PIN." } );
+					this.emit( "UnAuthorized", { msg : "Please enter your account and PIN." } );
 				},
 				"*" : function () {
-					this.fireEvent( "UnAuthorized", { msg : "You must authenticate first." } );
+					this.emit( "UnAuthorized", { msg : "You must authenticate first." } );
 				},
 				authorize : function ( credentials ) {
 					if ( authRepository.authorize( credentials.acct, credentials.pin ) ) {
@@ -33,20 +33,20 @@ var Atm = function () {
 						this.transition( "authorized" );
 						return;
 					}
-					this.fireEvent( "UnAuthorized", { msg : "Invalid Account and/or PIN."} );
+					this.emit( "UnAuthorized", { msg : "Invalid Account and/or PIN."} );
 				}
 			},
 			"authorized" : {
 				_onEnter : function () {
-					this.fireEvent( "Authorized", { acct : this.acct } );
+					this.emit( "Authorized", { acct : this.acct } );
 				},
 				deposit : function ( amount ) {
 					var result = clientRepository.deposit( this.acct, amount );
-					this.fireEvent( "Result", result );
+					this.emit( "Result", result );
 				},
 				withdrawal : function ( amount ) {
 					var result = clientRepository.withdrawal( this.acct, amount );
-					this.fireEvent( "Result", result );
+					this.emit( "Result", result );
 				},
 				deauthorize : function () {
 					authRepository.deauthorize( this.acct );

@@ -1,4 +1,5 @@
-# machina.js
+# machina.js - v0.3.0
+**Be sure to read the release notes for v0.3.0 at the bottom of this page. This release involves one breaking API change**
 
 ## What is it?
 Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been loosely inspired by the Erlang/OTP FSM behaviors.
@@ -62,7 +63,7 @@ var storageFsm = new machina.Fsm({
 					// Big assumption here!  In the real world,
 					// we'd batch this sync in reasonable chunks.
 					storage.saveBatchToRemote( unsynced );
-					this.fireEvent( "CustomerSyncComplete", { customers: unsynced } );
+					this.emit( "CustomerSyncComplete", { customers: unsynced } );
 				}
 			}
 		},
@@ -222,7 +223,7 @@ The top level `machina` object has the following members:
 	* `makeFsmNamespace` - function that provides a default "channel" or "exchange" for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
 * `on` - function used to subscribe a callback to top-level machina events (currently the only event published at this level is "newFsm")
 * `off` - function used to unsubscribe a callback to top-level machina events.
-* `eventListeners` - an object literal containing the top-level `fireEvent` call as well as susbcribers to any top-level events.
+* `eventListeners` - an object literal containing the top-level `emit` call as well as susbcribers to any top-level events.
 
 ## Build, Tests & Examples
 machina.js uses [anvil.js](http://appendto.github.com/anvil.js/) to build.
@@ -266,6 +267,6 @@ To run tests or examples:
 * FSM constructor function supports inheritance via an `extend` function - working mostly identical to backbone.js objects.
 * FSMs can have a top-level 'catch-all' ("*") handler defined, which would apply to any state, unless the state overrides it with a state-specific catch-all handler.
 * FSM states now have an `_onExit` handler.
-* The `fireEvent` method is deprecated.  Use `trigger` or the `emit` alias.
+* **The `fireEvent` has been removed.  Use `emit` or the `trigger` alias. This is a breaking API change.**
 * State input handlers can now be a string value (indicating that a transition should occur to a state matching that string value) in addition to a function.
 

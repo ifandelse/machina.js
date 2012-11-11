@@ -81,13 +81,13 @@ var resourceGetter = {
 					this.checkIfReady();
 				},
 				"itemData.getFailed" : function () {
-					this.fireEvent( "dataGetFail", { attempts : ++this.constraints.waitingOnData.attempts } );
+					this.emit( "dataGetFail", { attempts : ++this.constraints.waitingOnData.attempts } );
 					resourceGetter.getNews();
 				}
 			},
 			"ready" : {
 				_onEnter : function () {
-					this.fireEvent( "appReady" );
+					this.emit( "appReady" );
 				},
 				refresh : "waitingOnData"
 			}

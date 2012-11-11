@@ -10,7 +10,7 @@ var Fsm = function ( options ) {
 
 _.extend( Fsm.prototype, {
 	initialize: function() { },
-	fireEvent : function ( eventName ) {
+	emit : function ( eventName ) {
 		var args = arguments;
 		if(this.eventListeners["*"]) {
 			_.each( this.eventListeners["*"], function ( callback ) {
@@ -49,17 +49,17 @@ _.extend( Fsm.prototype, {
 					handler = this[ "*" ];
 					this._currentAction = "*";
 				}
-				this.fireEvent.apply( this, [HANDLING].concat( args ) );
+				this.emit.apply( this, [HANDLING].concat( args ) );
 				Object.prototype.toString.call( handler ) === "[object String]"
 					? this.transition( handler )
 					: handler.apply( this, catchAll ? args : args.slice( 1 ) );
-				this.fireEvent.apply( this, [HANDLED].concat( args ) );
+				this.emit.apply( this, [HANDLED].concat( args ) );
 				this._priorAction = this._currentAction;
 				this._currentAction = "";
 				this.processQueue( NEXT_HANDLER );
 			}
 			else {
-				this.fireEvent.apply( this, [NO_HANDLER].concat( args ) );
+				this.emit.apply( this, [NO_HANDLER].concat( args ) );
 			}
 			this.currentActionArgs = undefined;
 		}
@@ -77,7 +77,7 @@ _.extend( Fsm.prototype, {
 					this.states[oldState]._onExit.call( this );
 					this.inExitHandler = false;
 				}
-				this.fireEvent.apply( this, [TRANSITION, oldState, newState ] );
+				this.emit.apply( this, [TRANSITION, oldState, newState ] );
 				if ( this.states[newState]._onEnter ) {
 					this.states[newState]._onEnter.call( this );
 				}
@@ -86,7 +86,7 @@ _.extend( Fsm.prototype, {
 				}
 				return;
 			}
-			this.fireEvent.apply( this, [INVALID_STATE, this.state, newState ] );
+			this.emit.apply( this, [INVALID_STATE, this.state, newState ] );
 		}
 	},
 	processQueue : function ( type ) {
@@ -121,14 +121,14 @@ _.extend( Fsm.prototype, {
 		if ( this.currentActionArgs ) {
 			var queued = { type : NEXT_TRANSITION, untilState : stateName, args : this.currentActionArgs };
 			this.eventQueue.push( queued );
-			this.fireEvent.apply( this, [ DEFERRED, this.state, queued ] );
+			this.emit.apply( this, [ DEFERRED, this.state, queued ] );
 		}
 	},
 	deferUntilNextHandler : function () {
 		if ( this.currentActionArgs ) {
 			var queued = { type : NEXT_TRANSITION, args : this.currentActionArgs };
 			this.eventQueue.push( queued );
-			this.fireEvent.apply( this, [ DEFERRED, this.state, queued ] );
+			this.emit.apply( this, [ DEFERRED, this.state, queued ] );
 		}
 	},
 	on : function ( eventName, callback ) {
@@ -160,7 +160,7 @@ _.extend( Fsm.prototype, {
 	}
 } );
 
-Fsm.prototype.trigger = Fsm.prototype.emit = Fsm.prototype.fireEvent;
+Fsm.prototype.trigger = Fsm.prototype.emit;
 
 var ctor = function () {};
 
