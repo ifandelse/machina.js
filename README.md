@@ -18,7 +18,7 @@ Machina.js is a JavaScript framework for highly customizable finite state machin
 	* Hook into the top level "newFsm" event to give other components in your app a handle to your FSMs as they are created.
 
 ## How do I use it?
-(Be sure to check out the example folder in this repository for more in-depth demos - especially if you're interested in a working 'connectivity' FSM. The example below is just scratching the surface of one...)
+(The [wiki](https://github.com/ifandelse/machina.js/wiki) has more extensive API documentation. Also, be sure to check out the example folder in this repository for more in-depth demos - especially if you're interested in a working 'connectivity' FSM. The example below is just scratching the surface of one...)
 
 Creating an FSM:
 
