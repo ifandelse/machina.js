@@ -28,7 +28,9 @@
         </ul>
       </header>
       <section>
-        <h1>machina.js</h1>
+        <h1>machina.js - v0.3.0</h1>
+
+<p><strong>Be sure to read the release notes for v0.3.0 at the bottom of this page. This release involves one breaking API change</strong></p>
 
 <h2>What is it?</h2>
 
@@ -62,7 +64,7 @@
 </li>
 </ul><h2>How do I use it?</h2>
 
-<p>(Be sure to check out the example folder in this repository for more in-depth demos).</p>
+<p>(The <a href="https://github.com/ifandelse/machina.js/wiki">wiki</a> has more extensive API documentation. Also, be sure to check out the example folder in this repository for more in-depth demos - especially if you're interested in a working 'connectivity' FSM. The example below is just scratching the surface of one...)</p>
 
 <p>Creating an FSM:</p>
 
@@ -95,7 +97,7 @@
             <span class="p">},</span>
 
             <span class="s2">"save.customer"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
-                <span class="k">if</span><span class="p">(</span> <span class="nx">verifyState</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">)</span> <span class="p">{</span>
+                <span class="k">if</span><span class="p">(</span> <span class="nx">verifyState</span><span class="p">()</span> <span class="p">)</span> <span class="p">{</span>
                     <span class="nx">storage</span><span class="p">.</span><span class="nx">saveToRemote</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">);</span>
                 <span class="p">}</span>
             <span class="p">},</span>
@@ -106,14 +108,14 @@
                     <span class="c1">// Big assumption here!  In the real world,</span>
                     <span class="c1">// we'd batch this sync in reasonable chunks.</span>
                     <span class="nx">storage</span><span class="p">.</span><span class="nx">saveBatchToRemote</span><span class="p">(</span> <span class="nx">unsynced</span> <span class="p">);</span>
-                    <span class="k">this</span><span class="p">.</span><span class="nx">fireEvent</span><span class="p">(</span> <span class="s2">"CustomerSyncComplete"</span><span class="p">,</span> <span class="p">{</span> <span class="nx">customers</span><span class="o">:</span> <span class="nx">unsynced</span> <span class="p">}</span> <span class="p">);</span>
+                    <span class="k">this</span><span class="p">.</span><span class="nx">emit</span><span class="p">(</span> <span class="s2">"CustomerSyncComplete"</span><span class="p">,</span> <span class="p">{</span> <span class="nx">customers</span><span class="o">:</span> <span class="nx">unsynced</span> <span class="p">}</span> <span class="p">);</span>
                 <span class="p">}</span>
             <span class="p">}</span>
         <span class="p">},</span>
 
         <span class="s2">"offline"</span> <span class="o">:</span> <span class="p">{</span>
             <span class="s2">"save.customer"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
-                <span class="k">if</span><span class="p">(</span> <span class="nx">verifyState</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">)</span> <span class="p">{</span>
+                <span class="k">if</span><span class="p">(</span> <span class="nx">verifyState</span><span class="p">()</span> <span class="p">)</span> <span class="p">{</span>
                     <span class="nx">storage</span><span class="p">.</span><span class="nx">saveToLocal</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">);</span>
                 <span class="p">}</span>
             <span class="p">}</span>
@@ -124,11 +126,11 @@
 
 <p>In the above example, the developer has created an FSM with two possible states: <code>online</code> and <code>offline</code>.  While the fsm is in the <code>online</code> state, it will respond to <code>save.customer</code> and <code>sync.customer</code> events.  External code triggers these events by calling the <code>handle</code> method on the FSM.  For example <code>storageFsm.handle( "sync.customer", { other: "data" } )</code>.  The <code>handle</code> method first looks to see if a named handler exists matching the name of the one passed in, then also checks for a catch-all handler (indicated by the "*") if a named handler isn't found.  The <code>offline</code> state of the above FSM only responds to <code>save.customer</code> events.  If any other type of event name is passed to the <code>handle</code> method of the FSM, other than what each state explicitly handles, it is ignored.</p>
 
-<p>In addition to the state/handler definitions, the above code example as shows that the FSM will start in the <code>offline</code> state, and can generate a <code>CustomerSyncComplete</code> event.</p>
+<p>In addition to the state/handler definitions, the above code example as shows that this particular FSM will start in the <code>offline</code> state, and can generate a <code>CustomerSyncComplete</code> custom event.</p>
 
 <p>The <code>verifyState</code> and <code>applicationOffline</code> methods are custom to this instance of the FSM, and are not, of course, part of machina by default.</p>
 
-<p>You can see in the above example that anytime the FSM handles an event, it first checks to see if the state needs to be transitioned between offline and online (via the <code>verifyState</code> call).  States can also have an <code>_onEnter</code> method - which is fired immediately after the FSM transitions into that state.</p>
+<p>You can see in the above example that anytime the FSM handles an event, it first checks to see if the state needs to be transitioned between offline and online (via the <code>verifyState</code> call).  States can also have <code>_onEnter</code> and <code>_onExit</code> methods. <code>_onEnter</code> is fired immediately after the FSM transitions into that state and <code>_onExit</code> is fired immediately before transitioning to a new state.</p>
 
 <p>Now that we've seen a quick example, let's do a whirlwind API tour.</p>
 
@@ -136,40 +138,100 @@
 
 <p>When you are creating a new FSM instance, <code>machina.Fsm</code> takes 1 argument - an options object.  Here's a breakdown of the members of this <code>options</code> object:</p>
 
-<p><code>eventListeners</code> - Either a list of event names that the FSM can publish, or an object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers ahead of time.)</p>
+<p><code>eventListeners</code> - An object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers as you create the instance.)</p>
 
-<div class="highlight"><pre><span class="nx">eventListeners</span><span class="o">:</span> <span class="p">[</span><span class="s2">"String"</span><span class="p">,</span> <span class="s2">"List"</span><span class="p">,</span> <span class="s2">"ofEvent"</span><span class="p">,</span> <span class="s2">"names"</span><span class="p">];</span> <span class="c1">// this is converted into an object similar to below</span>
-<span class="c1">// OR</span>
-<span class="nx">eventListeners</span><span class="o">:</span> <span class="p">{</span>
-    <span class="nx">MyEvent1</span><span class="o">:</span> <span class="p">[],</span>
+<div class="highlight"><pre><span class="nx">eventListeners</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">MyEvent1</span><span class="o">:</span> <span class="p">[</span><span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span> <span class="p">}],</span>
     <span class="nx">MyEvent2</span><span class="o">:</span> <span class="p">[</span><span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span> <span class="p">}]</span>
 <span class="p">}</span>
 </pre></div>
 
-<p><code>states</code> - an object detailing the possible states the FSM can be in, plus the kinds of events/messages each state can handle.  States can have normal "handlers" as well as a catch-all handler ("*"), and an _onEnter handler invoked when the FSM has transitioned into that state.</p>
+<p><code>states</code> - an object detailing the possible states the FSM can be in, plus the kinds of events/messages each state can handle.  States can have normal "handlers" as well as a catch-all handler ("*"), an <code>_onEnter</code> handler invoked when the FSM has transitioned into that state and an <code>_onExit</code> handler invoked when transitioning out of that state.</p>
 
 <div class="highlight"><pre><span class="nx">states</span><span class="o">:</span> <span class="p">{</span>
-        <span class="s2">"uninitialized"</span> <span class="o">:</span> <span class="p">{</span>
-            <span class="nx">_onEnter</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-                <span class="c1">// do stuff immediately after we transition into uninitialized</span>
-            <span class="p">},</span>
-
-            <span class="s2">"initialize"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
-                <span class="c1">// handle an "initialize" event</span>
-            <span class="p">}</span>
+    <span class="s2">"uninitialized"</span> <span class="o">:</span> <span class="p">{</span>
+        <span class="nx">_onEnter</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+            <span class="c1">// do stuff immediately after we transition into uninitialized</span>
         <span class="p">},</span>
 
-        <span class="s2">"ready"</span> <span class="o">:</span> <span class="p">{</span>
-            <span class="s2">"*"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
-                <span class="c1">// any message that comes while in the "ready" state will get handled here</span>
-                <span class="c1">// unless it matches another "ready" handler exactly.</span>
-            <span class="p">}</span>
+        <span class="s2">"initialize"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// handle an "initialize" event</span>
+        <span class="p">},</span>
+
+        <span class="nx">_onExit</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+            <span class="c1">// do stuff immediately before we transition out of uninitialized</span>
+            <span class="c1">// Note: you can't transition or invoke another inside _onExit</span>
         <span class="p">}</span>
+    <span class="p">},</span>
+
+    <span class="s2">"ready"</span> <span class="o">:</span> <span class="p">{</span>
+        <span class="s2">"*"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// any message that comes while in the "ready" state will get handled here</span>
+            <span class="c1">// unless it matches another "ready" handler exactly.</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
 </pre></div>
 
 <p><code>initialState</code> - the state in which the FSM will start.  As soon as the instance is created, the FSM calls the <code>transition</code> method to transition into this state.</p>
 
 <p><code>namespace</code> - a name that indentifies the FSM if it's wired up to a message bus through a plugin.</p>
+
+<p><code>initialize</code> - a function that will be executed as soon as the FSM instance has been created. This is the last step of the FSM's constructor function, prior to emitting that a new instance has been created, and transitioning (if applicable) into the initial state.</p>
+
+<h3>Inheritance</h3>
+
+<p>FSMs can be created via the <code>machina.Fsm</code> constructor function as described above, or you can create an 'extended' FSM constructor function by calling <code>machina.Fsm.extend()</code>.  If you are familiar with backbone.js, machina's inheritance is identical to how backbone objects work, except that machina performs a deep extend, which means you can inherit from an FSM, adding new handlers to a state defined by the base (and you can override already-declared handlers, etc.).  With this being the case, it's better to think of machina's inhertiance as "blending" and not just extending. Let's look at an example:</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">BaseFsm</span> <span class="o">=</span> <span class="nx">machina</span><span class="p">.</span><span class="nx">Fsm</span><span class="p">.</span><span class="nx">extend</span><span class="p">({</span>
+    <span class="nx">initialize</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// do stuff here if you want to perform more setup work</span>
+        <span class="c1">// this executes prior to any state transitions or handler invocations</span>
+    <span class="p">},</span>
+    <span class="nx">states</span><span class="o">:</span> <span class="p">{</span>
+        <span class="nx">uninitialized</span><span class="o">:</span> <span class="p">{</span>
+            <span class="nx">start</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+                <span class="k">this</span><span class="p">.</span><span class="nx">transition</span><span class="p">(</span><span class="s2">"first"</span><span class="p">);</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="nx">first</span><span class="o">:</span> <span class="p">{</span>
+            <span class="nx">handlerA</span> <span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+                <span class="c1">// do stuff</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">});</span>
+<span class="c1">// getting an instance from our extended constructor function above</span>
+<span class="kd">var</span> <span class="nx">baseFsm</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">BaseFsm</span><span class="p">();</span>
+
+<span class="c1">// taking the BaseFsm constructor function and doing more</span>
+<span class="kd">var</span> <span class="nx">ChildFsm</span> <span class="o">=</span> <span class="nx">BaseFsm</span><span class="p">.</span><span class="nx">extend</span><span class="p">({</span>
+    <span class="nx">states</span><span class="o">:</span> <span class="p">{</span>
+        <span class="nx">uninitialized</span><span class="o">:</span> <span class="p">{</span>
+            <span class="nx">skipToTheEnd</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+                <span class="k">this</span><span class="p">.</span><span class="nx">transition</span><span class="p">(</span><span class="s2">"second"</span><span class="p">);</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="nx">first</span><span class="o">:</span> <span class="p">{</span>
+            <span class="nx">handlerA</span> <span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+                <span class="k">this</span><span class="p">.</span><span class="nx">transition</span><span class="p">(</span><span class="s2">"second"</span><span class="p">);</span>
+            <span class="p">}</span>
+            <span class="nx">handlerB</span> <span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+                <span class="c1">// do some work...</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="nx">second</span><span class="o">:</span> <span class="p">{</span>
+            <span class="nx">handlerC</span> <span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+                <span class="c1">// do stuff</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">});</span>
+
+<span class="c1">// This instance will have a blending of BaseFsm and ChildFsm's states/handlers</span>
+<span class="kd">var</span> <span class="nx">childFsm</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">ChildFsm</span><span class="p">();</span>
+
+</pre></div>
 
 <h2>The machina.Fsm Prototype</h2>
 
@@ -177,7 +239,7 @@
 
 <ul>
 <li>
-<code>fireEvent(eventName, [other args...])</code> - looks in the <code>events</code> object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to <code>fireEvent</code>.</li>
+<code>trigger(eventName, [other args...])</code> - looks in the <code>events</code> object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to <code>trigger</code>. (NOTE: - this call is currently aliased as <code>emit</code> as well.)</li>
 <li>
 <code>handle(msgType, [other args...])</code> - This is the main way you should be interacting with an FSM instance (assuming no message bus is present).  It will try to find a matching eventName/msgType under the current state and invoke it, if one exists.  Otherwise it will look for a catch-all handler, or simply ignore the message and raise the "NoHandler" event.</li>
 <li>
@@ -189,6 +251,8 @@
 <li>
 <code>processQueue()</code> - called internally during state transitions and after handler methods have been invoked.  This call processes any queued events (queued by use of <code>deferUntilTransition</code> and/or <code>deferUntilNextHandler</code>).</li>
 <li>
+<code>clearQueue(type, name)</code> - allows you to clear out queued events that have been deferred either until another handler or another state transition. The <code>type</code> parameter can be either "transition" or "handler".  If you pass "transition" for the <code>type</code>, then the optional <code>name</code> parameter allows you to clear events queued for a specific state transition. Not providing a <code>name</code> when the <code>type</code> is "transition" will clear out all events queued for <em>any</em> state transition.</li>
+<li>
 <code>on(eventName, callback)</code> - used to subscribe to events that the FSM generates.</li>
 <li>
 <code>off(eventName, callback)</code> - used to unsubscribe to FSM events.</li>
@@ -196,13 +260,23 @@
 
 <ul>
 <li>
-<code>state</code> - string value of the current state of the FSM.  This will match one of the state names in the <code>states</code> object.  Do <em>not</em> change this value directly.  Use the <code>transition()</code> method on the prototype to change an FSM's state.</li>
-<li>
-<code>priorState</code> - the last state in which the FSM was in before the current one.  This could be useful if you have conditional transition behavior as you move into a new state which depends on what state you're moving <em>from</em>.</li>
-<li>
 <code>_currentAction</code> - concatenates "{state}.{handler}" for the operation in progress.  This is provided as a convenience for both logging (if needed) and if you need to check during an operation to see if the last action taken is the same action being taken now.</li>
 <li>
 <code>_priorAction</code> - concatenates "{state}.{handler" for the last operation that took place.  See the above explanation for more context.</li>
+<li>
+<code>eventListeners</code> - an object containing the event names (keys) and an array of subscribers listening to the event.  You should not need to interact with this directly. Instead, use the <code>on</code> and <code>off</code> prototype methods.</li>
+<li>
+<code>eventQueue</code> - an array of input/events that have been deferred by calling <code>deferUntilTransition</code> or <code>deferUntilNextHandler</code>. This queue is processed automatically for you.</li>
+<li>
+<code>namespace</code> - the namespace value you passed in during instantiaton, or a default value machina provides.</li>
+<li>
+<code>priorState</code> - the last state in which the FSM was in before the current one.  This could be useful if you have conditional transition behavior as you move into a new state which depends on what state you're moving <em>from</em>.</li>
+<li>
+<code>state</code> - string value of the current state of the FSM.  This will match one of the state names in the <code>states</code> object.  Do <em>not</em> change this value directly.  Use the <code>transition()</code> method on the prototype to change an FSM's state.</li>
+<li>
+<code>states</code> - the object literal of states &amp; handlers you passed in when you created the FSM.</li>
+<li>
+<code>targetReplayState</code> - used internally during transitions to manage the proper replay of queued events if multiple transitions result from one initial transition.</li>
 </ul><h2>The Top Level machina object</h2>
 
 <p>The top level <code>machina</code> object has the following members:</p>
@@ -225,7 +299,7 @@
 <li>
 <code>off</code> - function used to unsubscribe a callback to top-level machina events.</li>
 <li>
-<code>eventListeners</code> - an object literal containing the top-level <code>fireEvent</code> call as well as susbcribers to any top-level events.</li>
+<code>eventListeners</code> - an object literal containing the top-level <code>emit</code> call as well as susbcribers to any top-level events.</li>
 </ul><h2>Build, Tests &amp; Examples</h2>
 
 <p>machina.js uses <a href="http://appendto.github.com/anvil.js/">anvil.js</a> to build.</p>
@@ -233,15 +307,11 @@
 <ul>
 <li>Install node.js (and consider using <a href="https://github.com/creationix/nvm">nvm</a> to manage your node versions)</li>
 <li>Run <code>npm install -g anvil.js</code> to install anvil.js</li>
-<li>Navigate to the root of this repository and run <code>anvil -b</code>
-</li>
+<li>Navigate to the root of this repository and run <code>anvil</code>.  Optionally run <code>anvil --ci --host --browser</code>.  This will open your browser to the root index.html of the repository, and run anvil in continuous integration mode (changes to source and tests will causes tests to be refreshed automatically, etc).</li>
 <li>Build output will be placed in the lib folder.</li>
-</ul><p>One great feature of <a href="http://appendto.github.com/anvil.js/">anvil.js</a> is the ability to host your tests and other content using express in node.js.
-To run tests or examples:</p>
+</ul><p>To run tests or examples:</p>
 
 <ul>
-<li>Navigate to the root of this repository and run <code>anvil --host</code>
-</li>
 <li>For tests, navigate to <code>http://localhost:3080/spec</code>
 </li>
 <li>For the "atm" example, navigate to <code>http://localhost:3080/atm</code>
@@ -268,6 +338,21 @@ To run tests or examples:</p>
 <li>added beginnings of connectivity example</li>
 <li>updated ext dependencies (postal, etc.)</li>
 <li>added bower component.json</li>
+</ul><h3>v0.2.2</h3>
+
+<ul>
+<li>event names are now all lower case</li>
+<li>FSM constructor only handles an eventListeners object (not the old array of strings to pre-populate event names)</li>
+<li>bug fixed where event queue would still be replayed on a state that transitioned during its entry action</li>
+<li>transitioned and transitioning events are now just a single "transition" event</li>
+</ul><h3>v0.3.0</h3>
+
+<ul>
+<li>FSM constructor function supports inheritance via an <code>extend</code> function - working mostly identical to backbone.js objects.</li>
+<li>FSMs can have a top-level 'catch-all' ("*") handler defined, which would apply to any state, unless the state overrides it with a state-specific catch-all handler.</li>
+<li>FSM states now have an <code>_onExit</code> handler.</li>
+<li><strong>The <code>fireEvent</code> has been removed.  Use <code>emit</code> or the <code>trigger</code> alias. This is a breaking API change.</strong></li>
+<li>State input handlers can now be a string value (indicating that a transition should occur to a state matching that string value) in addition to a function.</li>
 </ul>
       </section>
       <footer>
