@@ -17,9 +17,9 @@
 }( this, document, function ( machina, postal, global, document, undefined ) {
 
 	var dataParser = {
-		transition: function(data) {
+		/*transition: function(data) {
 			return { fromState: data[0], toState: data[1] };
-		}
+		}*/
 	};
 	
 	var bus = machina.bus = {

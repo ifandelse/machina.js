@@ -117,7 +117,7 @@ define( [
 			this.updateLed( data.toState );
 		},
 		handling : function ( data ) {
-			this.updateLed( data );
+			this.updateLed( data.inputType );
 		},
 		handled : function ( data ) {
 
