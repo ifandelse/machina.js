@@ -5,31 +5,41 @@ describe( "machina.Fsm", function () {
 			var event1 = 0,
 				event2 = 0,
 				event3 = 0,
-				noHandlerInvoked = false,
-				transitionedHandler = false,
-				handlingHandler = false,
-				handledHandler = false,
-				invalidStateHandler = false,
-				customEventInvoked = false,
-				onEnterInvoked = false,
-				onExitInvoked = false,
+        events = {
+          noHandlerInvoked    : false,
+          transitionedHandler : false,
+          handlingHandler     : false,
+          handledHandler      : false,
+          invalidStateHandler : false,
+          customEventInvoked  : false,
+          onEnterInvoked      : false,
+          onExitInvoked       : false
+        },
+        payloads = {
+          noHandler           : undefined,
+          transitionedHandler : undefined,
+          handlingHandler     : undefined,
+          handledHandler      : undefined,
+          invalidStateHandler : undefined,
+          customEvent         : undefined
+        },
 				enterExitOrder = [],
 				xfsm = new machina.Fsm( {
 					states : {
 						"uninitialized" : {
 							"event1" : function () {
 								event1++;
-								this.emit( "CustomEvent" );
+								this.emit( "CustomEvent", "George Washington" );
 								this.transition( "initialized" );
 							},
 							_onExit : function () {
-								onExitInvoked = true;
+                events.onExitInvoked = true;
 								enterExitOrder.push( "exit" );
 							}
 						},
 						"initialized" : {
 							_onEnter : function () {
-								onEnterInvoked = true;
+                events.onEnterInvoked = true;
 								enterExitOrder.push( "enter" );
 							},
 							"event2" : function () {
@@ -41,60 +51,84 @@ describe( "machina.Fsm", function () {
 						}
 					},
 					eventListeners : {
-						"nohandler" : [function () {
-							noHandlerInvoked = true;
+						"nohandler" : [function (x) {
+              events.noHandlerInvoked = true;
+              payloads.noHandler = x;
+            }],
+						"transition" : [function (x) {
+              events.transitionedHandler = true;
+              payloads.transitionedHandler = x;
 						}],
-						"transition" : [function () {
-							transitionedHandler = true;
+						"handling" : [function (x) {
+              events.handlingHandler = true;
+              payloads.handlingHandler = x;
 						}],
-						"handling" : [function () {
-							handlingHandler = true;
+						"handled" : [function (x) {
+              events.handledHandler = true;
+              payloads.handledHandler = x;
 						}],
-						"handled" : [function () {
-							handledHandler = true;
+						"invalidstate" : [function (x) {
+              events.invalidStateHandler = true;
+              payloads.invalidStateHandler = x;
 						}],
-						"invalidstate" : [function () {
-							invalidStateHandler = true;
-						}],
-						"CustomEvent" : [function () {
-							customEventInvoked = true;
+						"CustomEvent" : [function (x) {
+              events.customEventInvoked = true;
+              payloads.customEvent = x;
 						}]
 					}
 				} );
-			xfsm.handle( "nothingwillgetthis" );
+			xfsm.handle( "nothingwillgetthis", "Testing 123" );
 			xfsm.handle( "event1" );
 			xfsm.handle( "event2" );
 			xfsm.handle( "event3" );
 			xfsm.transition( "NoSuchState" );
 
 			it( "should fire the transition event", function () {
-				expect( transitionedHandler ).to.be( true );
+				expect( events.transitionedHandler ).to.be( true );
 			} );
+      it( "transition event should be the correct structure", function() {
+        expect( payloads.transitionedHandler).to.eql({ fromState: "uninitialized", toState: "initialized" });
+      } );
 			it( "should fire the nohandler event", function () {
-				expect( noHandlerInvoked ).to.be( true );
+				expect( events.noHandlerInvoked ).to.be( true );
 			} );
+      it( "nohandler event should be the correct structure", function() {
+        expect( payloads.noHandler ).to.eql( { inputType: 'nothingwillgetthis', args: [ 'Testing 123' ] } );
+      } );
 			it( "should fire the handling event", function () {
-				expect( handlingHandler ).to.be( true );
+				expect( events.handlingHandler ).to.be( true );
 			} );
+      it( "handling event should be the correct structure", function() {
+        expect( payloads.handlingHandler ).to.eql( { inputType: 'event3', args: [] } );
+      } );
 			it( "should fire the handled event", function () {
-				expect( handledHandler ).to.be( true );
+				expect( events.handledHandler ).to.be( true );
 			} );
+      it( "handled event should be the correct structure", function() {
+        expect( payloads.handledHandler ).to.eql( { inputType: 'event3', args: [] } );
+      } );
 			it( "should fire the CustomEvent event", function () {
-				expect( customEventInvoked ).to.be( true );
+				expect( events.customEventInvoked ).to.be( true );
 			} );
+      it( "CustomEvent event should be the correct structure", function() {
+        expect( payloads.customEvent ).to.eql( "George Washington" );
+      } );
 			it( "should fire the OnEnter handler", function () {
-				expect( onEnterInvoked ).to.be( true );
+				expect( events.onEnterInvoked ).to.be( true );
 			} );
 			it( "should fire the OnExit handler", function () {
-				expect( onExitInvoked ).to.be( true );
+				expect( events.onExitInvoked ).to.be( true );
 			} );
 			it( "should fire the OnExit handler before the OnEnter handler", function () {
 				expect( enterExitOrder[ 0 ] ).to.be( "exit" );
 				expect( enterExitOrder[ 1 ] ).to.be( "enter" );
 			} );
 			it( "should fire the invalidstate handler", function () {
-				expect( invalidStateHandler ).to.be( true );
+				expect( events.invalidStateHandler ).to.be( true );
 			} );
+      it( "invalidstate event should be the correct structure", function() {
+        expect( payloads.invalidStateHandler ).to.eql( { state: 'initialized', attemptedState: 'NoSuchState' } );
+      } );
 			it( "should have invoked handlers", function () {
 				expect( !!event1 ).to.be( true );
 				expect( !!event2 ).to.be( true );
