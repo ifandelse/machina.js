@@ -192,7 +192,7 @@ var childFsm = new ChildFsm();
 ## The machina.Fsm Prototype
 Each instance of an machina FSM has the following methods available via it's prototype:
 
-* `trigger(eventName, [other args...])` - looks in the `events` object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to `trigger`. (NOTE: - this call is currently aliased as `emit` as well.)
+* `emit(eventName, [other args...])` - looks in the `events` object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to `emit`. (NOTE: - this call is currently aliased as `emit` as well.)
 * `handle(msgType, [other args...])` - This is the main way you should be interacting with an FSM instance (assuming no message bus is present).  It will try to find a matching eventName/msgType under the current state and invoke it, if one exists.  Otherwise it will look for a catch-all handler, or simply ignore the message and raise the "NoHandler" event.
 * `transition(newState)` - Called when transitioning into a new state.
 * `deferUntilTransition(stateName)` - calling this within a state handler function will queue the handler's arguments to be executed at a later time.  If you don't provide the `stateName` argument, it will replay the event after the next state transition.  Providing the `stateName` argument will queue the event until the FSM transitions into that state.
@@ -264,9 +264,14 @@ To run tests or examples:
 * transitioned and transitioning events are now just a single "transition" event
 
 ### v0.3.0
+
 * FSM constructor function supports inheritance via an `extend` function - working mostly identical to backbone.js objects.
 * FSMs can have a top-level 'catch-all' ("*") handler defined, which would apply to any state, unless the state overrides it with a state-specific catch-all handler.
 * FSM states now have an `_onExit` handler.
 * **The `fireEvent` has been removed.  Use `emit` or the `trigger` alias. This is a breaking API change.**
 * State input handlers can now be a string value (indicating that a transition should occur to a state matching that string value) in addition to a function.
+
+### v0.3.1
+
+* All internal events have been refactored to emit single argument payloads. **This is a breaking API change.**
 
