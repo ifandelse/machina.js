@@ -28,9 +28,9 @@
         </ul>
       </header>
       <section>
-        <h1>machina.js - v0.3.0</h1>
+        <h1>machina.js - v0.3.1</h1>
 
-<p><strong>Be sure to read the release notes for v0.3.0 at the bottom of this page. This release involves one breaking API change</strong></p>
+<p><strong>Be sure to read the release notes for v0.3.0 and v0.3.1 at the bottom of this page. These releases involve two breaking API changes.</strong></p>
 
 <h2>What is it?</h2>
 
@@ -239,7 +239,7 @@
 
 <ul>
 <li>
-<code>trigger(eventName, [other args...])</code> - looks in the <code>events</code> object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to <code>trigger</code>. (NOTE: - this call is currently aliased as <code>emit</code> as well.)</li>
+<code>emit(eventName, [other args...])</code> - looks in the <code>events</code> object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to <code>emit</code>. (NOTE: - this call is currently aliased as <code>emit</code> as well.)</li>
 <li>
 <code>handle(msgType, [other args...])</code> - This is the main way you should be interacting with an FSM instance (assuming no message bus is present).  It will try to find a matching eventName/msgType under the current state and invoke it, if one exists.  Otherwise it will look for a catch-all handler, or simply ignore the message and raise the "NoHandler" event.</li>
 <li>
@@ -353,6 +353,11 @@
 <li>FSM states now have an <code>_onExit</code> handler.</li>
 <li><strong>The <code>fireEvent</code> has been removed.  Use <code>emit</code> or the <code>trigger</code> alias. This is a breaking API change.</strong></li>
 <li>State input handlers can now be a string value (indicating that a transition should occur to a state matching that string value) in addition to a function.</li>
+</ul><h3>v0.3.1</h3>
+
+<ul>
+<li>All internal events have been refactored to emit single argument payloads. <strong>This is a breaking API change.</strong>
+</li>
 </ul>
       </section>
       <footer>
