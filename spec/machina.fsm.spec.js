@@ -581,6 +581,50 @@ describe( "machina.Fsm", function () {
 		} );
 	} );
 
+    describe( "When extending an FSM contructor twice with overriden state & handlers", function () {
+        var Base = machina.Fsm.extend({
+            initialState: 'S',
+            states: {
+                S: {
+                    action1: function () {
+                    },
+                    action2: function () {
+                    }
+                }
+            }
+        });
+
+        var Extend1 = Base.extend({
+            states: {
+                S: {
+                    action1: function () {
+                    }
+                }
+            }
+        });
+
+        var Extend2 = Base.extend({
+            states: {
+                S: {
+                    action2: function () {
+                    }
+                }
+            }
+        });
+
+        var b1 = new Base();
+        var e1 = new Extend1();
+        var e2 = new Extend2();
+
+        it( "should produce instances that have distinct action handlers", function () {
+            expect( b1.states.S.action1 !== e1.states.S.action1 );
+            expect( b1.states.S.action2 !== e2.states.S.action2 );
+
+            expect( e1.states.S.action1 !== e2.states.S.action1 );
+            expect( e1.states.S.action2 !== e2.states.S.action2 );
+        });
+    });
+
 	describe( "When providing a global catch-all handler", function () {
 		var catchAllHandled = [],
 			stateSpecificCatchAllHandled = [];
