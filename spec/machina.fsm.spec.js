@@ -145,8 +145,6 @@ describe( "machina.Fsm", function () {
 				expect( fsm.state ).to.be( "uninitialized" );
 			} );
 			it( "events should default to 1 empty arrays", function () {
-				console.log( "HERE" );
-				console.log( fsm );
 				expect( fsm.eventListeners["*"].length ).to.be( 0 );
 			} );
 			it( "namespace should default to expected pattern", function () {
@@ -581,7 +579,7 @@ describe( "machina.Fsm", function () {
 		} );
 	} );
 
-    describe( "When extending an FSM contructor twice with overriden state & handlers", function () {
+    describe( "When extending an FSM constructor twice with overridden state & handlers", function () {
         var Base = machina.Fsm.extend({
             initialState: 'S',
             states: {

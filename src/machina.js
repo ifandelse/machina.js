@@ -1,32 +1,21 @@
-//import("utils.js");
-//import("fsm.js");
-
-var machina = {
-	Fsm : Fsm,
-	utils : utils,
-	on : function ( eventName, callback ) {
-		if ( !this.eventListeners[eventName] ) {
-			this.eventListeners[eventName] = [];
+(function ( root, factory ) {
+	if ( typeof module === "object" && module.exports ) {
+		// Node, or CommonJS-Like environments
+		module.exports = function ( _ ) {
+			return factory( _ );
 		}
-		this.eventListeners[eventName].push( callback );
-    return callback;
-	},
-	off : function ( eventName, callback ) {
-		if ( this.eventListeners[eventName] ) {
-			this.eventListeners[eventName] = _.without( this.eventListeners[eventName], callback );
-		}
-	},
-  trigger : function ( eventName ) {
-		var i = 0, len, args = arguments, listeners = this.eventListeners[eventName] || [];
-		if ( listeners && listeners.length ) {
-			_.each( listeners, function ( callback ) {
-				callback.apply( null, slice.call( args, 1 ) );
-			} );
-		}
-	},
-	eventListeners : {
-		newFsm : []
+	} else if ( typeof define === "function" && define.amd ) {
+		// AMD. Register as an anonymous module.
+		define( ["underscore"], function ( _ ) {
+			return factory( _, root );
+		} );
+	} else {
+		// Browser globals
+		root.machina = factory( root._, root );
 	}
-};
-
-machina.emit = machina.trigger;
+}( this, function ( _, global, undefined ) {
+	//import("utils.js");
+	//import("fsm.js");
+	//import("api.js");
+	return machina;
+} ));

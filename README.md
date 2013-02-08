@@ -1,5 +1,5 @@
-# machina.js - v0.3.1
-**Be sure to read the release notes for v0.3.0 and v0.3.1 at the bottom of this page. These releases involve two breaking API changes.**
+# machina.js - v0.3.2
+**Be sure to read the release notes for v0.3.0-v0.3.2 at the bottom of this page. These releases involve a couple of breaking API changes.**
 
 ## What is it?
 Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been loosely inspired by the Erlang/OTP FSM behaviors.
@@ -225,8 +225,26 @@ The top level `machina` object has the following members:
 * `off` - function used to unsubscribe a callback to top-level machina events.
 * `eventListeners` - an object literal containing the top-level `emit` call as well as susbcribers to any top-level events.
 
+## Pulling machina into your environment
+
+```javascript
+// If you're not using an AMD loader, machina is available on the window
+var MyFsm = machina.Fsm.extend({ /* your stuff */});
+
+// If you're using an AMD loader:
+require(['machina'], function(machina){
+	return machina.Fsm.extend({ /* your stuff */});
+});
+
+// In node.js, the module returns a factory function:
+var underscore = require('underscore');
+var machina = require('machina')(underscore);
+var MyFsm = machina.Fsm.extend({ /* your stuff */});
+```
+
+
 ## Build, Tests & Examples
-machina.js uses [anvil.js](http://appendto.github.com/anvil.js/) to build.
+machina.js uses [anvil.js](http://github.com/anviljs/anvil.js/) to build.
 
 * Install node.js (and consider using [nvm](https://github.com/creationix/nvm) to manage your node versions)
 * Run `npm install -g anvil.js` to install anvil.js
@@ -274,4 +292,12 @@ To run tests or examples:
 ### v0.3.1
 
 * All internal events have been refactored to emit single argument payloads. **This is a breaking API change.**
+
+### v0.3.2
+
+* Fixed a bug in the internal deepExtend method (see [this issue](https://github.com/ifandelse/machina.js/pull/12)).
+* The `initialize` call will now receive the arguments passed to the constructor (see [this issue](https://github.com/ifandelse/machina.js/issues/11)).
+* **The commonjs/node.s wrapper now returns a factory, to which you must pass dependencies (underscore, in this case). This is a breaking API change**
+* The build process now outputs one module that can be used as a commonjs, AMD or standard client lib.
+
 

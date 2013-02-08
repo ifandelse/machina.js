@@ -2,20 +2,24 @@
  machina
  Author: Jim Cowart (http://freshbrewedcode.com/jimcowart)
  License: Dual licensed MIT (http://www.opensource.org/licenses/mit-license) & GPL (http://www.opensource.org/licenses/gpl-license)
- Version 0.3.0
+ Version 0.3.2
  */
 (function ( root, factory ) {
-	if ( typeof define === "function" && define.amd ) {
+	if ( typeof module === "object" && module.exports ) {
+		// Node, or CommonJS-Like environments
+		module.exports = function ( _ ) {
+			return factory( _ );
+		}
+	} else if ( typeof define === "function" && define.amd ) {
 		// AMD. Register as an anonymous module.
 		define( ["underscore"], function ( _ ) {
 			return factory( _, root );
 		} );
 	} else {
 		// Browser globals
-    root.machina = factory( root._, root );
+		root.machina = factory( root._, root );
 	}
 }( this, function ( _, global, undefined ) {
-
 	var slice = [].slice;
 	var NEXT_TRANSITION = "transition";
 	var NEXT_HANDLER = "handler";
@@ -57,7 +61,7 @@
 					obj[sourcePropKey] = sourcePropVal;
 				},
 				"object" : function ( obj, sourcePropKey, sourcePropVal ) {
-					obj[sourcePropKey] = deepExtend( obj[sourcePropKey] || {}, sourcePropVal );
+					obj[sourcePropKey] = deepExtend( {}, obj[sourcePropKey] || {}, sourcePropVal );
 				},
 				"array" : function ( obj, sourcePropKey, sourcePropVal ) {
 					obj[sourcePropKey] = [];
@@ -98,7 +102,7 @@
 	var Fsm = function ( options ) {
 		_.extend( this, options );
 		_.defaults(this, utils.getDefaultOptions());
-		this.initialize();
+		this.initialize.apply(this, arguments);
 		machina.emit( NEW_FSM, this );
 		if ( this.initialState ) {
 			this.transition( this.initialState );
@@ -309,7 +313,6 @@
 		fsm.extend = this.extend;
 		return fsm;
 	};
-	
 	var machina = {
 		Fsm : Fsm,
 		utils : utils,
@@ -339,6 +342,5 @@
 	};
 	
 	machina.emit = machina.trigger;
-
 	return machina;
 } ));

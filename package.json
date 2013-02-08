@@ -1,7 +1,7 @@
 {
     "name" : "machina",
     "description" : "A library for creating powerful and flexible finite state machines.  Loosely inspired by Erlang/OTP's gen_fsm behavior.",
-    "version" : "0.3.1",
+    "version" : "0.3.2",
     "homepage" : "http://machina-js.org/",
     "repository" : {
         "type" : "git",
@@ -18,6 +18,11 @@
             "name" : "Doug Neiner",
             "email" : "doug@dougneiner.com",
             "url" : "http://code.dougneiner.com"
+        },
+        {
+	        "name" : "Friedemann Altrock",
+	        "email" : "frodenius@gmail.com",
+	        "url" : "https://github.com/fwg"
         }
     ],
 	"keywords" : [

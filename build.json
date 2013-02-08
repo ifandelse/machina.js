@@ -2,17 +2,15 @@
 	"anvil.uglify" : {
 		"exclude" : ["./node/machina.js"]
 	},
-	"anvil.http" : {
-		"paths" : {
-			"/lib"          : "./lib",
-			"/ext"          : "./ext",
-			"/src"          : "./src",
-			"/load"         : "./example/load",
-			"/atm"          : "./example/atm",
-			"/connectivity" : "./example/connectivity",
-			"/spec"         : "./spec",
-			"/"             : "./"
-		}
+	"httpPaths" : {
+		"/lib"          : "./lib",
+		"/ext"          : "./ext",
+		"/src"          : "./src",
+		"/load"         : "./example/load",
+		"/atm"          : "./example/atm",
+		"/connectivity" : "./example/connectivity",
+		"/spec"         : "./spec",
+		"/"             : "./"
 	},
 	"anvil.jshint" : {
 		"all" : true

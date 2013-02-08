@@ -1,7 +1,7 @@
 var Fsm = function ( options ) {
 	_.extend( this, options );
 	_.defaults(this, utils.getDefaultOptions());
-	this.initialize();
+	this.initialize.apply(this, arguments);
 	machina.emit( NEW_FSM, this );
 	if ( this.initialState ) {
 		this.transition( this.initialState );
