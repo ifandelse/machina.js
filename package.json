@@ -41,8 +41,8 @@
         "email" : "jim@ifandelse.com",
         "url" : "http://github.com/ifandelse/machina.js/issues"
    },
-	"directories" : { "lib" : "lib/node" },
-    "main" : "lib/node/machina.js",
+	"directories" : { "lib" : "lib" },
+    "main" : "lib/machina.js",
 	"engines" : {
 		"node" : ">=0.4.0"
 	},
