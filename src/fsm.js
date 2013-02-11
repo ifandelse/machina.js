@@ -21,7 +21,7 @@ _.extend( Fsm.prototype, {
 						console.log( exception.toString() );
 					}
 				}
-			} );
+			}, this );
 		}
 		if ( this.eventListeners[eventName] ) {
 			_.each( this.eventListeners[eventName], function ( callback ) {
@@ -32,7 +32,7 @@ _.extend( Fsm.prototype, {
 						console.log( exception.toString() );
 					}
 				}
-			} );
+			}, this );
 		}
 	},
 	handle : function ( inputType ) {

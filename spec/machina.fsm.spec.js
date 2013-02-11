@@ -134,6 +134,22 @@ describe( "machina.Fsm", function () {
 				expect( !!event2 ).to.be( true );
 				expect( !!event3 ).to.be( true );
 			} );
+
+			it( "should execute event callbacks with the fsm as the context", function () {
+				var fsm = new machina.Fsm({
+					states: {
+						sample: {}
+					}
+				});
+
+				var context;
+				fsm.on( "transition", function () {
+					context = this;
+				});
+
+				fsm.transition( "sample" );
+				expect( context ).to.be( fsm );
+			});
 		} );
 
 		describe( "When defaulting all values (other than states)", function () {
