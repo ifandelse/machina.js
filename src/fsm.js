@@ -137,13 +137,13 @@ _.extend( Fsm.prototype, {
 			self.eventListeners[eventName] = [];
 		}
 		self.eventListeners[eventName].push( callback );
-    return {
-	    eventName: eventName,
-	    callback: callback,
-	    off: function() {
-		    self.off(eventName, callback);
-	    }
-    };
+		return {
+			eventName: eventName,
+			callback: callback,
+			off: function() {
+				self.off(eventName, callback);
+			}
+		};
 	},
 	off : function ( eventName, callback ) {
 		if(!eventName) {

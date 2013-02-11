@@ -3,7 +3,7 @@
 		// Node, or CommonJS-Like environments
 		module.exports = function ( _ ) {
 			return factory( _ );
-		}
+		};
 	} else if ( typeof define === "function" && define.amd ) {
 		// AMD. Register as an anonymous module.
 		define( ["underscore"], function ( _ ) {
