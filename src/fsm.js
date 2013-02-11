@@ -65,7 +65,7 @@ _.extend( Fsm.prototype, {
 		}
 	},
 	transition : function ( newState ) {
-		if ( !this.inExitHandler ) {
+		if ( !this.inExitHandler && newState !== this.state ) {
 			var oldState;
 			if ( this.states[newState] ) {
 				this.targetReplayState = newState;

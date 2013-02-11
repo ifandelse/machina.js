@@ -441,6 +441,26 @@ describe( "machina.Fsm", function () {
 		} );
 	} );
 
+	describe( "When attempting to transition to the current state", function () {
+		var fsm = new machina.Fsm({
+			initialState: "one",
+			states: {
+				one: {}
+			}
+		});
+
+		it( "should not transition", function () {
+			var transitioned = false;
+			fsm.on( "transition", function () {
+				transitioned = true;
+			});
+
+			fsm.transition( "one" );
+
+			expect( transitioned ).to.not.be.ok();
+		});
+	});
+
 	describe( "When using string handler values instead of functions", function () {
 		var transitioned = false;
 		var fsm = new machina.Fsm( {
