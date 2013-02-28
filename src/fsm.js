@@ -37,18 +37,20 @@ _.extend( Fsm.prototype, {
 	},
 	handle : function ( inputType ) {
 		if ( !this.inExitHandler ) {
-			var states = this.states, current = this.state, args = slice.call( arguments, 0 ), handlerName, handler, catchAll;
+			var states = this.states, current = this.state, args = slice.call( arguments, 0 ), handlerName, handler, catchAll, action;
 			this.currentActionArgs = args;
 			if ( states[current][inputType] || states[current]["*"] || this[ "*" ] ) {
 				handlerName = states[current][inputType] ? inputType : "*";
 				catchAll = handlerName === "*";
 				if ( states[current][handlerName] ) {
 					handler = states[current][handlerName];
-					this._currentAction = current + "." + handlerName;
+					action = current + "." + handlerName;
 				} else {
 					handler = this[ "*" ];
-					this._currentAction = "*";
+					action = "*";
 				}
+				if ( ! this._currentAction ) 
+					this._currentAction = action ;
 				this.emit.call( this, HANDLING, { inputType: inputType, args: args.slice(1) } );
 				if (_.isFunction(handler))
 					handler = handler.apply( this, catchAll ? args : args.slice( 1 ) );
@@ -78,7 +80,7 @@ _.extend( Fsm.prototype, {
 					this.states[oldState]._onExit.call( this );
 					this.inExitHandler = false;
 				}
-				this.emit.call( this, TRANSITION, { fromState: oldState, toState: newState } );
+				this.emit.call( this, TRANSITION, { fromState: oldState, action: this._currentAction, toState: newState } );
 				if ( this.states[newState]._onEnter ) {
 					this.states[newState]._onEnter.call( this );
 				}
