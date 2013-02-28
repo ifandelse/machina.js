@@ -50,9 +50,10 @@ _.extend( Fsm.prototype, {
 					this._currentAction = "*";
 				}
 				this.emit.call( this, HANDLING, { inputType: inputType, args: args.slice(1) } );
-				Object.prototype.toString.call( handler ) === "[object String]"
-					? this.transition( handler )
-					: handler.apply( this, catchAll ? args : args.slice( 1 ) );
+				if (_.isFunction(handler))
+					handler = handler.apply( this, catchAll ? args : args.slice( 1 ) );
+				if (_.isString(handler))
+					this.transition( handler, handlerName ) ;
 				this.emit.call( this, HANDLED, { inputType: inputType, args: args.slice(1) } );
 				this._priorAction = this._currentAction;
 				this._currentAction = "";

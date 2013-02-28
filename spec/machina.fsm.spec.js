@@ -484,6 +484,32 @@ describe( "machina.Fsm", function () {
 		} );
 	} );
 
+	describe( "When using handler function that return string values", function () {
+		var transitioned = false;
+		var fsm = new machina.Fsm( {
+			initialState : "notstarted",
+			states : {
+				notstarted : {
+					"start" : function() {
+						return "started" ;
+					}
+				},
+				started : {
+					_onEnter : function () {
+						transitioned = true;
+					}
+				}
+			}
+		} );
+
+		fsm.handle( "start" );
+
+		it( "should transition into the started state", function () {
+			expect( transitioned ).to.be( true );
+		} );
+	} );
+
+
 	describe( "When creating an instance from an extended constructor function", function () {
 		var SomeFsm = machina.Fsm.extend( {
 			initialState : "notStarted",
