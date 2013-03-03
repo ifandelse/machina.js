@@ -55,7 +55,7 @@ _.extend( Fsm.prototype, {
 				if (_.isFunction(handler))
 					handler = handler.apply( this, catchAll ? args : args.slice( 1 ) );
 				if (_.isString(handler))
-					this.transition( handler, handlerName ) ;
+					this.transition( handler ) ;
 				this.emit.call( this, HANDLED, { inputType: inputType, args: args.slice(1) } );
 				this._priorAction = this._currentAction;
 				this._currentAction = "";

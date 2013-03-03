@@ -1,4 +1,4 @@
-# machina.js - v0.3.2
+# machina.js - v0.3.3
 **Be sure to read the release notes for v0.3.0-v0.3.2 at the bottom of this page. These releases involve a couple of breaking API changes.**
 
 ## What is it?
@@ -299,5 +299,12 @@ To run tests or examples:
 * The `initialize` call will now receive the arguments passed to the constructor (see [this issue](https://github.com/ifandelse/machina.js/issues/11)).
 * **The commonjs/node.s wrapper now returns a factory, to which you must pass dependencies (underscore, in this case). This is a breaking API change**
 * The build process now outputs one module that can be used as a commonjs, AMD or standard client lib.
+
+### v0.3.3
+
+* State handlers can optionally return a string value of the state to which you want to transition.
+* Transition events now include an `action` member which contains the "state.handler" value (string) indicating the current action which caused the transition.
+* Updated license info (still MIT, GPL >= 2.0)
+* Removed deprecated anvil dependency references
 
 

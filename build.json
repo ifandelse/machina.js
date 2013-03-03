@@ -21,5 +21,5 @@
 			"/browser/machina.*" : [ "./example/connectivity/js/lib/machina" ]
 		}
 	},
-	"dependencies" : [ "anvil.http", "anvil.uglify" ]
+	"dependencies" : [ "anvil.uglify", "anvil.jshint" ]
 }
