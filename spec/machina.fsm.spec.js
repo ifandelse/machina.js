@@ -87,7 +87,7 @@ describe( "machina.Fsm", function () {
 				expect( events.transitionedHandler ).to.be( true );
 			} );
 			it( "transition event should be the correct structure", function() {
-				expect( payloads.transitionedHandler).to.eql({ fromState: "uninitialized", toState: "initialized" });
+				expect( payloads.transitionedHandler).to.eql({ fromState: "uninitialized", action: "uninitialized.event1", toState: "initialized" });
 			} );
 			it( "should fire the nohandler event", function () {
 				expect( events.noHandlerInvoked ).to.be( true );
@@ -483,6 +483,69 @@ describe( "machina.Fsm", function () {
 			expect( transitioned ).to.be( true );
 		} );
 	} );
+
+	describe( "When using handler function that return string values", function () {
+		var transitioned = false;
+		var fsm = new machina.Fsm( {
+			initialState : "notstarted",
+			states : {
+				notstarted : {
+					"start" : function() {
+						return "started" ;
+					}
+				},
+				started : {
+					_onEnter : function () {
+						transitioned = true;
+					}
+				}
+			}
+		} );
+
+		fsm.handle( "start" );
+
+		it( "should transition into the started state", function () {
+			expect( transitioned ).to.be( true );
+		} );
+	} );
+
+	describe( "A handler function should be able to delegate to another handler.", function () {
+		var transitioned = false;
+		var fsm = new machina.Fsm( {
+			initialState : "notstarted",
+			states : {
+				notstarted : {
+					"delegate" : function() {
+						this.handle( "start" ) ;
+					},
+					"start" : function() {
+						this.transition( "started" );
+					}
+				},
+				started : {
+					_onEnter : function () {
+						transitioned = true;
+					}
+				}
+			}
+		} );
+
+		var transitionPayload;
+		fsm.on( "transition", function (x) {
+			transitionPayload = x;
+		});
+
+		fsm.handle( "delegate" );
+
+		it( "should have transitioned into the started state", function () {
+			expect( transitioned ).to.be( true );
+		} );
+		it( "transition's action should be the initial handler", function () {
+			expect( transitionPayload ).to.eql({ fromState: "notstarted", action: "notstarted.delegate", toState: "started" });
+		} );
+
+	} );
+
 
 	describe( "When creating an instance from an extended constructor function", function () {
 		var SomeFsm = machina.Fsm.extend( {
