@@ -1,4 +1,4 @@
-# machina.js - v0.3.3
+# machina.js - v0.3.4
 **Be sure to read the release notes for v0.3.0-v0.3.2 at the bottom of this page. These releases involve a couple of breaking API changes.**
 
 ## What is it?
@@ -307,4 +307,6 @@ To run tests or examples:
 * Updated license info (still MIT, GPL >= 2.0)
 * Removed deprecated anvil dependency references
 
+### v0.3.4
+* Underscore is no longer required to be passed into the factory function for node usage. It will be required behind the scenes if not provided.
 

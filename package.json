@@ -1,7 +1,7 @@
 {
     "name" : "machina",
     "description" : "A library for creating powerful and flexible finite state machines.  Loosely inspired by Erlang/OTP's gen_fsm behavior.",
-    "version" : "0.3.3",
+    "version" : "0.3.4",
     "homepage" : "http://machina-js.org/",
     "repository" : {
         "type" : "git",
@@ -28,6 +28,10 @@
 	        "name" : "Michiel Trimpe",
 	        "email" : "michiel@trimpe.nl",
 	        "url" : "https://github.com/mtrimpe"
+        },
+        {
+	        "name" : "Brian Mavity",
+	        "url" : "https://github.com/bmavity"
         }
     ],
 	"keywords" : [
