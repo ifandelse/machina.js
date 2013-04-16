@@ -17,7 +17,7 @@ define( [
 			$( window ).trigger( this.simulateDisconnect ? "offline" : "online" );
 		},
 		view : new MainView(),
-		monitor : new ConnectivityFsm( stethoscope )
+		monitor : new ConnectivityFsm( { stethoscope: stethoscope } )
 	};
 
 	app.view.render();

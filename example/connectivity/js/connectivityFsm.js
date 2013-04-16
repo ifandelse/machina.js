@@ -4,31 +4,47 @@ define( [
 	'underscore'
 ], function ( $, machina, _ ) {
 
-	return function ( stethoscope ) {
+  var useStethoscope = function ( fsm, steth ) {
+    _.each( ['heartbeat', 'no-heartbeat'], function ( eventName ) {
+      steth.on( eventName, function () {
+        fsm.handle( eventName );
+      } );
+    } );
+  };
 
-		var useStethoscope = function ( fsm, steth ) {
-			_.each( ['heartbeat', 'no-heartbeat'], function ( eventName ) {
-				steth.on( eventName, function () {
-					fsm.handle( eventName );
-				} );
-			} );
-		};
-
-		var fsm = new machina.Fsm( {
+	return machina.Fsm.extend( {
 
 			namespace : 'connectivity',
 
 			initialState : "offline",
 
+      initialize: function() {
+        var self = this;
+        $( window ).bind( "online", function () {
+          self.handle( "window.online" );
+        } );
+
+        $( window ).bind( "offline", function () {
+          self.handle( "window.offline" );
+        } );
+
+        $( window.applicationCache ).bind( "error", function () {
+          self.handle( "appCache.error" );
+        } );
+
+        $( window.applicationCache ).bind( "downloading", function () {
+          self.handle( "appCache.downloading" );
+        } );
+      },
+
 			states : {
 				probing : {
 					_onEnter : function () {
-						var self = this;
-						if ( !self.wiredUp ) {
-							useStethoscope( self, stethoscope );
-							self.wiredUp = true;
+						if ( !this.wiredUp ) {
+							useStethoscope( this, this.stethoscope );
+              this.wiredUp = true;
 						}
-						stethoscope.checkHeartbeat();
+            this.stethoscope.checkHeartbeat();
 					},
 					heartbeat : "online",
 					"no-heartbeat" : "disconnected",
@@ -56,24 +72,5 @@ define( [
 					"go.online" : "probing"
 				}
 			}
-		} );
-
-		$( window ).bind( "online", function () {
-			fsm.handle( "window.online" );
-		} );
-
-		$( window ).bind( "offline", function () {
-			fsm.handle( "window.offline" );
-		} );
-
-		$( window.applicationCache ).bind( "error", function () {
-			fsm.handle( "appCache.error" );
-		} );
-
-		$( window.applicationCache ).bind( "downloading", function () {
-			fsm.handle( "appCache.downloading" );
-		} );
-
-		return fsm;
-	};
-} );
+		});
+});
