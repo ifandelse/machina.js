@@ -8,8 +8,6 @@
     "underscore": "~1.1.7"
   },
   "ignore": [
-    "**/.*",
-    "node_modules",
-    "components"
+    "**/.*"
   ]
 }
