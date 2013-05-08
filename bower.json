@@ -1,8 +1,15 @@
 {
-	"name"    : "machina.js",
-	"version" : "0.3.4",
-	"main"    : ["lib/browser/machina.js"],
-	"dependencies": {
-		"underscore": "~1.1.7"
-	}
+  "name": "machina.js",
+  "version": "0.3.4",
+  "main": [
+    "lib/browser/machina.js"
+  ],
+  "dependencies": {
+    "underscore": "~1.1.7"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "components"
+  ]
 }
