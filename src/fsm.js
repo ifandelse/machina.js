@@ -67,7 +67,23 @@ _.extend( Fsm.prototype, {
 			this.currentActionArgs = undefined;
 		}
 	},
-	transition : function ( newState ) {
+	transitionIsAllowed: function(newState) {
+        var i,
+            allowedTransitions;
+        if (!this.state || !this.states[this.state].allowedTransitions) { return true; }
+        allowedTransitions = this.states[this.state].allowedTransitions;
+        for (i=0; i<allowedTransitions.length; ++i) {
+            if (newState === allowedTransitions[i]) {
+                return true;
+            }
+        }
+        return false;
+    },
+    transition : function ( newState ) {
+    	if (!this.transitionIsAllowed.call(this, newState)) {
+            this.emit.call( this, INVALID_STATE, { state: this.state, attemptedState: newState } );
+            return false;
+        }
 		if ( !this.inExitHandler && newState !== this.state ) {
 			var oldState;
 			if ( this.states[newState] ) {
@@ -87,9 +103,10 @@ _.extend( Fsm.prototype, {
 				if ( this.targetReplayState === newState ) {
 					this.processQueue( NEXT_TRANSITION );
 				}
-				return;
+				return true;
 			}
 			this.emit.call( this, INVALID_STATE, { state: this.state, attemptedState: newState } );
+			return false;
 		}
 	},
 	processQueue : function ( type ) {
