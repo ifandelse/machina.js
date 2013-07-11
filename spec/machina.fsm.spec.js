@@ -943,4 +943,79 @@ describe( "machina.Fsm", function () {
 			} );
 		} );
 	} );
+
+    describe( "When providing allowedTransitions", function(){
+        var invalidstateTriggered = false,
+            SomeFsm = machina.Fsm.extend( {
+                initialState : "notStarted",
+                states : {
+                    "notStarted" : {
+                        start : function () {
+                            this.transition( "started" );
+                        },
+                        allowedTransitions: [
+                            "started"
+                        ]
+                    },
+                    "started" : {
+                        finish : function () {
+                            this.transition( "finished" );
+                        },
+                        allowedTransitions: [
+                            "finished"
+                        ]
+                    },
+                    "finished" : {
+                        _onEnter : function () {
+
+                        },
+                        allowedTransitions: [
+                            // Final state
+                        ]
+                    }
+                },
+                eventListeners: {
+                    invalidstate: [
+                        function() {
+                            invalidstateTriggered = true;
+                        }
+                    ]
+                }
+            }),
+            someFsm;
+
+        beforeEach(function() {
+            someFsm = new SomeFsm();
+            invalidstateTriggered = false;
+        });
+
+        it( " should not transition to disallowed states", function() {
+            expect(someFsm.state).to.be("notStarted");
+            someFsm.transition("finished");
+            expect(someFsm.state).to.be("notStarted");
+        });
+
+        it( " should transition to allowed states", function() {
+            expect(someFsm.state).to.be("notStarted");
+            someFsm.transition("started");
+            expect(someFsm.state).to.be("started");
+        });
+
+        it( " should not be able to transition out of a final state", function() {
+            someFsm.transition("started");
+            someFsm.transition("finished");
+            expect(someFsm.state).to.be("finished");
+            someFsm.transition("started");
+            expect(someFsm.state).to.be("finished");
+            someFsm.transition("notStarted");
+            expect(someFsm.state).to.be("finished");
+        });
+
+        it( " should trigger invalidstate when trying to transition to disallowed state", function() {
+            expect(someFsm.state).to.be("notStarted");
+            expect(invalidstateTriggered).to.be(false);
+            someFsm.transition("finished");
+            expect(invalidstateTriggered).to.be(true);
+        });
+    })
 } );
