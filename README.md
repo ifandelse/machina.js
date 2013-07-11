@@ -50,6 +50,9 @@ var storageFsm = new machina.Fsm({
 			_onEnter: function() {
 				this.handle("sync.customer");
 			},
+			allowedTransitions: [
+			    "offline"
+			]
 
 			"save.customer" : function( payload ) {
 				if( verifyState() ) {
@@ -83,6 +86,8 @@ In the above example, the developer has created an FSM with two possible states:
 
 In addition to the state/handler definitions, the above code example as shows that this particular FSM will start in the `offline` state, and can generate a `CustomerSyncComplete` custom event.
 
+AllowedTransitions is an array of states that a state can transition to. If you don't specify allowedTransitions then a state can transition to any state. fsm.transition will check if the transition is allowed. If it is not allowed INVALIDSTATE event is fired.
+
 The `verifyState` and `applicationOffline` methods are custom to this instance of the FSM, and are not, of course, part of machina by default.
 
 You can see in the above example that anytime the FSM handles an event, it first checks to see if the state needs to be transitioned between offline and online (via the `verifyState` call).  States can also have `_onEnter` and `_onExit` methods. `_onEnter` is fired immediately after the FSM transitions into that state and `_onExit` is fired immediately before transitioning to a new state.
@@ -103,6 +108,13 @@ eventListeners: {
 	MyEvent2: [function(data) { console.log(data); }]
 }
 ```
+
+`Events` - MyEvent1 could be called in an onEnter by calling `.emit("MyEvent", {data})`. Other events
+ `handled` - Fired after a .handle() has been completed
+ `nohandler` - Fired after a .handle() has not found the message on the state you are currently in
+ `handling` - Fired when a .handle() begins.
+ `transition` - Fired when a state has called _onExit but we haven't called _onEnter of the desired state.
+ `invalidstate` - Fired when a .transition() is called to a state that doesn't exist or is not allowed.
 
 `states` - an object detailing the possible states the FSM can be in, plus the kinds of events/messages each state can handle.  States can have normal "handlers" as well as a catch-all handler ("*"), an `_onEnter` handler invoked when the FSM has transitioned into that state and an `_onExit` handler invoked when transitioning out of that state.
 
