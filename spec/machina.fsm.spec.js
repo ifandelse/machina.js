@@ -954,7 +954,8 @@ describe( "machina.Fsm", function () {
                             this.transition( "started" );
                         },
                         allowedTransitions: [
-                            "started"
+                            "started",
+                            "allStates"
                         ]
                     },
                     "started" : {
@@ -972,6 +973,11 @@ describe( "machina.Fsm", function () {
                         allowedTransitions: [
                             // Final state
                         ]
+                    },
+                    "allStates"  :{
+                        _onEnter : function (){
+
+                        }
                     }
                 },
                 eventListeners: {
@@ -999,6 +1005,15 @@ describe( "machina.Fsm", function () {
             expect(someFsm.state).to.be("notStarted");
             someFsm.transition("started");
             expect(someFsm.state).to.be("started");
+        });
+
+        it ( " should transition to any state if allowed states isnt specified" , function (){
+            expect(someFsm.state).to.be("notStarted");
+            someFsm.transition("allStates");
+            expect(someFsm.state).to.be("allStates");
+            someFsm.transition("finished");
+            expect(someFsm.state).to.be("finished");
+
         });
 
         it( " should not be able to transition out of a final state", function() {
