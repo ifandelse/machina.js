@@ -52,7 +52,7 @@ var storageFsm = new machina.Fsm({
 			},
 			allowedTransitions: [
 			    "offline"
-			]
+			],
 
 			"save.customer" : function( payload ) {
 				if( verifyState() ) {
