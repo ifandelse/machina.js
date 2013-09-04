@@ -7,7 +7,76 @@ var Fsm = function ( options ) {
 		this.transition( this.initialState );
 	}
 };
-
+function _transition (args, deferred){
+    var newState = slice.call(args,0,1)[0];
+    if (!this.transitionIsAllowed.call(this, newState)) {
+        this.emit.call( this, INVALID_STATE, { state: this.state, attemptedState: newState } );
+        deferred.reject();
+        return false;
+    }
+    if ( !this.inExitHandler && newState !== this.state) {
+        var oldState;
+        if ( this.states[newState] ) {
+            this.targetReplayState = newState;
+            this.priorState = this.state;
+            this.state = newState;
+            oldState = this.priorState;
+            if ( this.states[oldState] && this.states[oldState]._onExit ) {
+                this.inExitHandler = true;
+                this.states[oldState]._onExit.call( this );
+                this.inExitHandler = false;
+            }
+            if(this.initialState != newState){
+                this.emit.call( this, TRANSITION, { fromState: oldState, action: this._currentAction, toState: newState } );
+            }
+            if ( this.states[newState]._onEnter ) {
+                this.states[newState]._onEnter.call( this );
+            }
+            deferred.resolve();
+            if ( this.targetReplayState === newState ) {
+                this.processQueue( NEXT_TRANSITION );
+            }
+            return true;
+        }
+        this.emit.call( this, INVALID_STATE, { state: this.state, attemptedState: newState } );
+        deferred.reject();
+        return false;
+    }
+}
+function _handle(args, deferred) {
+    if ( !this.inExitHandler ) {
+        var states = this.states, current = this.state, inputType = args[0], args = slice.call(args,0), handlerName, handler, catchAll, action;
+        this.currentActionArgs = args;
+        if ( states[current][inputType] || states[current]["*"] || this[ "*" ] ) {
+            handlerName = states[current][inputType] ? inputType : "*";
+            catchAll = handlerName === "*";
+            if ( states[current][handlerName] ) {
+                handler = states[current][handlerName];
+                action = current + "." + handlerName;
+            } else {
+                handler = this[ "*" ];
+                action = "*";
+            }
+            if ( ! this._currentAction )
+                this._currentAction = action ;
+            this.emit.call( this, HANDLING, { inputType: inputType, args: args.slice(1) } );
+            if (_.isFunction(handler))
+                handler = handler.apply( this, catchAll ? args : args.slice(1) );
+            if (_.isString(handler))
+                this.transition( handler ) ;
+            this.emit.call( this, HANDLED, { inputType: inputType, args: args.slice(1) } );
+            deferred.resolve();
+            this._priorAction = this._currentAction;
+            this._currentAction = "";
+            this.processQueue( NEXT_HANDLER );
+        }
+        else {
+            this.emit.call( this, NO_HANDLER, { inputType: inputType, args: args.slice(1) } );
+            deferred.reject();
+        }
+        this.currentActionArgs = undefined;
+    }
+}
 _.extend( Fsm.prototype, {
 	initialize: function() { },
 	emit : function ( eventName ) {
@@ -35,38 +104,11 @@ _.extend( Fsm.prototype, {
 			}, this );
 		}
 	},
-	handle : function ( inputType ) {
-		if ( !this.inExitHandler ) {
-			var states = this.states, current = this.state, args = slice.call( arguments, 0 ), handlerName, handler, catchAll, action;
-			this.currentActionArgs = args;
-			if ( states[current][inputType] || states[current]["*"] || this[ "*" ] ) {
-				handlerName = states[current][inputType] ? inputType : "*";
-				catchAll = handlerName === "*";
-				if ( states[current][handlerName] ) {
-					handler = states[current][handlerName];
-					action = current + "." + handlerName;
-				} else {
-					handler = this[ "*" ];
-					action = "*";
-				}
-				if ( ! this._currentAction ) 
-					this._currentAction = action ;
-				this.emit.call( this, HANDLING, { inputType: inputType, args: args.slice(1) } );
-				if (_.isFunction(handler))
-					handler = handler.apply( this, catchAll ? args : args.slice( 1 ) );
-				if (_.isString(handler))
-					this.transition( handler ) ;
-				this.emit.call( this, HANDLED, { inputType: inputType, args: args.slice(1) } );
-				this._priorAction = this._currentAction;
-				this._currentAction = "";
-				this.processQueue( NEXT_HANDLER );
-			}
-			else {
-				this.emit.call( this, NO_HANDLER, { inputType: inputType, args: args.slice(1) } );
-			}
-			this.currentActionArgs = undefined;
-		}
-	},
+    handle : function () {
+        var deferred = $.Deferred();
+        _handle.call(this, arguments, deferred);
+        return deferred.promise();
+    },
 	transitionIsAllowed: function(newState) {
 		var i,
 			allowedTransitions;
@@ -79,36 +121,11 @@ _.extend( Fsm.prototype, {
 		}
 		return false;
 	},
-	transition : function ( newState ) {
-		if (!this.transitionIsAllowed.call(this, newState)) {
-			this.emit.call( this, INVALID_STATE, { state: this.state, attemptedState: newState } );
-			return false;
-		}
-		if ( !this.inExitHandler && newState !== this.state ) {
-			var oldState;
-			if ( this.states[newState] ) {
-				this.targetReplayState = newState;
-				this.priorState = this.state;
-				this.state = newState;
-				oldState = this.priorState;
-				if ( this.states[oldState] && this.states[oldState]._onExit ) {
-					this.inExitHandler = true;
-					this.states[oldState]._onExit.call( this );
-					this.inExitHandler = false;
-				}
-				this.emit.call( this, TRANSITION, { fromState: oldState, action: this._currentAction, toState: newState } );
-				if ( this.states[newState]._onEnter ) {
-					this.states[newState]._onEnter.call( this );
-				}
-				if ( this.targetReplayState === newState ) {
-					this.processQueue( NEXT_TRANSITION );
-				}
-				return true;
-			}
-			this.emit.call( this, INVALID_STATE, { state: this.state, attemptedState: newState } );
-			return false;
-		}
-	},
+    transition : function () {
+        var deferred = $.Deferred();
+        _transition.call(this, arguments, deferred);
+        return deferred.promise();
+    },
 	processQueue : function ( type ) {
 		var filterFn = type === NEXT_TRANSITION ? function ( item ) {
 				return item.type === NEXT_TRANSITION && ((!item.untilState) || (item.untilState === this.state));
