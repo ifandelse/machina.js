@@ -209,6 +209,24 @@ var childFsm = new ChildFsm();
 
 ```
 
+## jQuery Deferreds
+I added in jQuery deferreds because I like using .done() and .fail(). Handle() and transition() now return a deferred obj.
+Example
+```javascript
+stateMachine.handle("fooBar")
+    .done(function(){
+        //do something like
+        stateMachine.transition("nextState")
+            .done(function(){
+                // now we are done with the transition
+            })
+    })
+    .fail(function(){
+        // Oh no we fails. Probably in the wrong state
+    )}
+
+```
+
 ## The machina.Fsm Prototype
 Each instance of an machina FSM has the following methods available via it's prototype:
 
