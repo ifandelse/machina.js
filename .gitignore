@@ -5,3 +5,4 @@ desktop.ini
 .anvil
 *node_modules*
 *npm-debug*
+bower_components/

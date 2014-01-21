@@ -4,10 +4,13 @@
   "main": [
     "lib/browser/machina.js"
   ],
-  "dependencies": {
-    "underscore": "~1.1.7"
-  },
   "ignore": [
     "**/.*"
-  ]
+  ],
+  "devDependencies": {
+    "jquery": "~1.7.1",
+    "underscore": "~1.5.2",
+    "mocha": "~1.17.0",
+    "expect": "~0.2.0"
+  }
 }
