@@ -2,8 +2,7 @@
 <html>
 <head>
     <title>Machina.js</title>
-    <link rel="stylesheet" href="ext/bootstrap-responsive.min.css" type="text/css">
-    <link rel="stylesheet" href="ext/bootstrap.min.css" type="text/css">
+    <link rel="stylesheet" href="bower/bootstrap/dist/css/bootstrap.min.css" type="text/css">
     <style type="text/css">
         .banner {
             position: relative;
@@ -36,13 +35,13 @@
             margin-bottom: 20px;
         }
     </style>
-    <script type="text/javascript" src="/ext/jquery-1.7.1.js"></script>
-    <script type="text/javascript" src="/ext/bootstrap.min.js"></script>
+    <script type="text/javascript" src="bower/jquery/jquery.min.js"></script>
+    <script type="text/javascript" src="bower/bootstrap/dist/js/bootstrap.min.js"></script>
 </head>
 <body>
     <header class="banner">
         <div class="container-fluid">
-            <h1>Machina.js</h1>
+            <h1>machina.js</h1>
             <p class="lead">A JavaScript framework for highly customizable finite state machines.</p>
         </div>
     </header>
@@ -54,14 +53,18 @@
             <a href="spec/">Tests</a>
         </div>
         <div class="well well-large">
-            <a href="atm">Fake ATM UI w/FSMs</a>
+            <a href="report/">Plato Reports</a>
         </div>
         <div class="well well-large">
-            <a href="connectivity">Connectivity FSM Example</a>
+            <a href="example/atm">Fake ATM UI w/FSMs</a>
         </div>
         <div class="well well-large">
-            <a href="load">Using FSMs to Manage Init/Loading</a>
+            <a href="example/connectivity">Connectivity FSM Example</a>
+        </div>
+        <div class="well well-large">
+            <a href="example/load">Using FSMs to Manage Init/Loading</a>
         </div>
     </div>
+    <script src="ext/livereloadhack.js"></script>
 </body>
 </html>

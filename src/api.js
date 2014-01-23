@@ -18,7 +18,7 @@ var machina = {
 		if ( listeners && listeners.length ) {
 			_.each( listeners, function ( callback ) {
 				callback.apply( null, slice.call( args, 1 ) );
-			} );
+			});
 		}
 	},
 	eventListeners : {

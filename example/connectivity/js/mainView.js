@@ -20,10 +20,10 @@ define( [
 		},
 
 		initialize : function () {
-			_.bindAll( this );
+			_.bindAll( this, "render", "dequeue", "resetQueue", "updateLed", "updateClass", "routeEvents", "transition", "handling", "handled", "checking", "toggleSlowMotion", "toggleOnline", "toggleWindowDisconnect" );
 			this.template = _.template( template );
-			bus.connectivityOutput.subscribe( this.routeEvents ).withContext( this );
-			bus.heartbeat.subscribe( this.routeEvents ).withContext( this );
+			bus.connectivityOutput.subscribe( "#", this.routeEvents ).withContext( this );
+			bus.heartbeat.subscribe( "#", this.routeEvents ).withContext( this );
 		},
 
 		render : function () {

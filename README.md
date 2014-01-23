@@ -247,19 +247,16 @@ var MyFsm = machina.Fsm.extend({ /* your stuff */});
 
 
 ## Build, Tests & Examples
-machina.js uses [anvil.js](http://github.com/anviljs/anvil.js/) to build.
+machina.js uses [gulp.js](http://gulpjs.com/) to build.
 
 * Install node.js (and consider using [nvm](https://github.com/creationix/nvm) to manage your node versions)
-* Run `npm install -g anvil.js` to install anvil.js
-* Navigate to the root of this repository and run `anvil`.  Optionally run `anvil --ci --host --browser`.  This will open your browser to the root index.html of the repository, and run anvil in continuous integration mode (changes to source and tests will causes tests to be refreshed automatically, etc).
-* Build output will be placed in the lib folder.
-
-To run tests or examples:
-
-* For tests, navigate to `http://localhost:3080/spec`
-* For the "atm" example, navigate to `http://localhost:3080/atm`
-	* check the source of Repository.js in this example for the account/pin information that can be used to log in.
-* For the "load" example, navigate to `http://localhost:3080/load`
+* run `npm install` & `bower install` to install all dependencies
+* To build, run `npm run build` - then check the lib folder for the output
+* To run tests & examples:
+    * To run node-based tests: `npm run test`
+    * To run browser-based tests & examples:
+        * run `npm start`
+        * navigate in your browser to <http://localhost:3080/>
 
 
 ## Release Notes

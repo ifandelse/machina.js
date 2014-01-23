@@ -9,11 +9,11 @@ var resourceGetter = {
 				url : "http://api.ihackernews.com/page?format=jsonp",
 				dataType : "jsonp",
 				success : function ( data ) {
-					postal.publish( "application", "itemData.retrieved", data );
+					postal.publish({ channel: "application", topic: "itemData.retrieved", data: data });
 				}
 			} );
 			return setTimeout( function () {
-				postal.publish( "application", "itemData.getFailed", {} );
+				postal.publish({ channel: "application", topic: "itemData.getFailed", data: {} });
 			}, 4000 );
 		}
 	},
@@ -103,7 +103,7 @@ var app = window.loadApp = {
 		items : itemView
 	},
 	start : function () {
-		postal.publish( "application", "initialize", {} );
+		postal.publish({ channel: "application", topic: "initialize", data: {} });
 	}
 };
 

@@ -5,3 +5,15 @@ desktop.ini
 .anvil
 *node_modules*
 *npm-debug*
+*.suo
+*.csproj.user
+bin
+obj
+*.pdb
+_ReSharper*
+*.ReSharper.user
+*.ReSharper
+desktop.ini
+.eprj
+report/
+bower/
