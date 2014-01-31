@@ -306,6 +306,7 @@
         describe( "When deferring until the next handler call", function () {
             var event2 = 0,
                 deferredInvoked = false,
+                deferredHits = 0,
                 xfsm = new machina.Fsm( {
                     states : {
                         "uninitialized" : {
@@ -313,7 +314,12 @@
                                 this.transition( "initialized" );
                             },
                             "event2" : function () {
-                                this.deferUntilNextHandler();
+                                if(deferredHits === 0) {
+                                    this.deferUntilNextHandler();
+                                    deferredHits++;
+                                } else {
+                                    event2++;
+                                }
                             }
                         },
                         "initialized" : {
@@ -549,7 +555,6 @@
 
         } );
 
-
         describe( "When creating an instance from an extended constructor function", function () {
             var SomeFsm = machina.Fsm.extend( {
                 initialState : "notStarted",
@@ -681,49 +686,49 @@
             } );
         } );
 
-            describe( "When extending an FSM constructor twice with overridden state & handlers", function () {
-                    var Base = machina.Fsm.extend({
-                            initialState: 'S',
-                            states: {
-                                    S: {
-                                            action1: function () {
-                                            },
-                                            action2: function () {
-                                            }
-                                    }
-                            }
-                    });
+        describe( "When extending an FSM constructor twice with overridden state & handlers", function () {
+                var Base = machina.Fsm.extend({
+                        initialState: 'S',
+                        states: {
+                                S: {
+                                        action1: function () {
+                                        },
+                                        action2: function () {
+                                        }
+                                }
+                        }
+                });
 
-                    var Extend1 = Base.extend({
-                            states: {
-                                    S: {
-                                            action1: function () {
-                                            }
-                                    }
-                            }
-                    });
+                var Extend1 = Base.extend({
+                        states: {
+                                S: {
+                                        action1: function () {
+                                        }
+                                }
+                        }
+                });
 
-                    var Extend2 = Base.extend({
-                            states: {
-                                    S: {
-                                            action2: function () {
-                                            }
-                                    }
-                            }
-                    });
+                var Extend2 = Base.extend({
+                        states: {
+                                S: {
+                                        action2: function () {
+                                        }
+                                }
+                        }
+                });
 
-                    var b1 = new Base();
-                    var e1 = new Extend1();
-                    var e2 = new Extend2();
+                var b1 = new Base();
+                var e1 = new Extend1();
+                var e2 = new Extend2();
 
-                    it( "should produce instances that have distinct action handlers", function () {
-                            expect( b1.states.S.action1 !== e1.states.S.action1 );
-                            expect( b1.states.S.action2 !== e2.states.S.action2 );
+                it( "should produce instances that have distinct action handlers", function () {
+                        expect( b1.states.S.action1 !== e1.states.S.action1 );
+                        expect( b1.states.S.action2 !== e2.states.S.action2 );
 
-                            expect( e1.states.S.action1 !== e2.states.S.action1 );
-                            expect( e1.states.S.action2 !== e2.states.S.action2 );
-                    });
-            });
+                        expect( e1.states.S.action1 !== e2.states.S.action1 );
+                        expect( e1.states.S.action2 !== e2.states.S.action2 );
+                });
+        });
 
         describe( "When providing a global catch-all handler", function () {
             var catchAllHandled = [],
