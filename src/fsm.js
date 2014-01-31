@@ -128,7 +128,7 @@ _.extend( Fsm.prototype, {
 	},
 	deferUntilNextHandler : function () {
 		if ( this.currentActionArgs ) {
-			var queued = { type : NEXT_TRANSITION, args : this.currentActionArgs };
+			var queued = { type : NEXT_HANDLER, args : this.currentActionArgs };
 			this.eventQueue.push( queued );
 			this.emit.call( this, DEFERRED, { state: this.state, queuedArgs: queued } );
 		}
