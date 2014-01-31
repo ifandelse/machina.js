@@ -69,18 +69,17 @@ _.extend( Fsm.prototype, {
 	},
 	transition : function ( newState ) {
 		if ( !this.inExitHandler && newState !== this.state ) {
-			var oldState;
+			var curState = this.state;
 			if ( this.states[newState] ) {
+                if ( this.states[curState] && this.states[curState]._onExit ) {
+                    this.inExitHandler = true;
+                    this.states[curState]._onExit.call( this );
+                    this.inExitHandler = false;
+                }
 				this.targetReplayState = newState;
-				this.priorState = this.state;
+				this.priorState = curState;
 				this.state = newState;
-				oldState = this.priorState;
-				if ( this.states[oldState] && this.states[oldState]._onExit ) {
-					this.inExitHandler = true;
-					this.states[oldState]._onExit.call( this );
-					this.inExitHandler = false;
-				}
-				this.emit.call( this, TRANSITION, { fromState: oldState, action: this._currentAction, toState: newState } );
+				this.emit.call( this, TRANSITION, { fromState: this.priorState, action: this._currentAction, toState: newState } );
 				if ( this.states[newState]._onEnter ) {
 					this.states[newState]._onEnter.call( this );
 				}
