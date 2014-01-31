@@ -45,5 +45,10 @@
 * Removed deprecated anvil dependency references
 
 ### v0.3.4
+
 * Underscore is no longer required to be passed into the factory function for node usage. It will be required behind the scenes if not provided.
 
+### v0.3.5
+
+* Fixed issue in `deferUntilNextHandler` where deferred inputs were being queued as `NEXT_TRANSITION` instead of `NEXT_HANDLER`.
+* Moved invocation of `on_Exit` to occur just *before* the state property is updated, instead of just after.

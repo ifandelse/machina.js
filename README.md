@@ -1,4 +1,4 @@
-# machina.js - v0.3.4
+# machina.js - v0.3.5
 **Be sure to read the release notes for v0.3.0-v0.3.2 at the bottom of this page. These releases involve a couple of breaking API changes.**
 
 ## What is it?
