@@ -5,7 +5,7 @@
     "lib/browser/machina.js"
   ],
   "dependencies": {
-    "underscore": "~1.5.2"
+    "underscore": "~1.6.0"
   },
   "devDependencies": {
     "jquery": "~1.10.2",
@@ -27,6 +27,6 @@
     "**/.*"
   ],
   "resolutions": {
-    "underscore": "~1.5.2"
+    "underscore": "~1.6.0"
   }
 }
