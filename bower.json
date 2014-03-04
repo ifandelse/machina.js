@@ -2,7 +2,7 @@
   "name": "machina.js",
   "version": "0.3.6",
   "main": [
-    "lib/browser/machina.js"
+    "lib/machina.js"
   ],
   "dependencies": {
     "underscore": "~1.5.2"
