@@ -6,6 +6,6 @@
         "lib/machina.js"
     ],
     "dependencies": {
-        "component/underscore": "*"
+        "jashkenas/underscore": "*"
     }
 }
