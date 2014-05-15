@@ -187,6 +187,32 @@
                 } );
             } );
 
+            describe("When providing arguments to a transition",function (){
+                var onEnterArgs = undefined,
+                    sut = new machina.Fsm( {
+                        initialState: 'uninitialized',
+                        states: {
+                            uninitialized: {
+                                initialize: function(args) {
+                                    this.transition('initialized',args);
+                                }
+                            },
+                            initialized: {
+                               _onEnter: function(args) {
+                                   this.onEnterArgs = args;
+                               }
+                            }
+                        }
+                    });
+
+
+                sut.handle('initialize',{foo:'bar'})
+
+                it("should marshall those arguments into the _onEnter handler for that transition",function(){
+                    expect( sut.onEnterArgs.foo ).to.be('bar');
+
+                })
+            })
             describe( "When providing an initialize function", function () {
                 var counter = 0;
                 var initializeInvoked = 0;
