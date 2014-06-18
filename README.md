@@ -22,62 +22,60 @@ Machina.js is a JavaScript framework for highly customizable finite state machin
 
 Creating an FSM:
 
-```javascript
-var storageFsm = new machina.Fsm({
-	applicationOffline: function() {
-		var offline = false;
-		// checks window.navigator.online and more, sets the offline value
-		return offline;
-	},
+    var storageFsm = new machina.Fsm({
+    	applicationOffline: function() {
+    		var offline = false;
+    		// checks window.navigator.online and more, sets the offline value
+    		return offline;
+    	},
 
-	verifyState: function( payload ) {
-		if( applicationOffline() && this.state !== "offline" ) {
-			this.offlineMarkerTime = new Date();
-			this.transition("offline");
-			return false;
-		}
-		else if ( !applicationOffline() && this.state === "offline" ) {
-			this.transition( "online" );
-			return false;
-		}
-		return true;
-	},
+    	verifyState: function( payload ) {
+    		if( this.applicationOffline() && this.state !== "offline" ) {
+    			this.offlineMarkerTime = new Date();
+    			this.transition("offline");
+    			return false;
+    		}
+    		else if ( !this.applicationOffline() && this.state === "offline" ) {
+    			this.transition( "online" );
+    			return false;
+    		}
+    		return true;
+    	},
 
-	initialState: "offline",
+    	initialState: "offline",
 
-	states : {
-		"online" : {
-			_onEnter: function() {
-				this.handle("sync.customer");
-			},
+    	states : {
+    		"online" : {
+    			_onEnter: function() {
+    				this.handle("sync.customer");
+    			},
 
-			"save.customer" : function( payload ) {
-				if( verifyState() ) {
-                    storage.saveToRemote( payload );
-				}
-			},
+    			"save.customer" : function( payload ) {
+    				if( this.verifyState() ) {
+                        storage.saveToRemote( payload );
+    				}
+    			},
 
-			"sync.customer" : function() {
-				if( verifyState( payload ) ) {
-					var unsynced = storage.getFromLocal( { startTime: this.offlineMarkerTime } );
-					// Big assumption here!  In the real world,
-					// we'd batch this sync in reasonable chunks.
-					storage.saveBatchToRemote( unsynced );
-					this.emit( "CustomerSyncComplete", { customers: unsynced } );
-				}
-			}
-		},
+    			"sync.customer" : function() {
+    				if( this.verifyState( payload ) ) {
+    					var unsynced = storage.getFromLocal( { startTime: this.offlineMarkerTime } );
+    					// Big assumption here!  In the real world,
+    					// we'd batch this sync in reasonable chunks.
+    					storage.saveBatchToRemote( unsynced );
+    					this.emit( "CustomerSyncComplete", { customers: unsynced } );
+    				}
+    			}
+    		},
 
-		"offline" : {
-			"save.customer" : function( payload ) {
-				if( verifyState() ) {
-                    storage.saveToLocal( payload );
-				}
-            }
-		}
-	}
-});
-```
+    		"offline" : {
+    			"save.customer" : function( payload ) {
+    				if( verifyState() ) {
+                        storage.saveToLocal( payload );
+    				}
+                }
+    		}
+    	}
+    });
 
 In the above example, the developer has created an FSM with two possible states: `online` and `offline`.  While the fsm is in the `online` state, it will respond to `save.customer` and `sync.customer` events.  External code triggers these events by calling the `handle` method on the FSM.  For example `storageFsm.handle( "sync.customer", { other: "data" } )`.  The `handle` method first looks to see if a named handler exists matching the name of the one passed in, then also checks for a catch-all handler (indicated by the "*") if a named handler isn't found.  The `offline` state of the above FSM only responds to `save.customer` events.  If any other type of event name is passed to the `handle` method of the FSM, other than what each state explicitly handles, it is ignored.
 
@@ -97,40 +95,37 @@ When you are creating a new FSM instance, `machina.Fsm` takes 1 argument - an op
 
 `eventListeners` - An object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers as you create the instance.)
 
-```javascript
-eventListeners: {
-	MyEvent1: [function(data) { console.log(data); }],
-	MyEvent2: [function(data) { console.log(data); }]
-}
-```
+
+    eventListeners: {
+    	MyEvent1: [function(data) { console.log(data); }],
+    	MyEvent2: [function(data) { console.log(data); }]
+    }
 
 `states` - an object detailing the possible states the FSM can be in, plus the kinds of events/messages each state can handle.  States can have normal "handlers" as well as a catch-all handler ("*"), an `_onEnter` handler invoked when the FSM has transitioned into that state and an `_onExit` handler invoked when transitioning out of that state.
 
-```javascript
-states: {
-    "uninitialized" : {
-        _onEnter: function() {
-            // do stuff immediately after we transition into uninitialized
+    states: {
+        "uninitialized" : {
+            _onEnter: function() {
+                // do stuff immediately after we transition into uninitialized
+            },
+
+            "initialize" : function( payload ) {
+                // handle an "initialize" event
+            },
+
+            _onExit: function() {
+                // do stuff immediately before we transition out of uninitialized
+                // Note: you can't transition or invoke another inside _onExit
+            }
         },
 
-        "initialize" : function( payload ) {
-            // handle an "initialize" event
-        },
-
-        _onExit: function() {
-            // do stuff immediately before we transition out of uninitialized
-            // Note: you can't transition or invoke another inside _onExit
-        }
-    },
-
-    "ready" : {
-        "*" : function( payload ) {
-            // any message that comes while in the "ready" state will get handled here
-            // unless it matches another "ready" handler exactly.
+        "ready" : {
+            "*" : function( payload ) {
+                // any message that comes while in the "ready" state will get handled here
+                // unless it matches another "ready" handler exactly.
+            }
         }
     }
-}
-```
 
 `initialState` - the state in which the FSM will start.  As soon as the instance is created, the FSM calls the `transition` method to transition into this state.
 
@@ -141,56 +136,55 @@ states: {
 ### Inheritance
 FSMs can be created via the `machina.Fsm` constructor function as described above, or you can create an 'extended' FSM constructor function by calling `machina.Fsm.extend()`.  If you are familiar with backbone.js, machina's inheritance is identical to how backbone objects work, except that machina performs a deep extend, which means you can inherit from an FSM, adding new handlers to a state defined by the base (and you can override already-declared handlers, etc.).  With this being the case, it's better to think of machina's inhertiance as "blending" and not just extending. Let's look at an example:
 
-```javascript
-var BaseFsm = machina.Fsm.extend({
-    initialize: function() {
-        // do stuff here if you want to perform more setup work
-        // this executes prior to any state transitions or handler invocations
-    },
-    states: {
-        uninitialized: {
-            start: function() {
-                this.transition("first");
-            }
+
+    var BaseFsm = machina.Fsm.extend({
+        initialize: function() {
+            // do stuff here if you want to perform more setup work
+            // this executes prior to any state transitions or handler invocations
         },
-        first: {
-            handlerA : function() {
-                // do stuff
+        states: {
+            uninitialized: {
+                start: function() {
+                    this.transition("first");
+                }
+            },
+            first: {
+                handlerA : function() {
+                    // do stuff
+                }
             }
         }
-    }
-});
-// getting an instance from our extended constructor function above
-var baseFsm = new BaseFsm();
+    });
+    // getting an instance from our extended constructor function above
+    var baseFsm = new BaseFsm();
 
-// taking the BaseFsm constructor function and doing more
-var ChildFsm = BaseFsm.extend({
-    states: {
-        uninitialized: {
-            skipToTheEnd: function() {
-                this.transition("second");
-            }
-        },
-        first: {
-            handlerA : function() {
-                this.transition("second");
-            }
-            handlerB : function() {
-                // do some work...
-            }
-        },
-        second: {
-            handlerC : function() {
-                // do stuff
+    // taking the BaseFsm constructor function and doing more
+    var ChildFsm = BaseFsm.extend({
+        states: {
+            uninitialized: {
+                skipToTheEnd: function() {
+                    this.transition("second");
+                }
+            },
+            first: {
+                handlerA : function() {
+                    this.transition("second");
+                }
+                handlerB : function() {
+                    // do some work...
+                }
+            },
+            second: {
+                handlerC : function() {
+                    // do stuff
+                }
             }
         }
-    }
-});
+    });
 
-// This instance will have a blending of BaseFsm and ChildFsm's states/handlers
-var childFsm = new ChildFsm();
+    // This instance will have a blending of BaseFsm and ChildFsm's states/handlers
+    var childFsm = new ChildFsm();
 
-```
 
 ## The machina.Fsm Prototype
 Each instance of an machina FSM has the following methods available via it's prototype:
@@ -230,20 +224,19 @@ The top level `machina` object has the following members:
 
 ## Pulling machina into your environment
 
-```javascript
-// If you're not using an AMD loader, machina is available on the window
-var MyFsm = machina.Fsm.extend({ /* your stuff */});
 
-// If you're using an AMD loader:
-require(['machina'], function(machina){
-	return machina.Fsm.extend({ /* your stuff */});
-});
+    // If you're not using an AMD loader, machina is available on the window
+    var MyFsm = machina.Fsm.extend({ /* your stuff */});
 
-// In node.js, the module returns a factory function:
-var underscore = require('underscore');
-var machina = require('machina')(underscore);
-var MyFsm = machina.Fsm.extend({ /* your stuff */});
-```
+    // If you're using an AMD loader:
+    require(['machina'], function(machina){
+    	return machina.Fsm.extend({ /* your stuff */});
+    });
+
+    // In node.js, the module returns a factory function:
+    var underscore = require('underscore');
+    var machina = require('machina')(underscore);
+    var MyFsm = machina.Fsm.extend({ /* your stuff */});
 
 
 ## Build, Tests & Examples
