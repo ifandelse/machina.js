@@ -1,34 +1,38 @@
 {
-    "name": "machina",
-    "description": "A library for creating powerful and flexible finite state machines.  Loosely inspired by Erlang/OTP's gen_fsm behavior.",
-    "version": "0.3.6",
-    "homepage": "http://machina-js.org/",
-    "repository": {
-        "type": "git",
-        "url": "git://github.com/ifandelse/machina.js.git"
-    },
-    "author": "Jim Cowart (http://freshbrewedcode.com/jimcowart)",
-    "contributors": [{
-        "name": "Jim Cowart",
-        "email": "jim@ifandelse.com",
-        "url": "http://freshbrewedcode.com/jimcowart"
+	"name": "machina",
+	"description": "A library for creating powerful and flexible finite state machines.  Loosely inspired by Erlang/OTP's gen_fsm behavior.",
+	"version": "0.3.7",
+	"homepage": "http://machina-js.org/",
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/ifandelse/machina.js.git"
+	},
+	"author": "Jim Cowart (http://freshbrewedcode.com/jimcowart)",
+	"contributors": [ {
+		"name": "Jim Cowart",
+		"email": "jim@ifandelse.com",
+		"url": "http://freshbrewedcode.com/jimcowart"
     }, {
-        "name": "Doug Neiner",
-        "email": "doug@dougneiner.com",
-        "url": "http://code.dougneiner.com"
+		"name": "Doug Neiner",
+		"email": "doug@dougneiner.com",
+		"url": "http://code.dougneiner.com"
     }, {
-        "name": "Friedemann Altrock",
-        "email": "frodenius@gmail.com",
-        "url": "https://github.com/fwg"
+		"name": "Friedemann Altrock",
+		"email": "frodenius@gmail.com",
+		"url": "https://github.com/fwg"
     }, {
-        "name": "Michiel Trimpe",
-        "email": "michiel@trimpe.nl",
-        "url": "https://github.com/mtrimpe"
+		"name": "Michiel Trimpe",
+		"email": "michiel@trimpe.nl",
+		"url": "https://github.com/mtrimpe"
     }, {
-        "name": "Brian Mavity",
-        "url": "https://github.com/bmavity"
-    }],
-    "keywords": [
+		"name": "Brian Mavity",
+		"url": "https://github.com/bmavity"
+    }, {
+		"name": "Alex Robson",
+		"email": "arobson@gmail.com",
+		"url": "http://github.com/arobson"
+    } ],
+	"keywords": [
         "state machine",
         "finite state machine",
         "fsm",
@@ -40,50 +44,45 @@
         "machina.js",
         "machinajs"
     ],
-    "bugs": {
-        "email": "jim@ifandelse.com",
-        "url": "http://github.com/ifandelse/machina.js/issues"
-    },
-    "directories": {
-        "lib": "lib"
-    },
-    "main": "lib/machina.js",
-    "engines": {
-        "node": ">=0.4.0"
-    },
-    "dependencies": {
-    "underscore": "~1.6.0"
-    },
-    "bundleDependencies": [
-        "underscore"
-    ],
-    "devDependencies": {
-        "bower": "~1.2.8",
-        "gulp": "~3.4.0",
-        "gulp-imports": "~0.0.1",
-        "gulp-header": "~1.0.2",
-        "gulp-hint-not": "~0.0.3",
-        "gulp-uglify": "~0.1.0",
-        "gulp-rename": "~0.2.1",
-        "gulp-plato": "~0.1.0",
-        "gulp-beautify": "~1.0.3",
-        "tiny-lr": "0.0.5",
-        "express": "~3.4.7",
-        "gulp-rimraf": "0.0.8",
-        "open": "~0.0.4",
-        "gulp-util": "~2.2.12",
-        "expect.js": "~0.2.0"
-    },
-    "licenses": [{
-        "type": "MIT",
-        "url": "http://opensource.org/licenses/MIT"
+	"bugs": {
+		"email": "jim@ifandelse.com",
+		"url": "http://github.com/ifandelse/machina.js/issues"
+	},
+	"directories": {
+		"lib": "lib"
+	},
+	"main": "lib/machina.js",
+	"engines": {
+		"node": ">=0.4.0"
+	},
+	"dependencies": {
+		"lodash": "~2.4.1"
+	},
+	"devDependencies": {
+		"bower": "~1.2.8",
+		"gulp": "~3.4.0",
+		"gulp-imports": "~0.0.1",
+		"gulp-header": "~1.0.2",
+		"gulp-hint-not": "~0.0.3",
+		"gulp-uglify": "~0.1.0",
+		"gulp-rename": "~0.2.1",
+		"gulp-plato": "~0.1.0",
+		"gulp-beautify": "~1.0.3",
+		"express": "~3.4.7",
+		"open": "~0.0.4",
+		"gulp-util": "~2.2.12",
+		"expect.js": "~0.2.0"
+	},
+	"licenses": [ {
+		"type": "MIT",
+		"url": "http://opensource.org/licenses/MIT"
     }, {
-        "type": "GPL",
-        "url": "http://opensource.org/licenses/GPL-2.0"
-    }],
-    "scripts": {
-        "test": "mocha ./spec/*.js",
-        "build": "gulp",
-        "start": "gulp server"
-    }
+		"type": "GPL",
+		"url": "http://opensource.org/licenses/GPL-2.0"
+    } ],
+	"scripts": {
+		"test": "mocha ./spec/*.js",
+		"build": "gulp",
+		"start": "gulp server"
+	}
 }

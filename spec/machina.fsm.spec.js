@@ -2,7 +2,7 @@
 (function() {
     var machina = typeof window === "undefined" ? require("../lib/machina.js")() : window.machina;
     var expect = typeof window === "undefined" ? require("expect.js") : window.expect;
-    var _ = typeof window === "undefined" ? require("underscore") : window._;
+    var _ = typeof window === "undefined" ? require( "lodash" ) : window._;
     var fsm;
     describe( "machina.Fsm", function () {
         describe( "When creating a new Fsm", function () {

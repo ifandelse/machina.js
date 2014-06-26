@@ -1,7 +1,7 @@
-var Fsm = function ( options ) {
+var Fsm = function( options ) {
 	_.extend( this, options );
-	_.defaults(this, utils.getDefaultOptions());
-	this.initialize.apply(this, arguments);
+	_.defaults( this, utils.getDefaultOptions() );
+	this.initialize.apply( this, arguments );
 	machina.emit( NEW_FSM, this );
 	if ( this.initialState ) {
 		this.transition( this.initialState );
@@ -9,11 +9,11 @@ var Fsm = function ( options ) {
 };
 
 _.extend( Fsm.prototype, {
-	initialize: function() { },
-	emit : function ( eventName ) {
+	initialize: function() {},
+	emit: function( eventName ) {
 		var args = arguments;
-		if(this.eventListeners["*"]) {
-			_.each( this.eventListeners["*"], function ( callback ) {
+		if ( this.eventListeners[ "*" ] ) {
+			_.each( this.eventListeners[ "*" ], function( callback ) {
 				try {
 					callback.apply( this, slice.call( args, 0 ) );
 				} catch ( exception ) {
@@ -23,8 +23,8 @@ _.extend( Fsm.prototype, {
 				}
 			}, this );
 		}
-		if ( this.eventListeners[eventName] ) {
-			_.each( this.eventListeners[eventName], function ( callback ) {
+		if ( this.eventListeners[ eventName ] ) {
+			_.each( this.eventListeners[ eventName ], function( callback ) {
 				try {
 					callback.apply( this, slice.call( args, 1 ) );
 				} catch ( exception ) {
@@ -35,127 +35,159 @@ _.extend( Fsm.prototype, {
 			}, this );
 		}
 	},
-	handle : function ( inputType ) {
+	handle: function( inputType ) {
 		if ( !this.inExitHandler ) {
-			var states = this.states, current = this.state, args = slice.call( arguments, 0 ), handlerName, handler, catchAll, action;
+			var states = this.states,
+				current = this.state,
+				args = slice.call( arguments, 0 ),
+				handlerName, handler, catchAll, action;
 			this.currentActionArgs = args;
-			if ( states[current][inputType] || states[current]["*"] || this[ "*" ] ) {
-				handlerName = states[current][inputType] ? inputType : "*";
+			if ( states[ current ][ inputType ] || states[ current ][ "*" ] || this[ "*" ] ) {
+				handlerName = states[ current ][ inputType ] ? inputType : "*";
 				catchAll = handlerName === "*";
-				if ( states[current][handlerName] ) {
-					handler = states[current][handlerName];
+				if ( states[ current ][ handlerName ] ) {
+					handler = states[ current ][ handlerName ];
 					action = current + "." + handlerName;
 				} else {
 					handler = this[ "*" ];
 					action = "*";
 				}
-				if ( ! this._currentAction ) 
-					this._currentAction = action ;
-				this.emit.call( this, HANDLING, { inputType: inputType, args: args.slice(1) } );
-				if (_.isFunction(handler))
+				if ( !this._currentAction )
+					this._currentAction = action;
+				this.emit.call( this, HANDLING, {
+					inputType: inputType,
+					args: args.slice( 1 )
+				} );
+				if ( _.isFunction( handler ) )
 					handler = handler.apply( this, catchAll ? args : args.slice( 1 ) );
-				if (_.isString(handler))
-					this.transition( handler ) ;
-				this.emit.call( this, HANDLED, { inputType: inputType, args: args.slice(1) } );
+				if ( _.isString( handler ) )
+					this.transition( handler );
+				this.emit.call( this, HANDLED, {
+					inputType: inputType,
+					args: args.slice( 1 )
+				} );
 				this._priorAction = this._currentAction;
 				this._currentAction = "";
 				this.processQueue( NEXT_HANDLER );
-			}
-			else {
-				this.emit.call( this, NO_HANDLER, { inputType: inputType, args: args.slice(1) } );
+			} else {
+				this.emit.call( this, NO_HANDLER, {
+					inputType: inputType,
+					args: args.slice( 1 )
+				} );
 			}
 			this.currentActionArgs = undefined;
 		}
 	},
-	transition : function ( newState ) {
+	transition: function( newState ) {
 		if ( !this.inExitHandler && newState !== this.state ) {
 			var curState = this.state;
-			if ( this.states[newState] ) {
-                if ( this.states[curState] && this.states[curState]._onExit ) {
-                    this.inExitHandler = true;
-                    this.states[curState]._onExit.call( this );
-                    this.inExitHandler = false;
-                }
+			if ( this.states[ newState ] ) {
+				if ( this.states[ curState ] && this.states[ curState ]._onExit ) {
+					this.inExitHandler = true;
+					this.states[ curState ]._onExit.call( this );
+					this.inExitHandler = false;
+				}
 				this.targetReplayState = newState;
 				this.priorState = curState;
 				this.state = newState;
-				this.emit.call( this, TRANSITION, { fromState: this.priorState, action: this._currentAction, toState: newState } );
-				if ( this.states[newState]._onEnter ) {
-					this.states[newState]._onEnter.call( this );
+				this.emit.call( this, TRANSITION, {
+					fromState: this.priorState,
+					action: this._currentAction,
+					toState: newState
+				} );
+				if ( this.states[ newState ]._onEnter ) {
+					this.states[ newState ]._onEnter.call( this );
 				}
 				if ( this.targetReplayState === newState ) {
 					this.processQueue( NEXT_TRANSITION );
 				}
 				return;
 			}
-			this.emit.call( this, INVALID_STATE, { state: this.state, attemptedState: newState } );
+			this.emit.call( this, INVALID_STATE, {
+				state: this.state,
+				attemptedState: newState
+			} );
 		}
 	},
-	processQueue : function ( type ) {
-		var filterFn = type === NEXT_TRANSITION ? function ( item ) {
-				return item.type === NEXT_TRANSITION && ((!item.untilState) || (item.untilState === this.state));
-			} : function ( item ) {
-				return item.type === NEXT_HANDLER;
-			};
+	processQueue: function( type ) {
+		var filterFn = type === NEXT_TRANSITION ? function( item ) {
+			return item.type === NEXT_TRANSITION && ( ( !item.untilState ) || ( item.untilState === this.state ) );
+		} : function( item ) {
+			return item.type === NEXT_HANDLER;
+		};
 		var toProcess = _.filter( this.eventQueue, filterFn, this );
 		this.eventQueue = _.difference( this.eventQueue, toProcess );
-		_.each( toProcess, function ( item ) {
+		_.each( toProcess, function( item ) {
 			this.handle.apply( this, item.args );
 		}, this );
 	},
-	clearQueue : function ( type, name ) {
-		if(!type) {
+	clearQueue: function( type, name ) {
+		if ( !type ) {
 			this.eventQueue = [];
-		} else {var filter;
+		} else {
+			var filter;
 			if ( type === NEXT_TRANSITION ) {
-				filter = function ( evnt ) {
-					return (evnt.type === NEXT_TRANSITION && (name ? evnt.untilState === name : true ));
+				filter = function( evnt ) {
+					return ( evnt.type === NEXT_TRANSITION && ( name ? evnt.untilState === name : true ) );
 				};
 			} else if ( type === NEXT_HANDLER ) {
-				filter = function ( evnt ) {
+				filter = function( evnt ) {
 					return evnt.type === NEXT_HANDLER;
 				};
 			}
 			this.eventQueue = _.filter( this.eventQueue, filter );
 		}
 	},
-	deferUntilTransition : function ( stateName ) {
+	deferUntilTransition: function( stateName ) {
 		if ( this.currentActionArgs ) {
-			var queued = { type : NEXT_TRANSITION, untilState : stateName, args : this.currentActionArgs };
+			var queued = {
+				type: NEXT_TRANSITION,
+				untilState: stateName,
+				args: this.currentActionArgs
+			};
 			this.eventQueue.push( queued );
-			this.emit.call( this, DEFERRED, { state: this.state, queuedArgs: queued } );
+			this.emit.call( this, DEFERRED, {
+				state: this.state,
+				queuedArgs: queued
+			} );
 		}
 	},
-	deferUntilNextHandler : function () {
+	deferUntilNextHandler: function() {
 		if ( this.currentActionArgs ) {
-			var queued = { type : NEXT_HANDLER, args : this.currentActionArgs };
+			var queued = {
+				type: NEXT_HANDLER,
+				args: this.currentActionArgs
+			};
 			this.eventQueue.push( queued );
-			this.emit.call( this, DEFERRED, { state: this.state, queuedArgs: queued } );
+			this.emit.call( this, DEFERRED, {
+				state: this.state,
+				queuedArgs: queued
+			} );
 		}
 	},
-	on : function ( eventName, callback ) {
+	on: function( eventName, callback ) {
 		var self = this;
-		if ( !self.eventListeners[eventName] ) {
-			self.eventListeners[eventName] = [];
+		if ( !self.eventListeners[ eventName ] ) {
+			self.eventListeners[ eventName ] = [];
 		}
-		self.eventListeners[eventName].push( callback );
+		self.eventListeners[ eventName ].push( callback );
 		return {
 			eventName: eventName,
 			callback: callback,
 			off: function() {
-				self.off(eventName, callback);
+				self.off( eventName, callback );
 			}
 		};
 	},
-	off : function ( eventName, callback ) {
-		if(!eventName) {
+	off: function( eventName, callback ) {
+		if ( !eventName ) {
 			this.eventListeners = {};
 		} else {
-			if ( this.eventListeners[eventName] ) {
-				if(callback) {
-					this.eventListeners[eventName] = _.without( this.eventListeners[eventName], callback );
+			if ( this.eventListeners[ eventName ] ) {
+				if ( callback ) {
+					this.eventListeners[ eventName ] = _.without( this.eventListeners[ eventName ], callback );
 				} else {
-					this.eventListeners[eventName] = [];
+					this.eventListeners[ eventName ] = [];
 				}
 			}
 		}
@@ -164,10 +196,13 @@ _.extend( Fsm.prototype, {
 
 Fsm.prototype.trigger = Fsm.prototype.emit;
 
-var ctor = function () {};
 
-var inherits = function ( parent, protoProps, staticProps ) {
+
+var inherits = function( parent, protoProps, staticProps ) {
 	var fsm;
+	var instanceProps = {};
+	var ctor = function() {};
+
 
 	// The constructor function for the new subclass is either defined by you
 	// (the "constructor" property in your `extend` definition), or defaulted
@@ -175,7 +210,8 @@ var inherits = function ( parent, protoProps, staticProps ) {
 	if ( protoProps && protoProps.hasOwnProperty( 'constructor' ) ) {
 		fsm = protoProps.constructor;
 	} else {
-		fsm = function () {
+		fsm = function() {
+			_.deepExtend( this, _.cloneDeep( instanceProps ) );
 			parent.apply( this, arguments );
 		};
 	}
@@ -191,7 +227,19 @@ var inherits = function ( parent, protoProps, staticProps ) {
 	// Add prototype properties (instance properties) to the subclass,
 	// if supplied.
 	if ( protoProps ) {
-		_.deepExtend( fsm.prototype, protoProps );
+		_.deepExtend(
+			fsm.prototype,
+			_.transform( protoProps, function( accum, val, key ) {
+				if ( typeof val === "function" ) {
+					accum[ key ] = val;
+				}
+			} )
+		);
+		_.deepExtend( instanceProps, _.transform( protoProps, function( accum, val, key ) {
+			if ( typeof val !== "function" ) {
+				accum[ key ] = val;
+			}
+		} ) );
 	}
 
 	// Add static properties to the constructor function, if supplied.
@@ -209,7 +257,7 @@ var inherits = function ( parent, protoProps, staticProps ) {
 };
 
 // The self-propagating extend function that Backbone classes use.
-Fsm.extend = function ( protoProps, classProps ) {
+Fsm.extend = function( protoProps, classProps ) {
 	var fsm = inherits( this, protoProps, classProps );
 	fsm.extend = this.extend;
 	return fsm;

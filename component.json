@@ -1,11 +1,11 @@
 {
-    "name": "machina.js",
-    "version": "0.3.6",
-    "main": "lib/machina.js",
-    "scripts": [
+	"name": "machina.js",
+	"version": "0.3.7",
+	"main": "lib/machina.js",
+	"scripts": [
         "lib/machina.js"
     ],
-    "dependencies": {
-        "jashkenas/underscore": "*"
-    }
+	"dependencies": {
+		"lodash/lodash": "*"
+	}
 }
