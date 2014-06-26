@@ -71,7 +71,8 @@
 		"express": "~3.4.7",
 		"open": "~0.0.4",
 		"gulp-util": "~2.2.12",
-		"expect.js": "~0.2.0"
+		"expect.js": "~0.2.0",
+		"mocha": "^1.20.1"
 	},
 	"licenses": [ {
 		"type": "MIT",
