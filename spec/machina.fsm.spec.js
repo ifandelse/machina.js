@@ -220,6 +220,27 @@
                     expect( onEnterInvoked ).to.be( 2 );
                 } );
             } );
+
+            describe( "When passing an instance object", function () {
+                function F() {}
+                F.prototype.hello = "world";
+                F.prototype.foo = function () { return "bar"; };
+                var instance = new F();
+
+                var fsm = new machina.Fsm( {
+                    instance: instance
+                } );
+
+                it( "should not create a new object", function () {
+                    expect(fsm.instance).to.equal(instance);
+                } );
+
+                it( "should not break the prototype chain", function () {
+                    expect(fsm.instance).to.be.a(F);
+                    expect(fsm.instance.hello).to.equal("world");
+                    expect(fsm.instance.foo()).to.equal("bar");
+                } );
+            } );
         } );
 
         describe( "When deferring until after the next transition", function () {
