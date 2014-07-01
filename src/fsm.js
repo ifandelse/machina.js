@@ -200,7 +200,6 @@ Fsm.prototype.trigger = Fsm.prototype.emit;
 
 var inherits = function( parent, protoProps, staticProps ) {
 	var fsm;
-	var instanceProps = {};
 	var ctor = function() {};
 
 
@@ -211,9 +210,7 @@ var inherits = function( parent, protoProps, staticProps ) {
 		fsm = protoProps.constructor;
 	} else {
 		fsm = function() {
-			var args = slice.call( arguments, 0 );
-			args[ 0 ] = _.deepExtend( _.cloneDeep( instanceProps ), args[ 0 ] );
-			parent.apply( this, args );
+			parent.apply( this, arguments );
 		};
 	}
 
@@ -228,19 +225,7 @@ var inherits = function( parent, protoProps, staticProps ) {
 	// Add prototype properties (instance properties) to the subclass,
 	// if supplied.
 	if ( protoProps ) {
-		_.deepExtend(
-			fsm.prototype,
-			_.transform( protoProps, function( accum, val, key ) {
-				if ( typeof val === "function" ) {
-					accum[ key ] = val;
-				}
-			} )
-		);
-		_.deepExtend( instanceProps, _.transform( protoProps, function( accum, val, key ) {
-			if ( typeof val !== "function" ) {
-				accum[ key ] = val;
-			}
-		} ) );
+		_.deepExtend( fsm.prototype, protoProps );
 	}
 
 	// Add static properties to the constructor function, if supplied.
