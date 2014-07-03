@@ -769,6 +769,11 @@
                 expect( e1.states.S.action1 !== e2.states.S.action1 );
                 expect( e1.states.S.action2 !== e2.states.S.action2 );
             } );
+            it("should set the `states` member as an instance property", function() {
+                expect(b1.hasOwnProperty("states")).to.be.ok();
+                expect(e1.hasOwnProperty("states")).to.be.ok();
+                expect(e2.hasOwnProperty("states")).to.be.ok();
+            });
         } );
 
         describe( "When providing a global catch-all handler", function() {
