@@ -234,14 +234,7 @@ var inherits = function( parent, protoProps, staticProps ) {
     // Add prototype properties (instance properties) to the subclass,
     // if supplied.
     if ( protoProps ) {
-        _.extend(
-            fsm.prototype,
-            _.transform( protoProps, function( accum, val, key ) {
-                if ( typeof val === "function" ) {
-                    accum[ key ] = val;
-                }
-            } )
-        );
+        _.extend(fsm.prototype, protoProps);
         _.deepExtend( machObj, _.transform( protoProps, function( accum, val, key ) {
             if ( _machKeys.indexOf( key ) !== -1 ) {
                 accum[ key ] = val;
