@@ -35,19 +35,19 @@ var utils = {
 
 if ( !_.deepExtend ) {
 	var behavior = {
-		"*": function( obj, sourcePropKey, sourcePropVal ) {
-			obj[ sourcePropKey ] = sourcePropVal;
+			"*": function( obj, sourcePropKey, sourcePropVal ) {
+				obj[ sourcePropKey ] = sourcePropVal;
+			},
+			"object": function( obj, sourcePropKey, sourcePropVal ) {
+				obj[ sourcePropKey ] = deepExtend( {}, obj[ sourcePropKey ] || {}, sourcePropVal );
+			},
+			"array": function( obj, sourcePropKey, sourcePropVal ) {
+				obj[ sourcePropKey ] = [];
+				_.each( sourcePropVal, function( item, idx ) {
+					behavior[ getHandlerName( item ) ]( obj[ sourcePropKey ], idx, item );
+				}, this );
+			}
 		},
-		"object": function( obj, sourcePropKey, sourcePropVal ) {
-			obj[ sourcePropKey ] = deepExtend( {}, obj[ sourcePropKey ] || {}, sourcePropVal );
-		},
-		"array": function( obj, sourcePropKey, sourcePropVal ) {
-			obj[ sourcePropKey ] = [];
-			_.each( sourcePropVal, function( item, idx ) {
-				behavior[ getHandlerName( item ) ]( obj[ sourcePropKey ], idx, item );
-			}, this );
-		}
-	},
 		getActualType = function( val ) {
 			if ( _.isArray( val ) ) {
 				return "array";

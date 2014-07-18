@@ -31,6 +31,10 @@
 		"name": "Alex Robson",
 		"email": "arobson@gmail.com",
 		"url": "http://github.com/arobson"
+    }, {
+		"name": "Dominic Barnes",
+		"email": "dominic@dbarnes.info",
+		"url": "http://github.com/dominicbarnes"
     } ],
 	"keywords": [
         "state machine",

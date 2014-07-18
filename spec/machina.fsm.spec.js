@@ -774,6 +774,11 @@
                 expect(e1.hasOwnProperty("states")).to.be.ok();
                 expect(e2.hasOwnProperty("states")).to.be.ok();
             });
+            it("should set the `initialState` member as an instance property", function() {
+                expect(b1.hasOwnProperty("initialState")).to.be.ok();
+                expect(e1.hasOwnProperty("initialState")).to.be.ok();
+                expect(e2.hasOwnProperty("initialState")).to.be.ok();
+            });
         } );
 
         describe( "When providing a global catch-all handler", function() {

@@ -1,7 +1,8 @@
 ###v0.3.7
 * Underscore.js is no longer a dependency - it has been replaced with Lodash.
-* Fixed issue where instances sharing a derived machina constructor that *did not* specify instance level state objects were sharing the prototype's `states` object from the parent Fsm constructor. State objects are now built/blended together from the prototype chain and deep-clone-extended over the instance itself, so `states` will always be instance level.
+* Fixed issue where instances sharing a derived machina constructor that *did not* specify instance level state objects were sharing the prototype's `states` object from the parent Fsm constructor. The `states` object and `initialState` property are now built/blended together from the prototype chain and deep-clone-extended over the instance itself, so that they will always be instance level.
 * Added Alex Robson (@arobson) to contributors list in package.json - he was instrumental in helping me track down and squash the above-mentioned bug.
+* Added Dominic Barnes to the contributors list.
 * Inverted the changelog to show most recent first - you know...b/c...too lazy to scroll. :-)
 * Source in this version also has new jsbeautify settings applied - whitespace-laden commits, FML, but it was necessary going forward.
 * Removed failing LiveReload setup in the gulpfile. I plan to fix that in the v0.4 release.
