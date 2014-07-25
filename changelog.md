@@ -1,5 +1,6 @@
 ###v0.3.8
 * Fixed a bug where the instance-level `initialState` member was getting set to undefined if a `states` object was provided on the options constructor arg but not an `initialState`.
+* Added some code comments to the un-minified source as well to better explain the inheritance behavior changes.
 
 ###v0.3.7
 * Underscore.js is no longer a dependency - it has been replaced with Lodash.
