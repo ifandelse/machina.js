@@ -9,7 +9,8 @@ require.config( {
 		'machina.postal': '../../../bower/machina.postal/lib/machina.postal',
 		postal: '../../../bower/postal.js/lib/postal',
 		'postal.diags': '../../../bower/postal.diagnostics/lib/postal.diagnostics.min',
-		jquery: '../../../bower/jquery/jquery'
+		jquery: '../../../bower/jquery/jquery',
+		conduitjs: '../../../bower/conduitjs/lib/conduit'
 	},
 	shim: {
 		mockjax: [ 'jquery' ],

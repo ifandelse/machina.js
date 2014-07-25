@@ -163,9 +163,9 @@
                     } );
                 } );
                 it( "should have invoked handlers", function() {
-                    expect( !! event1 ).to.be( true );
-                    expect( !! event2 ).to.be( true );
-                    expect( !! event3 ).to.be( true );
+                    expect( !!event1 ).to.be( true );
+                    expect( !!event2 ).to.be( true );
+                    expect( !!event3 ).to.be( true );
                 } );
                 it( "should execute event callbacks with the fsm as the context", function() {
                     var fsm = new machina.Fsm( {
@@ -769,16 +769,36 @@
                 expect( e1.states.S.action1 !== e2.states.S.action1 );
                 expect( e1.states.S.action2 !== e2.states.S.action2 );
             } );
-            it("should set the `states` member as an instance property", function() {
-                expect(b1.hasOwnProperty("states")).to.be.ok();
-                expect(e1.hasOwnProperty("states")).to.be.ok();
-                expect(e2.hasOwnProperty("states")).to.be.ok();
-            });
-            it("should set the `initialState` member as an instance property", function() {
-                expect(b1.hasOwnProperty("initialState")).to.be.ok();
-                expect(e1.hasOwnProperty("initialState")).to.be.ok();
-                expect(e2.hasOwnProperty("initialState")).to.be.ok();
-            });
+            it( "should set the `states` member as an instance property", function() {
+                expect( b1.hasOwnProperty( "states" ) ).to.be.ok();
+                expect( e1.hasOwnProperty( "states" ) ).to.be.ok();
+                expect( e2.hasOwnProperty( "states" ) ).to.be.ok();
+            } );
+            it( "should set the `initialState` member as an instance property", function() {
+                expect( b1.hasOwnProperty( "initialState" ) ).to.be.ok();
+                expect( e1.hasOwnProperty( "initialState" ) ).to.be.ok();
+                expect( e2.hasOwnProperty( "initialState" ) ).to.be.ok();
+            } );
+        } );
+
+        describe( "When extending instances with an initialState property", function() {
+            it( "should properly set the initialState on the children FSMs", function() {
+                var Base = machina.Fsm.extend( {
+                    initialState: "hidden",
+                    states: {
+                        hidden: {}
+                    }
+                } );
+
+                var Sub = Base.extend( {
+                    states: {}
+                } );
+
+                var fsm = new Sub();
+
+                expect( fsm.initialState ).to.equal( "hidden" );
+                expect( fsm.state ).to.equal( "hidden" );
+            } );
         } );
 
         describe( "When providing a global catch-all handler", function() {

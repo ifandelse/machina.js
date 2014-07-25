@@ -1,6 +1,6 @@
 {
 	"name": "machina.js",
-	"version": "0.3.7",
+	"version": "0.3.8",
 	"main": [
     "lib/machina.js"
   ],

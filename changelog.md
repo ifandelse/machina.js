@@ -1,3 +1,6 @@
+###v0.3.8
+* Fixed a bug where the instance-level `initialState` member was getting set to undefined if a `states` object was provided on the options constructor arg but not an `initialState`.
+
 ###v0.3.7
 * Underscore.js is no longer a dependency - it has been replaced with Lodash.
 * Fixed issue where instances sharing a derived machina constructor that *did not* specify instance level state objects were sharing the prototype's `states` object from the parent Fsm constructor. The `states` object and `initialState` property are now built/blended together from the prototype chain and deep-clone-extended over the instance itself, so that they will always be instance level.

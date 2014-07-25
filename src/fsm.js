@@ -209,15 +209,18 @@ var inherits = function( parent, protoProps, staticProps ) {
     if ( protoProps && protoProps.hasOwnProperty( 'constructor' ) ) {
         fsm = protoProps.constructor;
     } else {
+        // The default machina constructor (when using inheritance) creates a
+        // deep copy of the states/initialState values from the prototype and
+        // extends them over the instance so that they'll be instance-level.
+        // If an options arg (args[0]) is passed in, a states or intialState
+        // value will be preferred over any data pulled up from the prototype.
         fsm = function() {
             var args = slice.call( arguments, 0 );
-            var blendedState;
             args[ 0 ] = args[ 0 ] || {};
-            blendedState = ( args[ 0 ].states ) ? _.deepExtend( _.cloneDeep( machObj ), {
-                states: args[ 0 ].states || {},
-                initialState: args[ 0 ].initialState
-            } ) : _.cloneDeep( machObj );
-            blendedState.initialState = args[ 0 ].initialState || blendedState.initialState;
+            var blendedState;
+            var instanceStates = args[0].states || {};
+            blendedState = _.deepExtend( _.cloneDeep( machObj ), { states: instanceStates } );
+            blendedState.initialState = args[ 0 ].initialState || this.initialState;
             _.extend( args[ 0 ], blendedState );
             parent.apply( this, args );
         };
