@@ -1,6 +1,6 @@
 /* global describe, it, after, before, expect */
 ( function() {
-	var machina = typeof window === "undefined" ? require( "../lib/machina.js" )() : window.machina;
+	var machina = typeof window === "undefined" ? require( "../lib/machina.js" ) : window.machina;
 	var expect = typeof window === "undefined" ? require( "expect.js" ) : window.expect;
 	var _ = typeof window === "undefined" ? require( "lodash" ) : window._;
 	var rgx = /.*\.[0-9]*/;

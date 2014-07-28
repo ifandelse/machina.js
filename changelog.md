@@ -1,3 +1,7 @@
+###v0.4.0-1 (first v0.4 pre-release of many)
+* Adjusted UMD to check for AMD before CommonJS.
+* CommonJS wrapper no longer returns a factory function, instead it returns the module value. **BREAKING CHANGE** (for node.js users, at least).
+
 ###v0.3.8
 * Fixed a bug where the instance-level `initialState` member was getting set to undefined if a `states` object was provided on the options constructor arg but not an `initialState`.
 * Added some code comments to the un-minified source as well to better explain the inheritance behavior changes.

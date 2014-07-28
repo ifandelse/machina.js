@@ -1,16 +1,13 @@
 /*global module, define */
 ( function( root, factory ) {
-	if ( typeof module === "object" && module.exports ) {
-		// Node, or CommonJS-Like environments
-		module.exports = function( _ ) {
-			_ = _ || require( "lodash" );
-			return factory( _ );
-		};
-	} else if ( typeof define === "function" && define.amd ) {
+	if ( typeof define === "function" && define.amd ) {
 		// AMD. Register as an anonymous module.
 		define( [ "lodash" ], function( _ ) {
 			return factory( _, root );
 		} );
+	} else if ( typeof module === "object" && module.exports ) {
+		// Node, or CommonJS-Like environments
+		module.exports = factory( require( "lodash" ) );
 	} else {
 		// Browser globals
 		root.machina = factory( root._, root );
