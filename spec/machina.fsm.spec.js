@@ -1079,6 +1079,7 @@
             describe("using a parameterized constructor", function () {
                 var BaseFsm = machina.Fsm.extend({
                     initialize: function (parameter) {
+                        this.parameter = parameter;
                     },
                     states: {
                         a: {},
@@ -1107,6 +1108,12 @@
 
                         expect(base.methodA).to.be.a('function');
                     });
+
+                    it('should initialize with the given parameters', function () {
+                        var base = new BaseFsm('parameter');
+
+                        expect(base.parameter).to.eql('parameter');
+                    });
                 });
 
                 describe("the sub class", function () {
@@ -1123,6 +1130,12 @@
 
                         expect(sub.methodA).to.be.a('function');
                         expect(sub.methodB).to.be.a('function');
+                    });
+
+                    it("should initialize with the given parameters", function () {
+                        var sub = new SubFsm('parameter');
+
+                        expect(sub.parameter).to.eql('parameter');
                     });
                 });
             });
