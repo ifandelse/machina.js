@@ -230,6 +230,8 @@ The top level `machina` object has the following members:
 
 ## Pulling machina into your environment
 
+machina depends on [lodash (2.4.1 or greater)](https://lodash.com/). If you are using npm or bower - lodash will be pulled down automatically when you install machina - otherwise you'll need to grab it manually.
+
 ```javascript
 // If you're not using an AMD loader, machina is available on the window
 var MyFsm = machina.Fsm.extend({ /* your stuff */});
