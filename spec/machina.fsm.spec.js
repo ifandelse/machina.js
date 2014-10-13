@@ -1025,5 +1025,120 @@
                 } );
             } );
         } );
+
+        describe("When inheriting a base FSM", function () {
+            describe("using a parameterless constructor", function () {
+                var BaseFsm = machina.Fsm.extend({
+                    states: {
+                        a: {},
+                        b: {}
+                    },
+                    methodA: function () {}
+                });
+
+                var SubFsm = BaseFsm.extend({
+                    states: {
+                        c: {}
+                    },
+                    methodB: function () {}
+                });
+
+                describe("the base class", function () {
+                    it("should have the base states", function () {
+                        var base = new BaseFsm();
+
+                        expect(base.states).to.have.property('a');
+                        expect(base.states).to.have.property('b');
+                    });
+
+                    it("should have the base methods", function () {
+                        var base = new BaseFsm();
+
+                        expect(base.methodA).to.be.a('function');
+                    });
+                });
+
+                describe("the sub class", function () {
+                    it("should have the base and sub states", function () {
+                        var sub = new SubFsm();
+
+                        expect(sub.states).to.have.property('a');
+                        expect(sub.states).to.have.property('b');
+                        expect(sub.states).to.have.property('c');
+                    });
+
+                    it("should have the base and sub methods", function () {
+                        var sub = new SubFsm();
+
+                        expect(sub.methodA).to.be.a('function');
+                        expect(sub.methodB).to.be.a('function');
+                    });
+                });
+            });
+
+            describe("using a parameterized constructor", function () {
+                var BaseFsm = machina.Fsm.extend({
+                    initialize: function (parameter) {
+                        this.parameter = parameter;
+                    },
+                    states: {
+                        a: {},
+                        b: {}
+                    },
+                    methodA: function () {}
+                });
+
+                var SubFsm = BaseFsm.extend({
+                    states: {
+                        c: {}
+                    },
+                    methodB: function () {}
+                });
+
+                describe("the base class", function () {
+                    it("should have the base and sub states", function () {
+                        var base = new BaseFsm('parameter');
+
+                        expect(base.states).to.have.property('a');
+                        expect(base.states).to.have.property('b');
+                    });
+
+                    it("should have the base and sub methods", function () {
+                        var base = new BaseFsm('parameter');
+
+                        expect(base.methodA).to.be.a('function');
+                    });
+
+                    it('should initialize with the given parameters', function () {
+                        var base = new BaseFsm('parameter');
+
+                        expect(base.parameter).to.eql('parameter');
+                    });
+                });
+
+                describe("the sub class", function () {
+                    it("should have the base and sub states", function () {
+                        var sub = new SubFsm('parameter');
+
+                        expect(sub.states).to.have.property('a');
+                        expect(sub.states).to.have.property('b');
+                        expect(sub.states).to.have.property('c');
+                    });
+
+                    it("should have the base and sub methods", function () {
+                        var sub = new SubFsm('parameter');
+
+                        expect(sub.methodA).to.be.a('function');
+                        expect(sub.methodB).to.be.a('function');
+                    });
+
+                    it("should initialize with the given parameters", function () {
+                        var sub = new SubFsm('parameter');
+
+                        expect(sub.parameter).to.eql('parameter');
+                    });
+                });
+            });
+        });
     } );
 }() );
