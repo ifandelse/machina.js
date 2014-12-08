@@ -10,6 +10,7 @@
 				var event1 = 0;
 				var event2 = 0;
 				var event3 = 0;
+				var returnValue;
 				var events = {
 					noHandlerInvoked: false,
 					transitionedHandler: false,
@@ -49,6 +50,7 @@
 							},
 							"event2": function() {
 								event2++;
+								return "event2 return value";
 							},
 							"event3": function() {
 								event3++;
@@ -84,7 +86,7 @@
 				} );
 				xfsm.handle( "nothingwillgetthis", "Testing 123" );
 				xfsm.handle( "event1" );
-				xfsm.handle( "event2" );
+				returnValue = xfsm.handle( "event2" );
 				xfsm.handle( "event3" );
 				xfsm.transition( "NoSuchState" );
 
@@ -106,6 +108,9 @@
 						inputType: 'nothingwillgetthis',
 						args: [ 'Testing 123' ]
 					} );
+				} );
+				it( "should support returning a value from an input handler", function() {
+					expect( returnValue ).to.be( "event2 return value" );
 				} );
 				it( "should fire the handling event", function() {
 					expect( events.handlingHandler ).to.be( true );

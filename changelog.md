@@ -1,3 +1,6 @@
+###v0.4.0-2
+* Input handlers now support returning a value (thanks to @Codelica for the PR)
+
 ###v0.4.0-1 (first v0.4 pre-release of many)
 * Adjusted UMD to check for AMD before CommonJS.
 * CommonJS wrapper no longer returns a factory function, instead it returns the module value. **BREAKING CHANGE** (for node.js users, at least).
