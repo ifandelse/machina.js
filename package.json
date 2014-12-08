@@ -35,6 +35,10 @@
 		"name": "Dominic Barnes",
 		"email": "dominic@dbarnes.info",
 		"url": "http://github.com/dominicbarnes"
+    }, {
+		"name": "James Pooton",
+		"email": "james@codelica.com",
+		"url": "http://github.com/codelica"
     } ],
 	"keywords": [
         "state machine",

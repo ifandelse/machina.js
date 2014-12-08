@@ -76,6 +76,7 @@ _.extend( Fsm.prototype, {
                 } );
             }
             this.currentActionArgs = undefined;
+            return handler;
         }
     },
     transition: function( newState ) {
