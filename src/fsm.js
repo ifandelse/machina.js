@@ -1,270 +1,80 @@
-var Fsm = function( options ) {
-    _.extend( this, options );
-    _.defaults( this, utils.getDefaultOptions() );
-    this.initialize.apply( this, arguments );
-    machina.emit( NEW_FSM, this );
-    if ( this.initialState ) {
-        this.transition( this.initialState );
-    }
-};
+var Fsm = BehavioralFsm.extend( {
+	constructor: function() {
+		BehavioralFsm.apply( this, arguments );
+		this.ensureClientMeta();
+	},
+	initClient: function initClient() {
+		var initialState = this.initialState;
+		if ( !initialState ) {
+			throw new Error( "You must specify an initial state for this FSM" );
+		}
+		if ( !this.states[ initialState ] ) {
+			throw new Error( "The initial state specified does not exist in the states object." );
+		}
+		this.transition( initialState );
+	},
+	ensureClientMeta: function ensureClientMeta() {
+		if ( !this._stamped ) {
+			this._stamped = true;
+			_.defaults( this, _.cloneDeep( getDefaultClientMeta() ) );
+			this.initClient();
+		}
+		return this;
+	},
 
-_.extend( Fsm.prototype, {
-    initialize: function() {},
-    emit: function( eventName ) {
-        var args = arguments;
-        if ( this.eventListeners[ "*" ] ) {
-            _.each( this.eventListeners[ "*" ], function( callback ) {
-                try {
-                    callback.apply( this, slice.call( args, 0 ) );
-                } catch ( exception ) {
-                    if ( console && typeof console.log !== "undefined" ) {
-                        console.log( exception.stack );
-                    }
-                }
-            }, this );
-        }
-        if ( this.eventListeners[ eventName ] ) {
-            _.each( this.eventListeners[ eventName ], function( callback ) {
-                try {
-                    callback.apply( this, slice.call( args, 1 ) );
-                } catch ( exception ) {
-                    if ( console && typeof console.log !== "undefined" ) {
-                        console.log( exception.stack );
-                    }
-                }
-            }, this );
-        }
-    },
-    handle: function( inputType ) {
-        if ( !this.inExitHandler ) {
-            var states = this.states,
-                current = this.state,
-                args = slice.call( arguments, 0 ),
-                handlerName, handler, catchAll, action;
-            this.currentActionArgs = args;
-            if ( states[ current ][ inputType ] || states[ current ][ "*" ] || this[ "*" ] ) {
-                handlerName = states[ current ][ inputType ] ? inputType : "*";
-                catchAll = handlerName === "*";
-                if ( states[ current ][ handlerName ] ) {
-                    handler = states[ current ][ handlerName ];
-                    action = current + "." + handlerName;
-                } else {
-                    handler = this[ "*" ];
-                    action = "*";
-                }
-                if ( !this._currentAction )
-                    this._currentAction = action;
-                this.emit.call( this, HANDLING, {
-                    inputType: inputType,
-                    args: args.slice( 1 )
-                } );
-                if ( _.isFunction( handler ) )
-                    handler = handler.apply( this, catchAll ? args : args.slice( 1 ) );
-                if ( _.isString( handler ) )
-                    this.transition( handler );
-                this.emit.call( this, HANDLED, {
-                    inputType: inputType,
-                    args: args.slice( 1 )
-                } );
-                this._priorAction = this._currentAction;
-                this._currentAction = "";
-                this.processQueue( NEXT_HANDLER );
-            } else {
-                this.emit.call( this, NO_HANDLER, {
-                    inputType: inputType,
-                    args: args.slice( 1 )
-                } );
-            }
-            this.currentActionArgs = undefined;
-            return handler;
-        }
-    },
-    transition: function( newState ) {
-        if ( !this.inExitHandler && newState !== this.state ) {
-            var curState = this.state;
-            if ( this.states[ newState ] ) {
-                if ( curState && this.states[ curState ] && this.states[ curState ]._onExit ) {
-                    this.inExitHandler = true;
-                    this.states[ curState ]._onExit.call( this );
-                    this.inExitHandler = false;
-                }
-                this.targetReplayState = newState;
-                this.priorState = curState;
-                this.state = newState;
-                this.emit.call( this, TRANSITION, {
-                    fromState: this.priorState,
-                    action: this._currentAction,
-                    toState: newState
-                } );
-                if ( this.states[ newState ]._onEnter ) {
-                    this.states[ newState ]._onEnter.call( this );
-                }
-                if ( this.targetReplayState === newState ) {
-                    this.processQueue( NEXT_TRANSITION );
-                }
-                return;
-            }
-            this.emit.call( this, INVALID_STATE, {
-                state: this.state,
-                attemptedState: newState
-            } );
-        }
-    },
-    processQueue: function( type ) {
-        var filterFn = type === NEXT_TRANSITION ? function( item ) {
-            return item.type === NEXT_TRANSITION && ( ( !item.untilState ) || ( item.untilState === this.state ) );
-        } : function( item ) {
-            return item.type === NEXT_HANDLER;
-        };
-        var toProcess = _.filter( this.eventQueue, filterFn, this );
-        this.eventQueue = _.difference( this.eventQueue, toProcess );
-        _.each( toProcess, function( item ) {
-            this.handle.apply( this, item.args );
-        }, this );
-    },
-    clearQueue: function( type, name ) {
-        if ( !type ) {
-            this.eventQueue = [];
-        } else {
-            var filter;
-            if ( type === NEXT_TRANSITION ) {
-                filter = function( evnt ) {
-                    return ( evnt.type === NEXT_TRANSITION && ( name ? evnt.untilState === name : true ) );
-                };
-            } else if ( type === NEXT_HANDLER ) {
-                filter = function( evnt ) {
-                    return evnt.type === NEXT_HANDLER;
-                };
-            }
-            this.eventQueue = _.filter( this.eventQueue, filter );
-        }
-    },
-    deferUntilTransition: function( stateName ) {
-        if ( this.currentActionArgs ) {
-            var queued = {
-                type: NEXT_TRANSITION,
-                untilState: stateName,
-                args: this.currentActionArgs
-            };
-            this.eventQueue.push( queued );
-            this.emit.call( this, DEFERRED, {
-                state: this.state,
-                queuedArgs: queued
-            } );
-        }
-    },
-    deferUntilNextHandler: function() {
-        if ( this.currentActionArgs ) {
-            var queued = {
-                type: NEXT_HANDLER,
-                args: this.currentActionArgs
-            };
-            this.eventQueue.push( queued );
-            this.emit.call( this, DEFERRED, {
-                state: this.state,
-                queuedArgs: queued
-            } );
-        }
-    },
-    on: function( eventName, callback ) {
-        var self = this;
-        if ( !self.eventListeners[ eventName ] ) {
-            self.eventListeners[ eventName ] = [];
-        }
-        self.eventListeners[ eventName ].push( callback );
-        return {
-            eventName: eventName,
-            callback: callback,
-            off: function() {
-                self.off( eventName, callback );
-            }
-        };
-    },
-    off: function( eventName, callback ) {
-        if ( !eventName ) {
-            this.eventListeners = {};
-        } else {
-            if ( this.eventListeners[ eventName ] ) {
-                if ( callback ) {
-                    this.eventListeners[ eventName ] = _.without( this.eventListeners[ eventName ], callback );
-                } else {
-                    this.eventListeners[ eventName ] = [];
-                }
-            }
-        }
-    }
+	ensureClientArg: function( args ) {
+		var _args = args;
+		// we need to test the args and verify that if a client arg has
+		// been passed, it must be this FSM instance (this isn't a behavioral FSM)
+		if ( typeof _args[ 0 ] === "object" && !( "inputType" in _args[ 0 ] ) && _args[ 0 ] !== this ) {
+			_args.splice( 0, 1, this );
+		} else if ( typeof _args[ 0 ] !== "object" || ( typeof _args[ 0 ] === "object" && ( "inputType" in _args[ 0 ] ) ) ) {
+			_args.unshift( this );
+		}
+		return _args;
+	},
+
+	getHandlerArgs: function( args, isCatchAll ) {
+		// index 0 is the client, index 1 is inputType
+		// if we're in a catch-all handler, input type needs to be included in the args
+		// inputType might be an object, so we need to just get the inputType string if so
+		var _args = args;
+		var input = _args[ 1 ];
+		if ( typeof inputType === "object" ) {
+			_args.splice( 1, 1, input.inputType );
+		}
+		return isCatchAll ?
+			_args.slice( 1 ) :
+			_args.slice( 2 );
+	},
+	// "classic" machina FSM do not emit the client property on events (which would be the FSM itself)
+	buildEventPayload: function() {
+		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
+		var data = args[ 1 ];
+		if ( _.isPlainObject( data ) ) {
+			return _.extend( data, { namespace: this.namespace } );
+		} else {
+			return { data: data || null, namespace: this.namespace };
+		}
+	},
+	handle: function( inputType ) {
+		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
+		return BehavioralFsm.prototype.handle.apply( this, args );
+	},
+	transition: function( newState ) {
+		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
+		return BehavioralFsm.prototype.transition.apply( this, args );
+	},
+	deferUntilTransition: function( stateName ) {
+		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
+		return BehavioralFsm.prototype.deferUntilTransition.apply( this, args );
+	},
+	processQueue: function() {
+		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
+		return BehavioralFsm.prototype.processQueue.apply( this, args );
+	},
+	clearQueue: function( stateName ) {
+		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
+		return BehavioralFsm.prototype.clearQueue.apply( this, args );
+	}
 } );
-
-Fsm.prototype.trigger = Fsm.prototype.emit;
-
-// _machKeys are members we want to track across the prototype chain of an extended FSM constructor
-// Since we want to eventually merge the aggregate of those values onto the instance so that FSMs
-// that share the same extended prototype won't share state *on* those prototypes.
-var _machKeys = [ "states", "initialState" ];
-var inherits = function( parent, protoProps, staticProps ) {
-    var fsm; // placeholder for instance constructor
-    var machObj = {}; // object used to hold initialState & states from prototype for instance-level merging
-    var ctor = function() {}; // placeholder ctor function used to insert level in prototype chain
-
-    // The constructor function for the new subclass is either defined by you
-    // (the "constructor" property in your `extend` definition), or defaulted
-    // by us to simply call the parent's constructor.
-    if ( protoProps && protoProps.hasOwnProperty( 'constructor' ) ) {
-        fsm = protoProps.constructor;
-    } else {
-        // The default machina constructor (when using inheritance) creates a
-        // deep copy of the states/initialState values from the prototype and
-        // extends them over the instance so that they'll be instance-level.
-        // If an options arg (args[0]) is passed in, a states or intialState
-        // value will be preferred over any data pulled up from the prototype.
-        fsm = function() {
-            var args = slice.call( arguments, 0 );
-            args[ 0 ] = args[ 0 ] || {};
-            var blendedState;
-            var instanceStates = args[ 0 ].states || {};
-            blendedState = _.deepExtend( _.cloneDeep( machObj ), { states: instanceStates } );
-            blendedState.initialState = args[ 0 ].initialState || this.initialState;
-            _.extend( args[ 0 ], blendedState );
-            parent.apply( this, args );
-        };
-    }
-
-    // Inherit class (static) properties from parent.
-    _.deepExtend( fsm, parent );
-
-    // Set the prototype chain to inherit from `parent`, without calling
-    // `parent`'s constructor function.
-    ctor.prototype = parent.prototype;
-    fsm.prototype = new ctor();
-
-    // Add prototype properties (instance properties) to the subclass,
-    // if supplied.
-    if ( protoProps ) {
-        _.extend( fsm.prototype, protoProps );
-        _.deepExtend( machObj, _.transform( protoProps, function( accum, val, key ) {
-            if ( _machKeys.indexOf( key ) !== -1 ) {
-                accum[ key ] = val;
-            }
-        } ) );
-    }
-
-    // Add static properties to the constructor function, if supplied.
-    if ( staticProps ) {
-        _.deepExtend( fsm, staticProps );
-    }
-
-    // Correctly set child's `prototype.constructor`.
-    fsm.prototype.constructor = fsm;
-
-    // Set a convenience property in case the parent's prototype is needed later.
-    fsm.__super__ = parent.prototype;
-
-    return fsm;
-};
-
-// The self-propagating extend function that Backbone classes use.
-Fsm.extend = function( protoProps, classProps ) {
-    var fsm = inherits( this, protoProps, classProps );
-    fsm.extend = this.extend;
-    return fsm;
-};

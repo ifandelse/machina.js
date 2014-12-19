@@ -40,10 +40,10 @@ General Public License for more details.
 See http://opensource.org/licenses/GPL-2.0 for more details
 
 --------------------------------------------------------------------
-The inherits and extend functions included in this project were
-written by Jeremy Ashkenas and originate from the backbone.js project
-which can be found at http://backbonejs.org.  The backbone license
-is included below.
+
+The extend function included in machina was very heavily borrowed
+from the backbone.js project, which can be found at http://backbonejs.org.
+Due to its origin, the backbone license is included below as well.
 
 Copyright (c) 2010-2012 Jeremy Ashkenas, DocumentCloud
 

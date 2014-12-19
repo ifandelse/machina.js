@@ -16,5 +16,5 @@ _ReSharper*
 desktop.ini
 .eprj
 report/
-bower/
 coverage/
+bower/
