@@ -1,6 +1,5 @@
 var slice = [].slice;
 var NEXT_TRANSITION = "transition";
-var NEXT_HANDLER = "handler";
 var HANDLING = "handling";
 var HANDLED = "handled";
 var NO_HANDLER = "nohandler";
@@ -8,72 +7,112 @@ var TRANSITION = "transition";
 var INVALID_STATE = "invalidstate";
 var DEFERRED = "deferred";
 var NEW_FSM = "newfsm";
+
+function getDefaultBehavioralOptions() {
+	return {
+		initialState: "uninitialized",
+		eventListeners: {
+			"*": []
+		},
+		states: {},
+		namespace: utils.makeFsmNamespace(),
+		useSafeEmit: false
+	};
+}
+
+function getDefaultClientMeta() {
+	return {
+		inputQueue: [],
+		targetReplayState: "",
+		state: undefined,
+		priorState: undefined,
+		priorAction: "",
+		currentAction: "",
+		currentActionArgs: undefined,
+		inExitHandler: false
+	};
+}
+
+function getLeaklessArgs( args, startIdx ) {
+	var result = [];
+	for (var i = 0; i < args.length; i++) {
+		result[ i ] = args[ i ];
+	}
+	return result.slice( startIdx || 0 );
+}
+
+// _machKeys are members we want to track across the prototype chain of an extended FSM constructor
+// Since we want to eventually merge the aggregate of those values onto the instance so that FSMs
+// that share the same extended prototype won't share state *on* those prototypes.
+var _machKeys = [ "states", "initialState" ];
+var extend = function( protoProps, staticProps ) {
+	var parent = this;
+	var fsm; // placeholder for instance constructor
+	var machObj = {}; // object used to hold initialState & states from prototype for instance-level merging
+	var ctor = function() {}; // placeholder ctor function used to insert level in prototype chain
+
+	// The constructor function for the new subclass is either defined by you
+	// (the "constructor" property in your `extend` definition), or defaulted
+	// by us to simply call the parent's constructor.
+	if ( protoProps && protoProps.hasOwnProperty( 'constructor' ) ) {
+		fsm = protoProps.constructor;
+	} else {
+		// The default machina constructor (when using inheritance) creates a
+		// deep copy of the states/initialState values from the prototype and
+		// extends them over the instance so that they'll be instance-level.
+		// If an options arg (args[0]) is passed in, a states or intialState
+		// value will be preferred over any data pulled up from the prototype.
+		fsm = function() {
+			var args = slice.call( arguments, 0 );
+			args[ 0 ] = args[ 0 ] || {};
+			var blendedState;
+			var instanceStates = args[ 0 ].states || {};
+			blendedState = _.merge( _.cloneDeep( machObj ), { states: instanceStates } );
+			blendedState.initialState = args[ 0 ].initialState || this.initialState;
+			_.extend( args[ 0 ], blendedState );
+			parent.apply( this, args );
+		};
+	}
+
+	// Inherit class (static) properties from parent.
+	_.merge( fsm, parent );
+
+	// Set the prototype chain to inherit from `parent`, without calling
+	// `parent`'s constructor function.
+	ctor.prototype = parent.prototype;
+	fsm.prototype = new ctor();
+
+	// Add prototype properties (instance properties) to the subclass,
+	// if supplied.
+	if ( protoProps ) {
+		_.extend( fsm.prototype, protoProps );
+		_.merge( machObj, _.transform( protoProps, function( accum, val, key ) {
+			if ( _machKeys.indexOf( key ) !== -1 ) {
+				accum[ key ] = val;
+			}
+		} ) );
+	}
+
+	// Add static properties to the constructor function, if supplied.
+	if ( staticProps ) {
+		_.merge( fsm, staticProps );
+	}
+
+	// Correctly set child's `prototype.constructor`.
+	fsm.prototype.constructor = fsm;
+
+	// Set a convenience property in case the parent's prototype is needed later.
+	fsm.__super__ = parent.prototype;
+	return fsm;
+};
+
 var utils = {
 	makeFsmNamespace: ( function() {
 		var machinaCount = 0;
 		return function() {
 			return "fsm." + machinaCount++;
 		};
-	} )(),
-	getDefaultOptions: function() {
-		return {
-			initialState: "uninitialized",
-			eventListeners: {
-				"*": []
-			},
-			states: {},
-			eventQueue: [],
-			namespace: utils.makeFsmNamespace(),
-			targetReplayState: "",
-			state: undefined,
-			priorState: undefined,
-			_priorAction: "",
-			_currentAction: ""
-		};
-	}
+	})(),
+	getDefaultOptions: getDefaultBehavioralOptions,
+	getDefaultClientMeta: getDefaultClientMeta
 };
-
-if ( !_.deepExtend ) {
-	var behavior = {
-			"*": function( obj, sourcePropKey, sourcePropVal ) {
-				obj[ sourcePropKey ] = sourcePropVal;
-			},
-			"object": function( obj, sourcePropKey, sourcePropVal ) {
-				obj[ sourcePropKey ] = deepExtend( {}, obj[ sourcePropKey ] || {}, sourcePropVal );
-			},
-			"array": function( obj, sourcePropKey, sourcePropVal ) {
-				obj[ sourcePropKey ] = [];
-				_.each( sourcePropVal, function( item, idx ) {
-					behavior[ getHandlerName( item ) ]( obj[ sourcePropKey ], idx, item );
-				}, this );
-			}
-		},
-		getActualType = function( val ) {
-			if ( _.isArray( val ) ) {
-				return "array";
-			}
-			if ( _.isDate( val ) ) {
-				return "date";
-			}
-			if ( _.isRegExp( val ) ) {
-				return "regex";
-			}
-			return typeof val;
-		},
-		getHandlerName = function( val ) {
-			var propType = getActualType( val );
-			return behavior[ propType ] ? propType : "*";
-		},
-		deepExtend = function( obj ) {
-			_.each( slice.call( arguments, 1 ), function( source ) {
-				_.each( source, function( sourcePropVal, sourcePropKey ) {
-					behavior[ getHandlerName( sourcePropVal ) ]( obj, sourcePropKey, sourcePropVal );
-				} );
-			} );
-			return obj;
-		};
-
-	_.mixin( {
-		deepExtend: deepExtend
-	} );
-}

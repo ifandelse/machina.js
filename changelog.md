@@ -1,3 +1,31 @@
+###v0.5.0-1 (pre-release)
+* Added the `BehavioralFsm` constructor function/prototype.
+* Refactored the `Fsm` constructor to extend `BehavioralFsm`.
+* Converted all tests to use should.js (instead of expect.js).
+* Added istanbul code coverage.
+* Removed the internal `deepExtend` function in favor of using lodash's `merge` method.
+* The following instance properties were re-named on `Fsm` instances:
+	* `_priorAction` is now `priorAction`.
+	* `_currentAction` is now `currentAction`.
+	* `eventQueue` is now `inputQueue`.
+* The `trigger` alias to the `emit` method has been removed.
+* The `deferUntilNextHandler` method on the `Fsm.prototype` has been removed.
+* The `machina.utils.getDefaultOptions` only returns the following properties by default:
+	* `initialState`
+	* `eventListeners`
+	* `states`
+	* `namespace`
+	* `useSafeEmit`
+* Added `machina.utils.getDefaultClientMeta`, which returns the following properties:
+	* `inputQueue`
+	* `targetReplayState`
+	* `state:`
+	* `priorState`
+	* `priorAction`
+	* `currentAction`
+	* `currentActionArgs`
+	* `inExitHandler`
+
 ###v0.4.0
 * No changes from v0.4.0-2 other than making this the official v0.4 release
 

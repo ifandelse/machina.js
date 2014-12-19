@@ -77,3 +77,21 @@ gulp.task( "server", [ "combine", "report" ], function() {
 
 	open( "http://localhost:" + port + "/index.html" );
 } );
+
+var mocha = require( "gulp-spawn-mocha" );
+gulp.task( "mocha", function() {
+	return gulp.src( [ "spec/**/*.spec.js" ], { read: false } )
+		.pipe( mocha( {
+			require: [ "spec/helpers/node-setup.js" ],
+			reporter: "spec",
+			colors: true,
+			inlineDiffs: true,
+			debug: false
+		} ) )
+		.on( "error", console.warn.bind( console ) );
+} );
+
+gulp.task( "watch", [ "default", "mocha" ], function() {
+	gulp.watch( "src/**/*", [ "default" ] );
+	gulp.watch( "{lib,spec}/**/*", [ "mocha" ] );
+} );
