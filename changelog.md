@@ -1,3 +1,6 @@
+###v0.4.0
+* No changes from v0.4.0-2 other than making this the official v0.4 release
+
 ###v0.4.0-2
 * Input handlers now support returning a value (thanks to @Codelica for the PR)
 
