@@ -88,7 +88,6 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					fsm.handle( "start" );
 					res = fsm.handle( "canWeDoThis", "Grace Hopper" );
 					res.should.equal( "yep, Grace Hopper can do it." );
-					console.log( res );
 					fsm.state.should.equal( "ready" );
 				} );
 				it( "should transition properly", function() {

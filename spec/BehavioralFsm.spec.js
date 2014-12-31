@@ -109,8 +109,6 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					fsm.handle( client, "start" );
 					res = fsm.handle( client, "canWeDoThis", "Grace Hopper" );
 					res.should.equal( "yep, Grace Hopper can do it." );
-					console.log( res );
-					console.log( events );
 					client.__machina__.state.should.equal( "ready" );
 				} );
 				it( "should transition properly", function() {
@@ -689,7 +687,6 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					} );
 					var client = { name: "Dijkstra" };
 					fsm.handle( client, "start" );
-					console.log( events );
 					events.should.eql( [
 						{
 							eventName: "transition",
