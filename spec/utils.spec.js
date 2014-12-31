@@ -33,6 +33,7 @@ describe( "Machina Namespace Events", function() {
 				( function() {
 					var x = new machina.Fsm( { states: { uninitialized: {} } } );
 				} ).should.throw( /O NOES/ );
+				machina.off( "newfsm", callback );
 			} );
 			it( "should console.log if useSafeEmit is set to true and a subscriber throws", function() {
 				machina.useSafeEmit = true;
@@ -48,6 +49,7 @@ describe( "Machina Namespace Events", function() {
 				var x = new machina.Fsm( { states: { uninitialized: {} } } );
 				res.should.match( /Error: O NOES!/ );
 				console.log = log;
+				machina.off( "newfsm", callback );
 			} );
 		} );
 		describe( "when subscribing to the wildcard '*' (all events)", function() {
