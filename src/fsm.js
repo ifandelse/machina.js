@@ -18,7 +18,7 @@ _.extend( Fsm.prototype, {
                     callback.apply( this, slice.call( args, 0 ) );
                 } catch ( exception ) {
                     if ( console && typeof console.log !== "undefined" ) {
-                        console.log( exception.toString() );
+                        console.log( exception.toString(), exception.stack );
                     }
                 }
             }, this );
@@ -29,7 +29,7 @@ _.extend( Fsm.prototype, {
                     callback.apply( this, slice.call( args, 1 ) );
                 } catch ( exception ) {
                     if ( console && typeof console.log !== "undefined" ) {
-                        console.log( exception.toString() );
+                        console.log( exception.toString(), exception.stack );
                     }
                 }
             }, this );
