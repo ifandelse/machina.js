@@ -1,3 +1,6 @@
+###v0.4.1
+* If an exception is thrown in an event handler, machina now logs `exception.stack` rather than the exception message only.
+
 ###v0.4.0
 * No changes from v0.4.0-2 other than making this the official v0.4 release
 

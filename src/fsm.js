@@ -18,7 +18,7 @@ _.extend( Fsm.prototype, {
                     callback.apply( this, slice.call( args, 0 ) );
                 } catch ( exception ) {
                     if ( console && typeof console.log !== "undefined" ) {
-                        console.log( exception.toString(), exception.stack );
+                        console.log( exception.stack );
                     }
                 }
             }, this );
@@ -29,7 +29,7 @@ _.extend( Fsm.prototype, {
                     callback.apply( this, slice.call( args, 1 ) );
                 } catch ( exception ) {
                     if ( console && typeof console.log !== "undefined" ) {
-                        console.log( exception.toString(), exception.stack );
+                        console.log( exception.stack );
                     }
                 }
             }, this );
@@ -202,8 +202,8 @@ Fsm.prototype.trigger = Fsm.prototype.emit;
 // that share the same extended prototype won't share state *on* those prototypes.
 var _machKeys = [ "states", "initialState" ];
 var inherits = function( parent, protoProps, staticProps ) {
-    var fsm;                  // placeholder for instance constructor
-    var machObj = {};         // object used to hold initialState & states from prototype for instance-level merging
+    var fsm; // placeholder for instance constructor
+    var machObj = {}; // object used to hold initialState & states from prototype for instance-level merging
     var ctor = function() {}; // placeholder ctor function used to insert level in prototype chain
 
     // The constructor function for the new subclass is either defined by you
@@ -221,7 +221,7 @@ var inherits = function( parent, protoProps, staticProps ) {
             var args = slice.call( arguments, 0 );
             args[ 0 ] = args[ 0 ] || {};
             var blendedState;
-            var instanceStates = args[0].states || {};
+            var instanceStates = args[ 0 ].states || {};
             blendedState = _.deepExtend( _.cloneDeep( machObj ), { states: instanceStates } );
             blendedState.initialState = args[ 0 ].initialState || this.initialState;
             _.extend( args[ 0 ], blendedState );
