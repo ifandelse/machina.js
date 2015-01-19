@@ -6,6 +6,6 @@
         "lib/machina.js"
     ],
 	"dependencies": {
-		"lodash/lodash": "*"
+		"lodash/lodash": "~2.4.1"
 	}
 }
