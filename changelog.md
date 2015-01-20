@@ -1,3 +1,6 @@
+###v0.4.2
+* The lodash dep for component.json was using a wildcard instead of locking at supported version(s).
+
 ###v0.4.1
 * If an exception is thrown in an event handler, machina now logs `exception.stack` rather than the exception message only.
 
