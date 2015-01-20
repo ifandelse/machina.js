@@ -1,3 +1,6 @@
+###v0.4.3
+* Apparently I fail at component.json spec-fulness. Removing `~` prefix on version number in component.json.
+
 ###v0.4.2
 * The lodash dep for component.json was using a wildcard instead of locking at supported version(s).
 

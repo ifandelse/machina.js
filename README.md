@@ -1,4 +1,4 @@
-# machina.js - v0.4.2
+# machina.js - v0.4.3
 
 ## What is it?
 Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been loosely inspired by the Erlang/OTP FSM behaviors.
