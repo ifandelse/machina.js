@@ -28,15 +28,16 @@
         </ul>
       </header>
       <section>
-        <h1>machina.js - v0.3.1</h1>
+        <h1>
+<a id="machinajs---v043" class="anchor" href="#machinajs---v043" aria-hidden="true"><span class="octicon octicon-link"></span></a>machina.js - v0.4.3</h1>
 
-<p><strong>Be sure to read the release notes for v0.3.0 and v0.3.1 at the bottom of this page. These releases involve two breaking API changes.</strong></p>
-
-<h2>What is it?</h2>
+<h2>
+<a id="what-is-it" class="anchor" href="#what-is-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>What is it?</h2>
 
 <p>Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been loosely inspired by the Erlang/OTP FSM behaviors.</p>
 
-<h2>Why would I use it?</h2>
+<h2>
+<a id="why-would-i-use-it" class="anchor" href="#why-would-i-use-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why would I use it?</h2>
 
 <ul>
 <li>Finite state machines offer a way to structure web client code in a very organized manner, and can make it much simpler to extend behavior for all or only key edge cases.
@@ -62,67 +63,69 @@
 <li>Hook into the top level "newFsm" event to give other components in your app a handle to your FSMs as they are created.</li>
 </ul>
 </li>
-</ul><h2>How do I use it?</h2>
+</ul>
+
+<h2>
+<a id="how-do-i-use-it" class="anchor" href="#how-do-i-use-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>How do I use it?</h2>
 
 <p>(The <a href="https://github.com/ifandelse/machina.js/wiki">wiki</a> has more extensive API documentation. Also, be sure to check out the example folder in this repository for more in-depth demos - especially if you're interested in a working 'connectivity' FSM. The example below is just scratching the surface of one...)</p>
 
 <p>Creating an FSM:</p>
 
-<div class="highlight"><pre><span class="kd">var</span> <span class="nx">storageFsm</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">machina</span><span class="p">.</span><span class="nx">Fsm</span><span class="p">({</span>
-    <span class="nx">applicationOffline</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-        <span class="kd">var</span> <span class="nx">offline</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
-        <span class="c1">// checks window.navigator.online and more, sets the offline value</span>
-        <span class="k">return</span> <span class="nx">offline</span><span class="p">;</span>
-    <span class="p">},</span>
+<div class="highlight highlight-javascript"><pre><span class="pl-s">var</span> storageFsm <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">machina.Fsm</span>({
+    <span class="pl-en">applicationOffline</span>: <span class="pl-st">function</span>() {
+        <span class="pl-s">var</span> offline <span class="pl-k">=</span> <span class="pl-c1">false</span>;
+        <span class="pl-c">// checks window.navigator.online and more, sets the offline value</span>
+        <span class="pl-k">return</span> offline;
+    },
 
-    <span class="nx">verifyState</span><span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
-        <span class="k">if</span><span class="p">(</span> <span class="nx">applicationOffline</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">!==</span> <span class="s2">"offline"</span> <span class="p">)</span> <span class="p">{</span>
-            <span class="k">this</span><span class="p">.</span><span class="nx">offlineMarkerTime</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">();</span>
-            <span class="k">this</span><span class="p">.</span><span class="nx">transition</span><span class="p">(</span><span class="s2">"offline"</span><span class="p">);</span>
-            <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
-        <span class="p">}</span>
-        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="nx">applicationOffline</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">===</span> <span class="s2">"offline"</span> <span class="p">)</span> <span class="p">{</span>
-            <span class="k">this</span><span class="p">.</span><span class="nx">transition</span><span class="p">(</span> <span class="s2">"online"</span> <span class="p">);</span>
-            <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
-        <span class="p">}</span>
-        <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
-    <span class="p">},</span>
+    <span class="pl-en">verifyState</span>: <span class="pl-st">function</span>( <span class="pl-vpf">payload</span> ) {
+        <span class="pl-k">if</span>( <span class="pl-v">this</span>.applicationOffline() <span class="pl-k">&amp;&amp;</span> <span class="pl-v">this</span>.state <span class="pl-k">!==</span> <span class="pl-s1"><span class="pl-pds">"</span>offline<span class="pl-pds">"</span></span> ) {
+            <span class="pl-v">this</span>.offlineMarkerTime <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">Date</span>();
+            <span class="pl-v">this</span>.transition(<span class="pl-s1"><span class="pl-pds">"</span>offline<span class="pl-pds">"</span></span>);
+            <span class="pl-k">return</span> <span class="pl-c1">false</span>;
+        }
+        <span class="pl-k">else</span> <span class="pl-k">if</span> ( <span class="pl-k">!</span><span class="pl-v">this</span>.applicationOffline() <span class="pl-k">&amp;&amp;</span> <span class="pl-v">this</span>.state <span class="pl-k">===</span> <span class="pl-s1"><span class="pl-pds">"</span>offline<span class="pl-pds">"</span></span> ) {
+            <span class="pl-v">this</span>.transition( <span class="pl-s1"><span class="pl-pds">"</span>online<span class="pl-pds">"</span></span> );
+            <span class="pl-k">return</span> <span class="pl-c1">false</span>;
+        }
+        <span class="pl-k">return</span> <span class="pl-c1">true</span>;
+    },
 
-    <span class="nx">initialState</span><span class="o">:</span> <span class="s2">"offline"</span><span class="p">,</span>
+    initialState<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>offline<span class="pl-pds">"</span></span>,
 
-    <span class="nx">states</span> <span class="o">:</span> <span class="p">{</span>
-        <span class="s2">"online"</span> <span class="o">:</span> <span class="p">{</span>
-            <span class="nx">_onEnter</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-                <span class="k">this</span><span class="p">.</span><span class="nx">handle</span><span class="p">(</span><span class="s2">"sync.customer"</span><span class="p">);</span>
-            <span class="p">},</span>
+    states <span class="pl-k">:</span> {
+        <span class="pl-s1"><span class="pl-pds">"</span>online<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.handle(<span class="pl-s1"><span class="pl-pds">"</span>sync.customer<span class="pl-pds">"</span></span>);
+            },
 
-            <span class="s2">"save.customer"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
-                <span class="k">if</span><span class="p">(</span> <span class="nx">verifyState</span><span class="p">()</span> <span class="p">)</span> <span class="p">{</span>
-                    <span class="nx">storage</span><span class="p">.</span><span class="nx">saveToRemote</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">);</span>
-                <span class="p">}</span>
-            <span class="p">},</span>
+            <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">save.customer</span><span class="pl-pds">"</span></span> : <span class="pl-st">function</span>( <span class="pl-vpf">payload</span> ) {
+                <span class="pl-k">if</span>( <span class="pl-v">this</span>.verifyState() ) {
+                    storage.saveToRemote( payload );
+                }
+            },
 
-            <span class="s2">"sync.customer"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-                <span class="k">if</span><span class="p">(</span> <span class="nx">verifyState</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">)</span> <span class="p">{</span>
-                    <span class="kd">var</span> <span class="nx">unsynced</span> <span class="o">=</span> <span class="nx">storage</span><span class="p">.</span><span class="nx">getFromLocal</span><span class="p">(</span> <span class="p">{</span> <span class="nx">startTime</span><span class="o">:</span> <span class="k">this</span><span class="p">.</span><span class="nx">offlineMarkerTime</span> <span class="p">}</span> <span class="p">);</span>
-                    <span class="c1">// Big assumption here!  In the real world,</span>
-                    <span class="c1">// we'd batch this sync in reasonable chunks.</span>
-                    <span class="nx">storage</span><span class="p">.</span><span class="nx">saveBatchToRemote</span><span class="p">(</span> <span class="nx">unsynced</span> <span class="p">);</span>
-                    <span class="k">this</span><span class="p">.</span><span class="nx">emit</span><span class="p">(</span> <span class="s2">"CustomerSyncComplete"</span><span class="p">,</span> <span class="p">{</span> <span class="nx">customers</span><span class="o">:</span> <span class="nx">unsynced</span> <span class="p">}</span> <span class="p">);</span>
-                <span class="p">}</span>
-            <span class="p">}</span>
-        <span class="p">},</span>
+            <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">sync.customer</span><span class="pl-pds">"</span></span> : <span class="pl-st">function</span>() {
+                <span class="pl-k">if</span>( <span class="pl-v">this</span>.verifyState( payload ) ) {
+                    <span class="pl-s">var</span> unsynced <span class="pl-k">=</span> storage.getFromLocal( { startTime<span class="pl-k">:</span> <span class="pl-v">this</span>.offlineMarkerTime } );
+                    <span class="pl-c">// Big assumption here!  In the real world,</span>
+                    <span class="pl-c">// we'd batch this sync in reasonable chunks.</span>
+                    storage.saveBatchToRemote( unsynced );
+                    <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>CustomerSyncComplete<span class="pl-pds">"</span></span>, { customers<span class="pl-k">:</span> unsynced } );
+                }
+            }
+        },
 
-        <span class="s2">"offline"</span> <span class="o">:</span> <span class="p">{</span>
-            <span class="s2">"save.customer"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
-                <span class="k">if</span><span class="p">(</span> <span class="nx">verifyState</span><span class="p">()</span> <span class="p">)</span> <span class="p">{</span>
-                    <span class="nx">storage</span><span class="p">.</span><span class="nx">saveToLocal</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">);</span>
-                <span class="p">}</span>
-            <span class="p">}</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">});</span>
-</pre></div>
+        <span class="pl-s1"><span class="pl-pds">"</span>offline<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
+            <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">save.customer</span><span class="pl-pds">"</span></span> : <span class="pl-st">function</span>( <span class="pl-vpf">payload</span> ) {
+                <span class="pl-k">if</span>( <span class="pl-v">this</span>.verifyState() ) {
+                    storage.saveToLocal( payload );
+                }
+            }
+        }
+    }
+});</pre></div>
 
 <p>In the above example, the developer has created an FSM with two possible states: <code>online</code> and <code>offline</code>.  While the fsm is in the <code>online</code> state, it will respond to <code>save.customer</code> and <code>sync.customer</code> events.  External code triggers these events by calling the <code>handle</code> method on the FSM.  For example <code>storageFsm.handle( "sync.customer", { other: "data" } )</code>.  The <code>handle</code> method first looks to see if a named handler exists matching the name of the one passed in, then also checks for a catch-all handler (indicated by the "*") if a named handler isn't found.  The <code>offline</code> state of the above FSM only responds to <code>save.customer</code> events.  If any other type of event name is passed to the <code>handle</code> method of the FSM, other than what each state explicitly handles, it is ignored.</p>
 
@@ -134,44 +137,48 @@
 
 <p>Now that we've seen a quick example, let's do a whirlwind API tour.</p>
 
-<h2>Whirlwind API Tour</h2>
+<h2>
+<a id="have-more-questions" class="anchor" href="#have-more-questions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Have More Questions?</h2>
+
+<p>Read the wiki and the source – you might find your answer and more! Check out the <a href="https://github.com/ifandelse/machina.js/issues/4">issue</a> opened by <a href="https://github.com/burin" class="user-mention">@burin</a> - a <em>great</em> example of how to use github issues to ask questions, provide sample code, etc. I only ask that if you open an issue, that it be <em>focused on a specific problem or bug</em> (not wide, open ambiguity, please). We also have an IRC chat room on freenode: #machinajs. It's a quiet place, but I'll do my best to answer questions if they arise.</p>
+
+<h2>
+<a id="whirlwind-api-tour" class="anchor" href="#whirlwind-api-tour" aria-hidden="true"><span class="octicon octicon-link"></span></a>Whirlwind API Tour</h2>
 
 <p>When you are creating a new FSM instance, <code>machina.Fsm</code> takes 1 argument - an options object.  Here's a breakdown of the members of this <code>options</code> object:</p>
 
 <p><code>eventListeners</code> - An object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers as you create the instance.)</p>
 
-<div class="highlight"><pre><span class="nx">eventListeners</span><span class="o">:</span> <span class="p">{</span>
-    <span class="nx">MyEvent1</span><span class="o">:</span> <span class="p">[</span><span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span> <span class="p">}],</span>
-    <span class="nx">MyEvent2</span><span class="o">:</span> <span class="p">[</span><span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span> <span class="p">}]</span>
-<span class="p">}</span>
-</pre></div>
+<div class="highlight highlight-javascript"><pre>eventListeners<span class="pl-k">:</span> {
+    MyEvent1<span class="pl-k">:</span> [<span class="pl-st">function</span>(<span class="pl-vpf">data</span>) { <span class="pl-en">console</span><span class="pl-s3">.log</span>(data); }],
+    MyEvent2<span class="pl-k">:</span> [<span class="pl-st">function</span>(<span class="pl-vpf">data</span>) { <span class="pl-en">console</span><span class="pl-s3">.log</span>(data); }]
+}</pre></div>
 
 <p><code>states</code> - an object detailing the possible states the FSM can be in, plus the kinds of events/messages each state can handle.  States can have normal "handlers" as well as a catch-all handler ("*"), an <code>_onEnter</code> handler invoked when the FSM has transitioned into that state and an <code>_onExit</code> handler invoked when transitioning out of that state.</p>
 
-<div class="highlight"><pre><span class="nx">states</span><span class="o">:</span> <span class="p">{</span>
-    <span class="s2">"uninitialized"</span> <span class="o">:</span> <span class="p">{</span>
-        <span class="nx">_onEnter</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-            <span class="c1">// do stuff immediately after we transition into uninitialized</span>
-        <span class="p">},</span>
+<div class="highlight highlight-javascript"><pre>states<span class="pl-k">:</span> {
+    <span class="pl-s1"><span class="pl-pds">"</span>uninitialized<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
+        <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
+            <span class="pl-c">// do stuff immediately after we transition into uninitialized</span>
+        },
 
-        <span class="s2">"initialize"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
-            <span class="c1">// handle an "initialize" event</span>
-        <span class="p">},</span>
+        <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">initialize</span><span class="pl-pds">"</span></span> : <span class="pl-st">function</span>( <span class="pl-vpf">payload</span> ) {
+            <span class="pl-c">// handle an "initialize" event</span>
+        },
 
-        <span class="nx">_onExit</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-            <span class="c1">// do stuff immediately before we transition out of uninitialized</span>
-            <span class="c1">// Note: you can't transition or invoke another inside _onExit</span>
-        <span class="p">}</span>
-    <span class="p">},</span>
+        <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>() {
+            <span class="pl-c">// do stuff immediately before we transition out of uninitialized</span>
+            <span class="pl-c">// Note: you can't transition or invoke another inside _onExit</span>
+        }
+    },
 
-    <span class="s2">"ready"</span> <span class="o">:</span> <span class="p">{</span>
-        <span class="s2">"*"</span> <span class="o">:</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">payload</span> <span class="p">)</span> <span class="p">{</span>
-            <span class="c1">// any message that comes while in the "ready" state will get handled here</span>
-            <span class="c1">// unless it matches another "ready" handler exactly.</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-</pre></div>
+    <span class="pl-s1"><span class="pl-pds">"</span>ready<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
+        <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">*</span><span class="pl-pds">"</span></span> : <span class="pl-st">function</span>( <span class="pl-vpf">payload</span> ) {
+            <span class="pl-c">// any message that comes while in the "ready" state will get handled here</span>
+            <span class="pl-c">// unless it matches another "ready" handler exactly.</span>
+        }
+    }
+}</pre></div>
 
 <p><code>initialState</code> - the state in which the FSM will start.  As soon as the instance is created, the FSM calls the <code>transition</code> method to transition into this state.</p>
 
@@ -179,61 +186,61 @@
 
 <p><code>initialize</code> - a function that will be executed as soon as the FSM instance has been created. This is the last step of the FSM's constructor function, prior to emitting that a new instance has been created, and transitioning (if applicable) into the initial state.</p>
 
-<h3>Inheritance</h3>
+<h3>
+<a id="inheritance" class="anchor" href="#inheritance" aria-hidden="true"><span class="octicon octicon-link"></span></a>Inheritance</h3>
 
 <p>FSMs can be created via the <code>machina.Fsm</code> constructor function as described above, or you can create an 'extended' FSM constructor function by calling <code>machina.Fsm.extend()</code>.  If you are familiar with backbone.js, machina's inheritance is identical to how backbone objects work, except that machina performs a deep extend, which means you can inherit from an FSM, adding new handlers to a state defined by the base (and you can override already-declared handlers, etc.).  With this being the case, it's better to think of machina's inhertiance as "blending" and not just extending. Let's look at an example:</p>
 
-<div class="highlight"><pre><span class="kd">var</span> <span class="nx">BaseFsm</span> <span class="o">=</span> <span class="nx">machina</span><span class="p">.</span><span class="nx">Fsm</span><span class="p">.</span><span class="nx">extend</span><span class="p">({</span>
-    <span class="nx">initialize</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-        <span class="c1">// do stuff here if you want to perform more setup work</span>
-        <span class="c1">// this executes prior to any state transitions or handler invocations</span>
-    <span class="p">},</span>
-    <span class="nx">states</span><span class="o">:</span> <span class="p">{</span>
-        <span class="nx">uninitialized</span><span class="o">:</span> <span class="p">{</span>
-            <span class="nx">start</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-                <span class="k">this</span><span class="p">.</span><span class="nx">transition</span><span class="p">(</span><span class="s2">"first"</span><span class="p">);</span>
-            <span class="p">}</span>
-        <span class="p">},</span>
-        <span class="nx">first</span><span class="o">:</span> <span class="p">{</span>
-            <span class="nx">handlerA</span> <span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-                <span class="c1">// do stuff</span>
-            <span class="p">}</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">});</span>
-<span class="c1">// getting an instance from our extended constructor function above</span>
-<span class="kd">var</span> <span class="nx">baseFsm</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">BaseFsm</span><span class="p">();</span>
+<div class="highlight highlight-javascript"><pre><span class="pl-s">var</span> BaseFsm <span class="pl-k">=</span> machina.Fsm.extend({
+    <span class="pl-en">initialize</span>: <span class="pl-st">function</span>() {
+        <span class="pl-c">// do stuff here if you want to perform more setup work</span>
+        <span class="pl-c">// this executes prior to any state transitions or handler invocations</span>
+    },
+    states<span class="pl-k">:</span> {
+        uninitialized<span class="pl-k">:</span> {
+            <span class="pl-en">start</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.transition(<span class="pl-s1"><span class="pl-pds">"</span>first<span class="pl-pds">"</span></span>);
+            }
+        },
+        first<span class="pl-k">:</span> {
+            <span class="pl-en">handlerA</span> : <span class="pl-st">function</span>() {
+                <span class="pl-c">// do stuff</span>
+            }
+        }
+    }
+});
+<span class="pl-c">// getting an instance from our extended constructor function above</span>
+<span class="pl-s">var</span> baseFsm <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">BaseFsm</span>();
 
-<span class="c1">// taking the BaseFsm constructor function and doing more</span>
-<span class="kd">var</span> <span class="nx">ChildFsm</span> <span class="o">=</span> <span class="nx">BaseFsm</span><span class="p">.</span><span class="nx">extend</span><span class="p">({</span>
-    <span class="nx">states</span><span class="o">:</span> <span class="p">{</span>
-        <span class="nx">uninitialized</span><span class="o">:</span> <span class="p">{</span>
-            <span class="nx">skipToTheEnd</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-                <span class="k">this</span><span class="p">.</span><span class="nx">transition</span><span class="p">(</span><span class="s2">"second"</span><span class="p">);</span>
-            <span class="p">}</span>
-        <span class="p">},</span>
-        <span class="nx">first</span><span class="o">:</span> <span class="p">{</span>
-            <span class="nx">handlerA</span> <span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-                <span class="k">this</span><span class="p">.</span><span class="nx">transition</span><span class="p">(</span><span class="s2">"second"</span><span class="p">);</span>
-            <span class="p">}</span>
-            <span class="nx">handlerB</span> <span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-                <span class="c1">// do some work...</span>
-            <span class="p">}</span>
-        <span class="p">},</span>
-        <span class="nx">second</span><span class="o">:</span> <span class="p">{</span>
-            <span class="nx">handlerC</span> <span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-                <span class="c1">// do stuff</span>
-            <span class="p">}</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">});</span>
+<span class="pl-c">// taking the BaseFsm constructor function and doing more</span>
+<span class="pl-s">var</span> ChildFsm <span class="pl-k">=</span> BaseFsm.extend({
+    states<span class="pl-k">:</span> {
+        uninitialized<span class="pl-k">:</span> {
+            <span class="pl-en">skipToTheEnd</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.transition(<span class="pl-s1"><span class="pl-pds">"</span>second<span class="pl-pds">"</span></span>);
+            }
+        },
+        first<span class="pl-k">:</span> {
+            <span class="pl-en">handlerA</span> : <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.transition(<span class="pl-s1"><span class="pl-pds">"</span>second<span class="pl-pds">"</span></span>);
+            }
+            <span class="pl-en">handlerB</span> : <span class="pl-st">function</span>() {
+                <span class="pl-c">// do some work...</span>
+            }
+        },
+        second<span class="pl-k">:</span> {
+            <span class="pl-en">handlerC</span> : <span class="pl-st">function</span>() {
+                <span class="pl-c">// do stuff</span>
+            }
+        }
+    }
+});
 
-<span class="c1">// This instance will have a blending of BaseFsm and ChildFsm's states/handlers</span>
-<span class="kd">var</span> <span class="nx">childFsm</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">ChildFsm</span><span class="p">();</span>
+<span class="pl-c">// This instance will have a blending of BaseFsm and ChildFsm's states/handlers</span>
+<span class="pl-s">var</span> childFsm <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">ChildFsm</span>();</pre></div>
 
-</pre></div>
-
-<h2>The machina.Fsm Prototype</h2>
+<h2>
+<a id="the-machinafsm-prototype" class="anchor" href="#the-machinafsm-prototype" aria-hidden="true"><span class="octicon octicon-link"></span></a>The machina.Fsm Prototype</h2>
 
 <p>Each instance of an machina FSM has the following methods available via it's prototype:</p>
 
@@ -256,7 +263,9 @@
 <code>on(eventName, callback)</code> - used to subscribe to events that the FSM generates.</li>
 <li>
 <code>off(eventName, callback)</code> - used to unsubscribe to FSM events.</li>
-</ul><p>In addition to the prototype members, every instance of an FSM has these instance-specific values as well:</p>
+</ul>
+
+<p>In addition to the prototype members, every instance of an FSM has these instance-specific values as well:</p>
 
 <ul>
 <li>
@@ -277,7 +286,10 @@
 <code>states</code> - the object literal of states &amp; handlers you passed in when you created the FSM.</li>
 <li>
 <code>targetReplayState</code> - used internally during transitions to manage the proper replay of queued events if multiple transitions result from one initial transition.</li>
-</ul><h2>The Top Level machina object</h2>
+</ul>
+
+<h2>
+<a id="the-top-level-machina-object" class="anchor" href="#the-top-level-machina-object" aria-hidden="true"><span class="octicon octicon-link"></span></a>The Top Level machina object</h2>
 
 <p>The top level <code>machina</code> object has the following members:</p>
 
@@ -300,65 +312,61 @@
 <code>off</code> - function used to unsubscribe a callback to top-level machina events.</li>
 <li>
 <code>eventListeners</code> - an object literal containing the top-level <code>emit</code> call as well as susbcribers to any top-level events.</li>
-</ul><h2>Build, Tests &amp; Examples</h2>
+</ul>
 
-<p>machina.js uses <a href="http://appendto.github.com/anvil.js/">anvil.js</a> to build.</p>
+<h2>
+<a id="pulling-machina-into-your-environment" class="anchor" href="#pulling-machina-into-your-environment" aria-hidden="true"><span class="octicon octicon-link"></span></a>Pulling machina into your environment</h2>
+
+<p>machina depends on <a href="https://lodash.com/">lodash (2.4.1 or greater)</a>. If you are using npm or bower - lodash will be pulled down automatically when you install machina - otherwise you'll need to grab it manually.</p>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-c">// If you're not using an AMD loader, machina is available on the window</span>
+<span class="pl-s">var</span> MyFsm <span class="pl-k">=</span> machina.Fsm.extend({ <span class="pl-c">/* your stuff */</span>});
+
+<span class="pl-c">// If you're using an AMD loader:</span>
+<span class="pl-s3">require</span>([<span class="pl-s1"><span class="pl-pds">'</span>machina<span class="pl-pds">'</span></span>], <span class="pl-st">function</span>(<span class="pl-vpf">machina</span>){
+    <span class="pl-k">return</span> machina.Fsm.extend({ <span class="pl-c">/* your stuff */</span>});
+});
+
+<span class="pl-c">// machina v0.3.x</span>
+<span class="pl-c">// In node.js, the module returns a factory function:</span>
+<span class="pl-s">var</span> lodash <span class="pl-k">=</span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">'</span>lodash<span class="pl-pds">'</span></span>);
+<span class="pl-s">var</span> machina <span class="pl-k">=</span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">'</span>machina<span class="pl-pds">'</span></span>)(lodash);
+<span class="pl-s">var</span> MyFsm <span class="pl-k">=</span> machina.Fsm.extend({ <span class="pl-c">/* your stuff */</span>});
+
+<span class="pl-c">// This changed in v0.4 FYI - it no longer exports a factory:</span>
+<span class="pl-s">var</span> machina <span class="pl-k">=</span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">'</span>machina<span class="pl-pds">'</span></span>);</pre></div>
+
+<h2>
+<a id="build-tests--examples" class="anchor" href="#build-tests--examples" aria-hidden="true"><span class="octicon octicon-link"></span></a>Build, Tests &amp; Examples</h2>
+
+<p>machina.js uses <a href="http://gulpjs.com/">gulp.js</a> to build.</p>
 
 <ul>
 <li>Install node.js (and consider using <a href="https://github.com/creationix/nvm">nvm</a> to manage your node versions)</li>
-<li>Run <code>npm install -g anvil.js</code> to install anvil.js</li>
-<li>Navigate to the root of this repository and run <code>anvil</code>.  Optionally run <code>anvil --ci --host --browser</code>.  This will open your browser to the root index.html of the repository, and run anvil in continuous integration mode (changes to source and tests will causes tests to be refreshed automatically, etc).</li>
-<li>Build output will be placed in the lib folder.</li>
-</ul><p>To run tests or examples:</p>
+<li>run <code>npm install</code> &amp; <code>bower install</code> to install all dependencies</li>
+<li>To build, run <code>npm run build</code> - then check the lib folder for the output</li>
+<li>To run tests &amp; examples:
 
 <ul>
-<li>For tests, navigate to <code>http://localhost:3080/spec</code>
+<li>To run node-based tests: <code>npm run test</code>
 </li>
-<li>For the "atm" example, navigate to <code>http://localhost:3080/atm</code>
+<li>To run browser-based tests &amp; examples:
 
 <ul>
-<li>check the source of Repository.js in this example for the account/pin information that can be used to log in.</li>
-</ul>
+<li>run <code>npm start</code>
 </li>
-<li>For the "load" example, navigate to <code>http://localhost:3080/load</code>
-</li>
-</ul><h2>Release Notes</h2>
-
-<h3>v0.2.0</h3>
-
-<ul>
-<li>Message bus integration has been removed from machina core, and now exists as plugins.  For integration with <a href="https://github.com/ifandelse/postal.js">postal.js</a>, see <a href="https://github.com/ifandelse/machina.postal">machina.postal</a>
-</li>
-<li>Due to the above change, the only "messaging-related" metadata on an FSM now is the "namespace" value that can be passed as the FSM is created.  This value is optional, and will be given a default if none is provided.  Messaging plugins can utilize this value as a channel/namespace name and/or topic prefix.</li>
-<li>A "priorState" member has been added to the Fsm.</li>
-</ul><h3>v0.2.1</h3>
-
-<ul>
-<li>build bits updated to latest anvil.js (0.8.9)</li>
-<li>added beginnings of connectivity example</li>
-<li>updated ext dependencies (postal, etc.)</li>
-<li>added bower component.json</li>
-</ul><h3>v0.2.2</h3>
-
-<ul>
-<li>event names are now all lower case</li>
-<li>FSM constructor only handles an eventListeners object (not the old array of strings to pre-populate event names)</li>
-<li>bug fixed where event queue would still be replayed on a state that transitioned during its entry action</li>
-<li>transitioned and transitioning events are now just a single "transition" event</li>
-</ul><h3>v0.3.0</h3>
-
-<ul>
-<li>FSM constructor function supports inheritance via an <code>extend</code> function - working mostly identical to backbone.js objects.</li>
-<li>FSMs can have a top-level 'catch-all' ("*") handler defined, which would apply to any state, unless the state overrides it with a state-specific catch-all handler.</li>
-<li>FSM states now have an <code>_onExit</code> handler.</li>
-<li><strong>The <code>fireEvent</code> has been removed.  Use <code>emit</code> or the <code>trigger</code> alias. This is a breaking API change.</strong></li>
-<li>State input handlers can now be a string value (indicating that a transition should occur to a state matching that string value) in addition to a function.</li>
-</ul><h3>v0.3.1</h3>
-
-<ul>
-<li>All internal events have been refactored to emit single argument payloads. <strong>This is a breaking API change.</strong>
+<li>navigate in your browser to <a href="http://localhost:3080/">http://localhost:3080/</a>
 </li>
 </ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<h2>
+<a id="release-notes" class="anchor" href="#release-notes" aria-hidden="true"><span class="octicon octicon-link"></span></a>Release Notes</h2>
+
+<p>Go <a href="https://github.com/ifandelse/machina.js/blob/master/changelog.md">here</a> to see the changelog.</p>
       </section>
       <footer>
         <p>This project is maintained by <a href="https://github.com/ifandelse">ifandelse</a></p>
