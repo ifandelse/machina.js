@@ -80,7 +80,7 @@ var storageFsm = new machina.Fsm({
 
 In the above example, the developer has created an FSM with two possible states: `online` and `offline`.  While the fsm is in the `online` state, it will respond to `save.customer` and `sync.customer` events.  External code triggers these events by calling the `handle` method on the FSM.  For example `storageFsm.handle( "sync.customer", { other: "data" } )`.  The `handle` method first looks to see if a named handler exists matching the name of the one passed in, then also checks for a catch-all handler (indicated by the "*") if a named handler isn't found.  The `offline` state of the above FSM only responds to `save.customer` events.  If any other type of event name is passed to the `handle` method of the FSM, other than what each state explicitly handles, it is ignored.
 
-In addition to the state/handler definitions, the above code example as shows that this particular FSM will start in the `offline` state, and can generate a `CustomerSyncComplete` custom event.
+In addition to the state/handler definitions, the above code example shows that this particular FSM will start in the `offline` state, and can generate a `CustomerSyncComplete` custom event.
 
 The `verifyState` and `applicationOffline` methods are custom to this instance of the FSM, and are not, of course, part of machina by default.
 
@@ -191,9 +191,9 @@ var childFsm = new ChildFsm();
 ```
 
 ## The machina.Fsm Prototype
-Each instance of an machina FSM has the following methods available via it's prototype:
+Each instance of a machina FSM has the following methods available via its prototype:
 
-* `emit(eventName, [other args...])` - looks in the `events` object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to `emit`. (NOTE: - this call is currently aliased as `emit` as well.)
+* `emit(eventName, [other args...])` - looks in the `events` object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to `emit`. (NOTE: - this call is currently aliased as `trigger` as well.)
 * `handle(msgType, [other args...])` - This is the main way you should be interacting with an FSM instance (assuming no message bus is present).  It will try to find a matching eventName/msgType under the current state and invoke it, if one exists.  Otherwise it will look for a catch-all handler, or simply ignore the message and raise the "NoHandler" event.
 * `transition(newState)` - Called when transitioning into a new state.
 * `deferUntilTransition(stateName)` - calling this within a state handler function will queue the handler's arguments to be executed at a later time.  If you don't provide the `stateName` argument, it will replay the event after the next state transition.  Providing the `stateName` argument will queue the event until the FSM transitions into that state.
@@ -206,7 +206,7 @@ Each instance of an machina FSM has the following methods available via it's pro
 In addition to the prototype members, every instance of an FSM has these instance-specific values as well:
 
 * `_currentAction` - concatenates "{state}.{handler}" for the operation in progress.  This is provided as a convenience for both logging (if needed) and if you need to check during an operation to see if the last action taken is the same action being taken now.
-* `_priorAction` - concatenates "{state}.{handler" for the last operation that took place.  See the above explanation for more context.
+* `_priorAction` - concatenates "{state}.{handler}" for the last operation that took place.  See the above explanation for more context.
 * `eventListeners` - an object containing the event names (keys) and an array of subscribers listening to the event.  You should not need to interact with this directly. Instead, use the `on` and `off` prototype methods.
 * `eventQueue` - an array of input/events that have been deferred by calling `deferUntilTransition` or `deferUntilNextHandler`. This queue is processed automatically for you.
 * `namespace` - the namespace value you passed in during instantiaton, or a default value machina provides.
