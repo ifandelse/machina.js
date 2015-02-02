@@ -1,254 +1,460 @@
-# machina.js - v0.4.3
+#machina v1.0.0-1
 
-## What is it?
-Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been loosely inspired by the Erlang/OTP FSM behaviors.
+##What is it?
+Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been *loosely* inspired by the Erlang/OTP FSM behaviors.
 
-## Why would I use it?
-* Finite state machines offer a way to structure web client code in a very organized manner, and can make it much simpler to extend behavior for all or only key edge cases.
-	* For example - instead of nested callbacks/deferreds, use an FSM to act as an "event aggregator" that is aware of when state needs to transition in the app once a set of conditions has been satisfied.
-	* FSMs *can* work well for concerns like:
-		* app "init" (bootstrapping your web client so that certain application behaviors are not available until all appropriate resources/data/behavior are present)
-		* persistence concerns - offline vs online.  Abstract persistence behind an fsm that simply listens for messages (commands) to persist data.  Depending on the state of the client (offline vs online), the FSM will handle the activity accordingly - calling code never needs to know.
-		* Often-changing-subsets of view or model elements.  Take a navigation menu, for example.  Depending on the context (i.e. - state), you may wish to show/hide certain menu options.  This usually turns out to be a handful of menu show-vs-hide combinations.  An FSM can abstract this well.
-* It's simple!  Machina makes the process of organizing the various states your fsm needs to know about - and the kinds of events each state can handle - intuitive to set up, and to read.
-* Powerful integration.  By using a plugin like [machina.postal](https://github.com/ifandelse/machina.postal), your FSM instances can auto-wire into [postal.js](https://github.com/ifandelse/postal.js) (a JavaScript message bus), enabling them decoupled communications with other components in your application.  This wires up both subscribers (for state handlers to be invoked) and publishers (to publish your FSM's events to the message bus).
-* Extend for more power.
-	* Writing your own message bus/eventing wire-up plugin is fairly simple.  Look at [machina.postal](https://github.com/ifandelse/machina.postal) for an example.
-	* Hook into the top level "newFsm" event to give other components in your app a handle to your FSMs as they are created.
+##Why Would I Use It?
+Finite state machines are a great conceptual model for many concerns facing developers – from conditional UI, connectivity monitoring & management to initialization and more. State machines can simplify tangled paths of asynchronous code, they're easy to test, and they inherently lend themselves to helping you avoid unexpected edge-case-state pitfalls. machina aims to give you the tools you need to model state machines in JavaScript, without being too prescriptive on the problem domain you're solving for.
 
-## How do I use it?
-(The [wiki](https://github.com/ifandelse/machina.js/wiki) has more extensive API documentation. Also, be sure to check out the example folder in this repository for more in-depth demos - especially if you're interested in a working 'connectivity' FSM. The example below is just scratching the surface of one...)
+Some frequent use cases for machina:
 
-Creating an FSM:
+* online/offline connectivity management
+* conditional UI (menus, navigation, workflow)
+* initiliazation of node.js processes or single-page-apps
+* responding to user input devices (remotes, keyboard, mouse, etc.)
 
-```javascript
-var storageFsm = new machina.Fsm({
-	applicationOffline: function() {
-		var offline = false;
-		// checks window.navigator.online and more, sets the offline value
-		return offline;
-	},
+###Quick Example
 
-	verifyState: function( payload ) {
-		if( this.applicationOffline() && this.state !== "offline" ) {
-			this.offlineMarkerTime = new Date();
-			this.transition("offline");
-			return false;
-		}
-		else if ( !this.applicationOffline() && this.state === "offline" ) {
-			this.transition( "online" );
-			return false;
-		}
-		return true;
-	},
-
-	initialState: "offline",
-
-	states : {
-		"online" : {
-			_onEnter: function() {
-				this.handle("sync.customer");
-			},
-
-			"save.customer" : function( payload ) {
-				if( this.verifyState() ) {
-                    storage.saveToRemote( payload );
-				}
-			},
-
-			"sync.customer" : function() {
-				if( this.verifyState( payload ) ) {
-					var unsynced = storage.getFromLocal( { startTime: this.offlineMarkerTime } );
-					// Big assumption here!  In the real world,
-					// we'd batch this sync in reasonable chunks.
-					storage.saveBatchToRemote( unsynced );
-					this.emit( "CustomerSyncComplete", { customers: unsynced } );
-				}
-			}
-		},
-
-		"offline" : {
-			"save.customer" : function( payload ) {
-				if( this.verifyState() ) {
-                    storage.saveToLocal( payload );
-				}
-            }
-		}
-	}
-});
-```
-
-In the above example, the developer has created an FSM with two possible states: `online` and `offline`.  While the fsm is in the `online` state, it will respond to `save.customer` and `sync.customer` events.  External code triggers these events by calling the `handle` method on the FSM.  For example `storageFsm.handle( "sync.customer", { other: "data" } )`.  The `handle` method first looks to see if a named handler exists matching the name of the one passed in, then also checks for a catch-all handler (indicated by the "*") if a named handler isn't found.  The `offline` state of the above FSM only responds to `save.customer` events.  If any other type of event name is passed to the `handle` method of the FSM, other than what each state explicitly handles, it is ignored.
-
-In addition to the state/handler definitions, the above code example shows that this particular FSM will start in the `offline` state, and can generate a `CustomerSyncComplete` custom event.
-
-The `verifyState` and `applicationOffline` methods are custom to this instance of the FSM, and are not, of course, part of machina by default.
-
-You can see in the above example that anytime the FSM handles an event, it first checks to see if the state needs to be transitioned between offline and online (via the `verifyState` call).  States can also have `_onEnter` and `_onExit` methods. `_onEnter` is fired immediately after the FSM transitions into that state and `_onExit` is fired immediately before transitioning to a new state.
-
-Now that we've seen a quick example, let's do a whirlwind API tour.
-
-## Have More Questions?
-Read the wiki and the source – you might find your answer and more! Check out the [issue](https://github.com/ifandelse/machina.js/issues/4) opened by @burin - a *great* example of how to use github issues to ask questions, provide sample code, etc. I only ask that if you open an issue, that it be *focused on a specific problem or bug* (not wide, open ambiguity, please). We also have an IRC chat room on freenode: #machinajs. It's a quiet place, but I'll do my best to answer questions if they arise.
-
-## Whirlwind API Tour
-When you are creating a new FSM instance, `machina.Fsm` takes 1 argument - an options object.  Here's a breakdown of the members of this `options` object:
-
-`eventListeners` - An object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers as you create the instance.)
-
-```javascript
-eventListeners: {
-	MyEvent1: [function(data) { console.log(data); }],
-	MyEvent2: [function(data) { console.log(data); }]
-}
-```
-
-`states` - an object detailing the possible states the FSM can be in, plus the kinds of events/messages each state can handle.  States can have normal "handlers" as well as a catch-all handler ("*"), an `_onEnter` handler invoked when the FSM has transitioned into that state and an `_onExit` handler invoked when transitioning out of that state.
-
-```javascript
-states: {
-    "uninitialized" : {
-        _onEnter: function() {
-            // do stuff immediately after we transition into uninitialized
-        },
-
-        "initialize" : function( payload ) {
-            // handle an "initialize" event
-        },
-
-        _onExit: function() {
-            // do stuff immediately before we transition out of uninitialized
-            // Note: you can't transition or invoke another inside _onExit
-        }
-    },
-
-    "ready" : {
-        "*" : function( payload ) {
-            // any message that comes while in the "ready" state will get handled here
-            // unless it matches another "ready" handler exactly.
-        }
-    }
-}
-```
-
-`initialState` - the state in which the FSM will start.  As soon as the instance is created, the FSM calls the `transition` method to transition into this state.
-
-`namespace` - a name that indentifies the FSM if it's wired up to a message bus through a plugin.
-
-`initialize` - a function that will be executed as soon as the FSM instance has been created. This is the last step of the FSM's constructor function, prior to emitting that a new instance has been created, and transitioning (if applicable) into the initial state.
-
-### Inheritance
-FSMs can be created via the `machina.Fsm` constructor function as described above, or you can create an 'extended' FSM constructor function by calling `machina.Fsm.extend()`.  If you are familiar with backbone.js, machina's inheritance is identical to how backbone objects work, except that machina performs a deep extend, which means you can inherit from an FSM, adding new handlers to a state defined by the base (and you can override already-declared handlers, etc.).  With this being the case, it's better to think of machina's inhertiance as "blending" and not just extending. Let's look at an example:
-
-```javascript
-var BaseFsm = machina.Fsm.extend({
-    initialize: function() {
-        // do stuff here if you want to perform more setup work
-        // this executes prior to any state transitions or handler invocations
-    },
-    states: {
-        uninitialized: {
-            start: function() {
-                this.transition("first");
-            }
-        },
-        first: {
-            handlerA : function() {
-                // do stuff
-            }
-        }
-    }
-});
-// getting an instance from our extended constructor function above
-var baseFsm = new BaseFsm();
-
-// taking the BaseFsm constructor function and doing more
-var ChildFsm = BaseFsm.extend({
-    states: {
-        uninitialized: {
-            skipToTheEnd: function() {
-                this.transition("second");
-            }
-        },
-        first: {
-            handlerA : function() {
-                this.transition("second");
-            }
-            handlerB : function() {
-                // do some work...
-            }
-        },
-        second: {
-            handlerC : function() {
-                // do stuff
-            }
-        }
-    }
-});
-
-// This instance will have a blending of BaseFsm and ChildFsm's states/handlers
-var childFsm = new ChildFsm();
-```
-
-## The machina.Fsm Prototype
-Each instance of a machina FSM has the following methods available via its prototype:
-
-* `emit(eventName, [other args...])` - looks in the `events` object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to `emit`. (NOTE: - this call is currently aliased as `trigger` as well.)
-* `handle(msgType, [other args...])` - This is the main way you should be interacting with an FSM instance (assuming no message bus is present).  It will try to find a matching eventName/msgType under the current state and invoke it, if one exists.  Otherwise it will look for a catch-all handler, or simply ignore the message and raise the "NoHandler" event.
-* `transition(newState)` - Called when transitioning into a new state.
-* `deferUntilTransition(stateName)` - calling this within a state handler function will queue the handler's arguments to be executed at a later time.  If you don't provide the `stateName` argument, it will replay the event after the next state transition.  Providing the `stateName` argument will queue the event until the FSM transitions into that state.
-* `deferUntilNextHandler()` - calling this within a state handler function will queue the handler's arguments to be executed after the next handler is invoked.
-* `processQueue()` - called internally during state transitions and after handler methods have been invoked.  This call processes any queued events (queued by use of `deferUntilTransition` and/or `deferUntilNextHandler`).
-* `clearQueue(type, name)` - allows you to clear out queued events that have been deferred either until another handler or another state transition. The `type` parameter can be either "transition" or "handler".  If you pass "transition" for the `type`, then the optional `name` parameter allows you to clear events queued for a specific state transition. Not providing a `name` when the `type` is "transition" will clear out all events queued for *any* state transition.
-* `on(eventName, callback)` - used to subscribe to events that the FSM generates.
-* `off(eventName, callback)` - used to unsubscribe to FSM events.
-
-In addition to the prototype members, every instance of an FSM has these instance-specific values as well:
-
-* `_currentAction` - concatenates "{state}.{handler}" for the operation in progress.  This is provided as a convenience for both logging (if needed) and if you need to check during an operation to see if the last action taken is the same action being taken now.
-* `_priorAction` - concatenates "{state}.{handler}" for the last operation that took place.  See the above explanation for more context.
-* `eventListeners` - an object containing the event names (keys) and an array of subscribers listening to the event.  You should not need to interact with this directly. Instead, use the `on` and `off` prototype methods.
-* `eventQueue` - an array of input/events that have been deferred by calling `deferUntilTransition` or `deferUntilNextHandler`. This queue is processed automatically for you.
-* `namespace` - the namespace value you passed in during instantiaton, or a default value machina provides.
-* `priorState` - the last state in which the FSM was in before the current one.  This could be useful if you have conditional transition behavior as you move into a new state which depends on what state you're moving *from*.
-* `state` - string value of the current state of the FSM.  This will match one of the state names in the `states` object.  Do *not* change this value directly.  Use the `transition()` method on the prototype to change an FSM's state.
-* `states` - the object literal of states & handlers you passed in when you created the FSM.
-* `targetReplayState` - used internally during transitions to manage the proper replay of queued events if multiple transitions result from one initial transition.
-
-## The Top Level machina object
-The top level `machina` object has the following members:
-
-* `Fsm` - the constructor function used to create FSMs.
-* `utils` - contains helper functions that can be overridden to change default behavior(s) in machina:
-	* `getDefaultOptions` - returns the default options object for any machina instance
-	* `makeFsmNamespace` - function that provides a default "channel" or "exchange" for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
-* `on` - function used to subscribe a callback to top-level machina events (currently the only event published at this level is "newFsm")
-* `off` - function used to unsubscribe a callback to top-level machina events.
-* `eventListeners` - an object literal containing the top-level `emit` call as well as susbcribers to any top-level events.
-
-## Pulling machina into your environment
-
-machina depends on [lodash (2.4.1 or greater)](https://lodash.com/). If you are using npm or bower - lodash will be pulled down automatically when you install machina - otherwise you'll need to grab it manually.
+First - you need to include it in your environment (browser, node, etc.):
 
 ```javascript
 // If you're not using an AMD loader, machina is available on the window
+// Just make sure you have lodash loaded before machina
 var MyFsm = machina.Fsm.extend({ /* your stuff */});
 
 // If you're using an AMD loader:
 require(['machina'], function(machina){
-	return machina.Fsm.extend({ /* your stuff */});
+    return machina.Fsm.extend({ /* your stuff */});
 });
 
-// machina v0.3.x
-// In node.js, the module returns a factory function:
+// node.js/CommonJS:
+var machina = require('machina');
+
+// FYI machina v0.3.x & earlier returned a factory
+// function in CommonJS environments:
 var lodash = require('lodash');
 var machina = require('machina')(lodash);
 var MyFsm = machina.Fsm.extend({ /* your stuff */});
-
-// This changed in v0.4 FYI - it no longer exports a factory:
-var machina = require('machina');
 ```
 
+Great, now that we know how to pull it in, let's create an FSM to represent a vehicle traffic light at a pedestrian crosswalk:
+
+```javascript
+var vehicleSignal = new machina.Fsm( {
+
+    // the initialize method is called right after the FSM
+    // instance is constructed, giving you a place for any
+    // setup behavior, etc. It receives the same arguments
+    // (options) as the constructor function.
+    initialize: function( options ) {
+        // your setup code goes here...
+    },
+
+    namespace: "vehicle-signal",
+
+    // `initialState` tells machina what state to start the FSM in.
+    // The default value is "uninitialized". Not providing
+    // this value will throw an exception in v1.0+
+    initialState: "uninitialized",
+
+    // The states object's top level properties are the
+    // states in which the FSM can exist. Each state object
+    // contains input handlers for the different inputs
+    // handled while in that state.
+    states: {
+        uninitialized: {
+            // Input handlers are usually functions. They can
+            // take arguments, too (even though this one doesn't)
+            // The "*" handler is special (more on that in a bit)
+            "*": function() {
+                this.deferUntilTransition();
+                // the `transition` method takes a target state (as a string)
+                // and transitions to it. You should NEVER directly assign the
+                // state property on an FSM. Also - while it's certainly OK to
+                // call `transition` externally, you usually end up with the
+                // cleanest approach if you endeavor to transition *internally*
+                // and just pass input to the FSM.
+                this.transition( "green" );
+            }
+        },
+        green: {
+            // _onEnter is a special handler that is invoked
+            // immediately as the FSM transitions into the new state
+            _onEnter: function() {
+                this.timer = setTimeout( function() {
+                    this.handle( "timeout" );
+                }.bind( this ), 30000 );
+                this.emit( "vehicles", { status: GREEN } );
+            },
+            // If all you need to do is transition to a new state
+            // inside an input handler, you can provide the string
+            // name of the state in place of the input handler function.
+            timeout: "green-interruptible",
+            pedestrianWaiting: function() {
+                this.deferUntilTransition( "green-interruptible" );
+            },
+            // _onExit is a special handler that is invoked just before
+            // the FSM leaves the current state and transitions to another
+            _onExit: function() {
+                clearTimeout( this.timer );
+            }
+        },
+        "green-interruptible": {
+            pedestrianWaiting: "yellow"
+        },
+        yellow: {
+            _onEnter: function() {
+                this.timer = setTimeout( function() {
+                    this.handle( "timeout" );
+                }.bind( this ), 5000 );
+                // machina FSMs are event emitters. Here we're
+                // emitting a custom event and data, etc.
+                this.emit( "vehicles", { status: YELLOW } );
+            },
+            timeout: "red",
+            _onExit: function() {
+                clearTimeout( this.timer );
+            }
+        },
+        red: {
+            _onEnter: function() {
+                this.timer = setTimeout( function() {
+                    this.handle( "timeout" );
+                }.bind( this ), 1000 );
+                this.emit( "vehicles", { status: RED } );
+            },
+            _reset: "green",
+            _onExit: function() {
+                clearTimeout(this.timer);
+            }
+        }
+    }
+
+    // While you can call the FSM's `handle` method externally, it doesn't
+    // make for a terribly expressive API. As a general rule, you wrap calls
+    // to `handle` with more semantically meaningful method calls like these:
+    reset: function() {
+        this.handle( "_reset" );
+    },
+
+    pedestrianWaiting: function() {
+        this.handle( "pedestrianWaiting" );
+    }
+} );
+
+// Now, to use it:
+// This call causes the FSM to transition from uninitialized -> green
+// & queues up pedestrianWaiting input, which replays after the timeout
+// causes a transition to green-interruptible....which immediately
+// transitions to yellow since we have a pedestrian waiting. After the
+// next timeout, we end up in "red".
+vehicleSignal.pedestrianWaiting();
+// Once the FSM is in the "red" state, we can reset it to "green" by calling:
+vehicleSignal.reset();
+```
+
+Though the code comments give you a lot of detail, let's break down what's happening in the above FSM:
+
+* When you are creating an FSM, the constructor takes one argument, the `options` arg - which is an object that contains (at least) the `states` & `initialState` values for your FSM, as well as an optional `initialize` method (which is invoked at the end of the underlying constructor function) and any additional properties or methods you want on the FSM.
+* It can exist in one of five possible states: `uninitialized`, `green`, `green-interruptible`, `yellow` and `red`. (Only one state can be active at a time.)
+* The states themselves are objects under the `states` property on the FSM, and contain handlers whose names match the input types that the FSM accepts while in that state.
+* It starts in the `uninitialized` state.
+* It accepts input either by calling `handle` directly and passing the input type as a string (plus any arguments), or by calling top level methods you put on your FSM's prototype that wrap the calls to `handle` with a more expressive API.
+* You do *not* assign the state value of the FSM directly, instead, you use `transition(stateName)` to transition to a different state.
+* Special "input handlers" exist in machina: `_onEnter`, `_onExit` and `*`. In fact, the very first state (`uninitialized`) in this FSM is using `*`. It's the "catch-all" handler which, if provided, will match any input in that state that's not explicitly matched by name. In this case, any input handled in `uninitialized` will cause the FSM to defer the input (queue it up for replay after transitioning), and immediately transfer to `green`. (This is just to demonstrate how a start-up-only state can automatically transfer into active state(s) as clients begin using the FSM. )
+
+###Going Further
+machina provides two constructor functions for creating an FSM: `machina.Fsm` and `machina.BehavioralFsm`:
+
+####The BehavioralFsm Constructor
+`BehavioralFsm` is new to machina as of v1.0 (though the `Fsm` constructor now inherits from it). The `BehavioralFsm` constructor lets you create an FSM that defines *behavior* (hence the name) that you want applied to multiple, separate instances of *state*. A `BehavioralFsm` instance does not (should not!) track state locally, on itself. For example, consider this scenario....where we get to twist our `vehicleSignal` FSM beyond reason: :smile:
+
+```javascript
+var vehicleSignal = new machina.BehavioralFsm( {
+
+    initialize: function( options ) {
+        // your setup code goes here...
+    },
+
+    namespace: "vehicle-signal",
+
+    initialState: "uninitialized",
+
+    states: {
+        uninitialized: {
+            "*": function( client ) {
+                this.deferUntilTransition( client );
+                this.transition( client, "green" );
+            }
+        },
+        green: {
+            _onEnter: function( client ) {
+                client.timer = setTimeout( function() {
+                    this.handle(  client, "timeout" );
+                }.bind( this ), 30000 );
+                this.emit( "vehicles", { client: client, status: GREEN } );
+            },
+            timeout: "green-interruptible",
+            pedestrianWaiting: function( client ) {
+                this.deferUntilTransition(  client, "green-interruptible" );
+            },
+            _onExit: function( client ) {
+                clearTimeout( client.timer );
+            }
+        },
+        "green-interruptible": {
+            pedestrianWaiting: "yellow"
+        },
+        yellow: {
+            _onEnter: function( client ) {
+                client.timer = setTimeout( function() {
+                    this.handle( client, "timeout" );
+                }.bind( this ), 5000 );
+                this.emit( "vehicles", { client: client, status: YELLOW } );
+            },
+            timeout: "red",
+            _onExit: function( client ) {
+                clearTimeout( client.timer );
+            }
+        },
+        red: {
+            _onEnter: function( client ) {
+                client.timer = setTimeout( function() {
+                    this.handle( client, "timeout" );
+                }.bind( this ), 1000 );
+            },
+            _reset: "green",
+            _onExit: function( client ) {
+                clearTimeout( client.timer );
+            }
+        }
+    },
+
+    reset: function( client ) {
+        this.handle(  client, "_reset" );
+    },
+
+    pedestrianWaiting: function( client ) {
+        this.handle( client, "pedestrianWaiting" );
+    }
+} );
+
+// Now we can have multiple 'instances' of traffic lights that all share the same FSM:
+var light1 = { location: "Dijsktra Ave & Hunt Blvd", direction: "north-south" };
+var light2 = { location: "Dijsktra Ave & Hunt Blvd", direction: "east-west" };
+
+// to use the behavioral fsm, we pass the "client" in as the first arg to API calls:
+vehicleSignal.pedestrianWaiting( light1 );
+
+// Now let's signal a pedestrian waiting at light2
+vehicleSignal.pedestrianWaiting( light2 );
+
+// if you were to inspect light1 and light2, you'd see they both have
+// a __machina__ property, which contains metadata related to this FSM.
+// For example, light1.__machina__.vehicleSignal.state might be "green"
+// and light2.__machina__.vehicleSignal.state might be "yellow" (depending
+// on when you check). The point is - the "clients' state" is tracked
+// separately from each other, and from the FSM. Here's a snapshot of
+// light1 right after the vehicleSignal.pedestrianWaiting( light1 ) call:
+
+{
+  "location": "Dijsktra Ave & Hunt Blvd",
+  "direction": "north-south",
+  "__machina__": {
+    "vehicle-signal": {
+      "inputQueue": [
+        {
+          "type": "transition",
+          "untilState": "green-interruptible",
+          "args": [
+            {
+              "inputType": "pedestrianWaiting",
+              "delegated": false
+            }
+          ]
+        }
+      ],
+      "targetReplayState": "green",
+      "state": "green",
+      "priorState": "uninitialized",
+      "priorAction": "",
+      "currentAction": "",
+      "currentActionArgs": [
+        {
+          "inputType": "pedestrianWaiting",
+          "delegated": false
+        }
+      ],
+      "inExitHandler": false
+    }
+  },
+  "timer": 11
+}
+
+```
+
+Though we're using the *same FSM for behavior*, the *state is tracked separately*. This enables you to keep a smaller memory footprint, especially in situations where you'd otherwise have lots of individual instances of the same FSM in play. More importantly, though, it allows you to take a more functional approach to FSM behavior and state should you prefer to do so. (As a side note, it also makes it much simpler to store a client's state and re-load it later and have the FSM pick up where it left off, etc.)
+
+####The Fsm Constructor
+If you've used machina prior to v1.0, the `Fsm` constructor is what you're familiar with. It's functionally equivalent to the `BehavioralFsm` (in fact, it inherits from it), except that it can only deal with one client: *itself*. There's no need to pass a `client` argument to the API calls on an `Fsm` instance, since it only acts on itself. All of the metadata that was stamped on our `light1` and `light2` clients above (under the `__machina__` property) is at the instance level on an `Fsm` (as it has been historically for this constructor).
+
+###Wait - What's This About Inheritance?
+machina's FSM constructor functions are simple to extend. If you don't need an instance, but just want a modified constructor function to use later to create instances, you can do something like this:
+
+```javascript
+var TrafficLightFsm = machina.Fsm.extend({ /* your options */ });
+
+// later/elsewhere in your code:
+var trafficLight = new TrafficLightFsm();
+
+// you can also override any of the options:
+var anotherLight = new TrafficLightFsm({ initialState: "go" });
+```
+
+The `extend` method works similar to other frameworks (like Backbone, for example). The primary difference is this: *the states object will be deep merged across the prototype chain* into an instance-level `states` property (so it doesn't mutate the prototype chain). This means you can add new states as well as add new (or override existing) handlers to existing states as you inherit from "parent" FSMs. This can be very useful, but – as with all things inheritance-related – use with caution!
+
+###And You Mentioned Events?
+machina FSMs are event emitters, and subscribing to them is pretty easy:
+
+```javascript
+
+// I'd like to know when the transition event occurs
+trafficLight.on("transition", function (data){
+    console.log("we just transitioned from " + data.fromState + " to " + data.toState);
+});
+
+// Or, maybe I want to know when ANY event occurs
+trafficLight.on("*", function (eventName, data){
+    console.log("this thing happened:", eventName);
+});
+
+```
+
+Unsubscribing can be done a couple of ways:
+
+```javascript
+//each listener gets a return value
+var sub = trafficLight.on("transition", someCallback);
+sub.off(); // unsubscribes the handler
+
+// OR, we can use the FSM's prototype method -
+// remove this specific subscription:
+trafficLight.off("transition", someCallback);
+// remove all transition subscribers
+trafficLight.off("transition");
+// remove ALL subscribers, period:
+trafficLight.off();
+```
+
+You can emit your own custom events in addition to the built-in events machina emits. To read more about these events, see the [wiki](https://github.com/ifandelse/machina.js/wiki).
+
+###Things Suddenly Got Hierarchical!
+One of the most exciting additions in v1.0: machina now supports hierarchical state machines. Remember our earlier example of the `vehicleSignal` FSM? Well, that's only *part* of a pedestrian crosswalk. Pedestrians need their own signal as well - typically a sign that signals "Walk" and "Do Not Walk". Let's peek at what an FSM for this might look like:
+
+```javascript
+var pedestrianSignal = new machina.Fsm( {
+    namespace: "pedestrian-signal",
+    initialState: "uninitialized",
+    reset: function() {
+        this.transition( "walking" );
+    },
+    states: {
+        uninitialized: {
+            "*": function() {
+                this.deferUntilTransition();
+                this.transition( "walking" );
+            }
+        },
+        walking: {
+            _onEnter: function() {
+                this.timer = setTimeout( function() {
+                    this.handle( "timeout" );
+                }.bind( this ), 30000 );
+                this.emit( "pedestrians", { status: WALK } );
+            },
+            timeout: "flashing",
+            _onExit: function() {
+                clearTimeout( this.timer );
+            }
+        },
+        flashing: {
+            _onEnter: function() {
+                this.timer = setTimeout( function() {
+                    this.handle( "timeout" );
+                }.bind( this ), 5000 );
+                this.emit( "pedestrians", { status: DO_NOT_WALK, flashing: true } );
+            },
+            timeout: "dontwalk",
+            _onExit: function() {
+                clearTimeout( this.timer );
+            }
+        },
+        dontwalk: {
+            _onEnter: function() {
+                this.timer = setTimeout( function() {
+                    this.handle( "timeout" );
+                }.bind( this ), 1000 );
+            },
+            _reset: "walking",
+            _onExit: function() {
+                clearTimeout( this.timer );
+            }
+        }
+    }
+} )
+```
+
+In many ways, our `pedestrianSignal` is similar to the `vehicleSignal` FSM:
+
+* It starts in the `uninitialized` state, and the first input causes it to transition to `walking` before actually processing the input.
+* It can only be in one of four states: `uninitialized`, `walking`, `flashing` and `dontwalk`.
+* This FSM's input is primarily internally-executed, based on timers (`setTimeout` calls).
+
+Now - we *could* stand up an instance of `pedestrianSignal` and `vehicleSignal`, and subscribe them to each other's `transition` events. This would make them "siblings" - where `pedestrianSignal` could, for example, only transition to `walking` when `vehicleSignal` is in the `red` state, etc. While there are scenarios where this sort of "sibling" approach is useful, what we really have is a hierarchy. There are two higher level states that each FSM represents, a "vehicles-can-cross" state and a "pedestrians-can-cross" state. With machina v1.0, we can create an FSM to model these higher states, and attach our `pedestrianSignal` and `vehicleSignal` FSMs to their parent states:
+
+```javascript
+var crosswalk = new machina.Fsm( {
+    namespace: "crosswalk",
+    initialState: "vehiclesEnabled",
+    states: {
+        vehiclesEnabled: {
+            _child: vehicleSignal,
+            _onEnter: function() {
+                this.emit( "pedestrians", { status: DO_NOT_WALK } );
+            },
+            timeout: "pedestriansEnabled"
+        },
+        pedestriansEnabled: {
+            _child: pedestrianSignal,
+            _onEnter: function() {
+                this.emit( "vehicles", { status: RED } );
+            },
+            timeout: "vehiclesEnabled"
+        }
+    }
+} );
+```
+Notice how each state has a `_child` property? This property can be used to assign an FSM instance to act as a child FSM for this parent state (or a factory function that produces an instance to be used, etc.). Here's how it works:
+
+* When an FSM is handling input, it attempts to let the child FSM handle it first. If the child emits a `nohandler` event, the parent FSM will take over and attempt to handle it. For example - if a `pedestrianWaiting` input is fed to the above FSM while in the `vehiclesEnabled` state, it will be passed on to the `vehicleSignal` FSM to be handled there.
+* Events emitted from the child FSM are bubbled up to be emitted by the top level parent (except for the `nohandler` event).
+* If a child FSM handles input that it does not have a handler for, it will bubble the input up to the parent FSM to be handled there. Did you notice that both our `pedestrianSignal` and `vehicleSignal` FSMs queue up a `timeout` input in the `dontwalk` and `red` states, respectively? However, neither of those FSMs have an input handler for `timeout` in those states. When these FSMs become part of the hierarchy above, as children of the `crosswalk` FSM, the `timeout` input will bubble up to the parent FSM to be handled, where there *are* handlers for it.
+* When the parent FSM transitions to a new state, any child FSM from a previous state is ignored entirely (i.e. - events emitted, or input bubbled, will *not* be handled in the parent). If the parent FSM transitions back to that state, it will resume listening to the child FSM, etc.
+* As the parent state transitions into any of its states, it will tell the child FSM to handle a `_reset` input. This gives you a hook to move the child FSM to the correct state before handling any further input. For example, you'll notice our `pedestrianSignal` FSM has a `_reset` input handler in the `dontwalk` state, which transitions the FSM to the `walking` state.
+
+>Caveats: This feature is very new to machina, so expect it to evolve a bit. I plan to fine-tune how events bubble in a hierarchy a bit more, and potentially give the parent FSM the ability to express the state down the hierachy (e.g. `vehiclesEnabled.green` or `pedestriansEnabled.dontwalk`).
+
+### The Top Level machina object
+The top level `machina` object has the following members:
+
+* `Fsm` - the constructor function used to create FSMs.
+* `BehavioralFsm` – the constructor function used to create BehavioralFSM instances.
+* `utils` - contains helper functions that can be overridden to change default behavior(s) in machina:
+    * `makeFsmNamespace` - function that provides a default "channel" or "exchange" for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)
+* `on` - method used to subscribe a callback to top-level machina events (currently the only event published at this level is `newFsm`)
+* `off` - method used to unsubscribe a callback to top-level machina events.
+* `emit` - top-level method used to emit events.
+* `eventListeners` - an object literal containing the susbcribers to any top-level events.
 
 ## Build, Tests & Examples
 machina.js uses [gulp.js](http://gulpjs.com/) to build.
@@ -256,13 +462,20 @@ machina.js uses [gulp.js](http://gulpjs.com/) to build.
 * Install node.js (and consider using [nvm](https://github.com/creationix/nvm) to manage your node versions)
 * run `npm install` & `bower install` to install all dependencies
 * To build, run `npm run build` - then check the lib folder for the output
+* To run the examples:
+    * `npm start`
+    * navigate in your browser to <http://localhost:3080/>
 * To run tests & examples:
     * To run node-based tests: `npm run test`
-    * To run browser-based tests & examples:
-        * run `npm start`
-        * navigate in your browser to <http://localhost:3080/>
+    * To run istanbul (code test coverage): `npm run coverage`
+    * To see a browser-based istanbul report: `npm run show-coverage`
 
 
 ## Release Notes
 
 Go [here](https://github.com/ifandelse/machina.js/blob/master/changelog.md) to see the changelog.
+
+##Have More Questions?
+Read the [wiki](https://github.com/ifandelse/machina.js/wiki) and the source – you might find your answer and more! Check out the [issue](https://github.com/ifandelse/machina.js/issues/4) opened by @burin - a *great* example of how to use github issues to ask questions, provide sample code, etc. I only ask that if you open an issue, that it be *focused on a specific problem or bug* (not wide-open ambiguity, please).
+
+
