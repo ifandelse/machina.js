@@ -7,6 +7,7 @@
 
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -15,311 +16,49 @@
   <body>
     <div class="wrapper">
       <header>
-        <h1>Machina.js</h1>
-        <p>js ex machina - finite state machines in JavaScript</p>
-
-        <p class="view"><a href="https://github.com/ifandelse/machina.js">View the Project on GitHub <small>ifandelse/machina.js</small></a></p>
-
+        <h1 class="header">Machina.js</h1>
+        <p class="header">js ex machina - finite state machines in JavaScript</p>
 
         <ul>
-          <li><a href="https://github.com/ifandelse/machina.js/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/ifandelse/machina.js/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/ifandelse/machina.js">View On <strong>GitHub</strong></a></li>
+          <li class="download"><a class="buttons" href="https://github.com/ifandelse/machina.js/zipball/master">Download ZIP</a></li>
+          <li class="download"><a class="buttons" href="https://github.com/ifandelse/machina.js/tarball/master">Download TAR</a></li>
+          <li><a class="buttons github" href="https://github.com/ifandelse/machina.js">View On GitHub</a></li>
         </ul>
+
+        <p class="header">This project is maintained by <a class="header name" href="https://github.com/ifandelse">ifandelse</a></p>
+
+
       </header>
       <section>
         <h1>
-<a id="machinajs---v043" class="anchor" href="#machinajs---v043" aria-hidden="true"><span class="octicon octicon-link"></span></a>machina.js - v0.4.3</h1>
+<a id="machina-v100-1" class="anchor" href="#machina-v100-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>machina v1.0.0-1</h1>
 
 <h2>
 <a id="what-is-it" class="anchor" href="#what-is-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>What is it?</h2>
 
-<p>Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been loosely inspired by the Erlang/OTP FSM behaviors.</p>
+<p>Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been <em>loosely</em> inspired by the Erlang/OTP FSM behaviors.</p>
 
 <h2>
-<a id="why-would-i-use-it" class="anchor" href="#why-would-i-use-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why would I use it?</h2>
+<a id="why-would-i-use-it" class="anchor" href="#why-would-i-use-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why Would I Use It?</h2>
+
+<p>Finite state machines are a great conceptual model for many concerns facing developers – from conditional UI, connectivity monitoring &amp; management to initialization and more. State machines can simplify tangled paths of asynchronous code, they're easy to test, and they inherently lend themselves to helping you avoid unexpected edge-case-state pitfalls. machina aims to give you the tools you need to model state machines in JavaScript, without being too prescriptive on the problem domain you're solving for.</p>
+
+<p>Some frequent use cases for machina:</p>
 
 <ul>
-<li>Finite state machines offer a way to structure web client code in a very organized manner, and can make it much simpler to extend behavior for all or only key edge cases.
-
-<ul>
-<li>For example - instead of nested callbacks/deferreds, use an FSM to act as an "event aggregator" that is aware of when state needs to transition in the app once a set of conditions has been satisfied.</li>
-<li>FSMs <em>can</em> work well for concerns like:
-
-<ul>
-<li>app "init" (bootstrapping your web client so that certain application behaviors are not available until all appropriate resources/data/behavior are present)</li>
-<li>persistence concerns - offline vs online.  Abstract persistence behind an fsm that simply listens for messages (commands) to persist data.  Depending on the state of the client (offline vs online), the FSM will handle the activity accordingly - calling code never needs to know.</li>
-<li>Often-changing-subsets of view or model elements.  Take a navigation menu, for example.  Depending on the context (i.e. - state), you may wish to show/hide certain menu options.  This usually turns out to be a handful of menu show-vs-hide combinations.  An FSM can abstract this well.</li>
+<li>online/offline connectivity management</li>
+<li>conditional UI (menus, navigation, workflow)</li>
+<li>initiliazation of node.js processes or single-page-apps</li>
+<li>responding to user input devices (remotes, keyboard, mouse, etc.)</li>
 </ul>
-</li>
-</ul>
-</li>
-<li>It's simple!  Machina makes the process of organizing the various states your fsm needs to know about - and the kinds of events each state can handle - intuitive to set up, and to read.</li>
-<li>Powerful integration.  By using a plugin like <a href="https://github.com/ifandelse/machina.postal">machina.postal</a>, your FSM instances can auto-wire into <a href="https://github.com/ifandelse/postal.js">postal.js</a> (a JavaScript message bus), enabling them decoupled communications with other components in your application.  This wires up both subscribers (for state handlers to be invoked) and publishers (to publish your FSM's events to the message bus).</li>
-<li>Extend for more power.
-
-<ul>
-<li>Writing your own message bus/eventing wire-up plugin is fairly simple.  Look at <a href="https://github.com/ifandelse/machina.postal">machina.postal</a> for an example.</li>
-<li>Hook into the top level "newFsm" event to give other components in your app a handle to your FSMs as they are created.</li>
-</ul>
-</li>
-</ul>
-
-<h2>
-<a id="how-do-i-use-it" class="anchor" href="#how-do-i-use-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>How do I use it?</h2>
-
-<p>(The <a href="https://github.com/ifandelse/machina.js/wiki">wiki</a> has more extensive API documentation. Also, be sure to check out the example folder in this repository for more in-depth demos - especially if you're interested in a working 'connectivity' FSM. The example below is just scratching the surface of one...)</p>
-
-<p>Creating an FSM:</p>
-
-<div class="highlight highlight-javascript"><pre><span class="pl-s">var</span> storageFsm <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">machina.Fsm</span>({
-    <span class="pl-en">applicationOffline</span>: <span class="pl-st">function</span>() {
-        <span class="pl-s">var</span> offline <span class="pl-k">=</span> <span class="pl-c1">false</span>;
-        <span class="pl-c">// checks window.navigator.online and more, sets the offline value</span>
-        <span class="pl-k">return</span> offline;
-    },
-
-    <span class="pl-en">verifyState</span>: <span class="pl-st">function</span>( <span class="pl-vpf">payload</span> ) {
-        <span class="pl-k">if</span>( <span class="pl-v">this</span>.applicationOffline() <span class="pl-k">&amp;&amp;</span> <span class="pl-v">this</span>.state <span class="pl-k">!==</span> <span class="pl-s1"><span class="pl-pds">"</span>offline<span class="pl-pds">"</span></span> ) {
-            <span class="pl-v">this</span>.offlineMarkerTime <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">Date</span>();
-            <span class="pl-v">this</span>.transition(<span class="pl-s1"><span class="pl-pds">"</span>offline<span class="pl-pds">"</span></span>);
-            <span class="pl-k">return</span> <span class="pl-c1">false</span>;
-        }
-        <span class="pl-k">else</span> <span class="pl-k">if</span> ( <span class="pl-k">!</span><span class="pl-v">this</span>.applicationOffline() <span class="pl-k">&amp;&amp;</span> <span class="pl-v">this</span>.state <span class="pl-k">===</span> <span class="pl-s1"><span class="pl-pds">"</span>offline<span class="pl-pds">"</span></span> ) {
-            <span class="pl-v">this</span>.transition( <span class="pl-s1"><span class="pl-pds">"</span>online<span class="pl-pds">"</span></span> );
-            <span class="pl-k">return</span> <span class="pl-c1">false</span>;
-        }
-        <span class="pl-k">return</span> <span class="pl-c1">true</span>;
-    },
-
-    initialState<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>offline<span class="pl-pds">"</span></span>,
-
-    states <span class="pl-k">:</span> {
-        <span class="pl-s1"><span class="pl-pds">"</span>online<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
-            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
-                <span class="pl-v">this</span>.handle(<span class="pl-s1"><span class="pl-pds">"</span>sync.customer<span class="pl-pds">"</span></span>);
-            },
-
-            <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">save.customer</span><span class="pl-pds">"</span></span> : <span class="pl-st">function</span>( <span class="pl-vpf">payload</span> ) {
-                <span class="pl-k">if</span>( <span class="pl-v">this</span>.verifyState() ) {
-                    storage.saveToRemote( payload );
-                }
-            },
-
-            <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">sync.customer</span><span class="pl-pds">"</span></span> : <span class="pl-st">function</span>() {
-                <span class="pl-k">if</span>( <span class="pl-v">this</span>.verifyState( payload ) ) {
-                    <span class="pl-s">var</span> unsynced <span class="pl-k">=</span> storage.getFromLocal( { startTime<span class="pl-k">:</span> <span class="pl-v">this</span>.offlineMarkerTime } );
-                    <span class="pl-c">// Big assumption here!  In the real world,</span>
-                    <span class="pl-c">// we'd batch this sync in reasonable chunks.</span>
-                    storage.saveBatchToRemote( unsynced );
-                    <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>CustomerSyncComplete<span class="pl-pds">"</span></span>, { customers<span class="pl-k">:</span> unsynced } );
-                }
-            }
-        },
-
-        <span class="pl-s1"><span class="pl-pds">"</span>offline<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
-            <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">save.customer</span><span class="pl-pds">"</span></span> : <span class="pl-st">function</span>( <span class="pl-vpf">payload</span> ) {
-                <span class="pl-k">if</span>( <span class="pl-v">this</span>.verifyState() ) {
-                    storage.saveToLocal( payload );
-                }
-            }
-        }
-    }
-});</pre></div>
-
-<p>In the above example, the developer has created an FSM with two possible states: <code>online</code> and <code>offline</code>.  While the fsm is in the <code>online</code> state, it will respond to <code>save.customer</code> and <code>sync.customer</code> events.  External code triggers these events by calling the <code>handle</code> method on the FSM.  For example <code>storageFsm.handle( "sync.customer", { other: "data" } )</code>.  The <code>handle</code> method first looks to see if a named handler exists matching the name of the one passed in, then also checks for a catch-all handler (indicated by the "*") if a named handler isn't found.  The <code>offline</code> state of the above FSM only responds to <code>save.customer</code> events.  If any other type of event name is passed to the <code>handle</code> method of the FSM, other than what each state explicitly handles, it is ignored.</p>
-
-<p>In addition to the state/handler definitions, the above code example as shows that this particular FSM will start in the <code>offline</code> state, and can generate a <code>CustomerSyncComplete</code> custom event.</p>
-
-<p>The <code>verifyState</code> and <code>applicationOffline</code> methods are custom to this instance of the FSM, and are not, of course, part of machina by default.</p>
-
-<p>You can see in the above example that anytime the FSM handles an event, it first checks to see if the state needs to be transitioned between offline and online (via the <code>verifyState</code> call).  States can also have <code>_onEnter</code> and <code>_onExit</code> methods. <code>_onEnter</code> is fired immediately after the FSM transitions into that state and <code>_onExit</code> is fired immediately before transitioning to a new state.</p>
-
-<p>Now that we've seen a quick example, let's do a whirlwind API tour.</p>
-
-<h2>
-<a id="have-more-questions" class="anchor" href="#have-more-questions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Have More Questions?</h2>
-
-<p>Read the wiki and the source – you might find your answer and more! Check out the <a href="https://github.com/ifandelse/machina.js/issues/4">issue</a> opened by <a href="https://github.com/burin" class="user-mention">@burin</a> - a <em>great</em> example of how to use github issues to ask questions, provide sample code, etc. I only ask that if you open an issue, that it be <em>focused on a specific problem or bug</em> (not wide, open ambiguity, please). We also have an IRC chat room on freenode: #machinajs. It's a quiet place, but I'll do my best to answer questions if they arise.</p>
-
-<h2>
-<a id="whirlwind-api-tour" class="anchor" href="#whirlwind-api-tour" aria-hidden="true"><span class="octicon octicon-link"></span></a>Whirlwind API Tour</h2>
-
-<p>When you are creating a new FSM instance, <code>machina.Fsm</code> takes 1 argument - an options object.  Here's a breakdown of the members of this <code>options</code> object:</p>
-
-<p><code>eventListeners</code> - An object of event names, associated with the array of event handlers subscribed to them.  (You are not required to declare the events your FSM can publish ahead of time - this is only for convenience if you want to add handlers as you create the instance.)</p>
-
-<div class="highlight highlight-javascript"><pre>eventListeners<span class="pl-k">:</span> {
-    MyEvent1<span class="pl-k">:</span> [<span class="pl-st">function</span>(<span class="pl-vpf">data</span>) { <span class="pl-en">console</span><span class="pl-s3">.log</span>(data); }],
-    MyEvent2<span class="pl-k">:</span> [<span class="pl-st">function</span>(<span class="pl-vpf">data</span>) { <span class="pl-en">console</span><span class="pl-s3">.log</span>(data); }]
-}</pre></div>
-
-<p><code>states</code> - an object detailing the possible states the FSM can be in, plus the kinds of events/messages each state can handle.  States can have normal "handlers" as well as a catch-all handler ("*"), an <code>_onEnter</code> handler invoked when the FSM has transitioned into that state and an <code>_onExit</code> handler invoked when transitioning out of that state.</p>
-
-<div class="highlight highlight-javascript"><pre>states<span class="pl-k">:</span> {
-    <span class="pl-s1"><span class="pl-pds">"</span>uninitialized<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
-        <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
-            <span class="pl-c">// do stuff immediately after we transition into uninitialized</span>
-        },
-
-        <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">initialize</span><span class="pl-pds">"</span></span> : <span class="pl-st">function</span>( <span class="pl-vpf">payload</span> ) {
-            <span class="pl-c">// handle an "initialize" event</span>
-        },
-
-        <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>() {
-            <span class="pl-c">// do stuff immediately before we transition out of uninitialized</span>
-            <span class="pl-c">// Note: you can't transition or invoke another inside _onExit</span>
-        }
-    },
-
-    <span class="pl-s1"><span class="pl-pds">"</span>ready<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
-        <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">*</span><span class="pl-pds">"</span></span> : <span class="pl-st">function</span>( <span class="pl-vpf">payload</span> ) {
-            <span class="pl-c">// any message that comes while in the "ready" state will get handled here</span>
-            <span class="pl-c">// unless it matches another "ready" handler exactly.</span>
-        }
-    }
-}</pre></div>
-
-<p><code>initialState</code> - the state in which the FSM will start.  As soon as the instance is created, the FSM calls the <code>transition</code> method to transition into this state.</p>
-
-<p><code>namespace</code> - a name that indentifies the FSM if it's wired up to a message bus through a plugin.</p>
-
-<p><code>initialize</code> - a function that will be executed as soon as the FSM instance has been created. This is the last step of the FSM's constructor function, prior to emitting that a new instance has been created, and transitioning (if applicable) into the initial state.</p>
 
 <h3>
-<a id="inheritance" class="anchor" href="#inheritance" aria-hidden="true"><span class="octicon octicon-link"></span></a>Inheritance</h3>
+<a id="quick-example" class="anchor" href="#quick-example" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Example</h3>
 
-<p>FSMs can be created via the <code>machina.Fsm</code> constructor function as described above, or you can create an 'extended' FSM constructor function by calling <code>machina.Fsm.extend()</code>.  If you are familiar with backbone.js, machina's inheritance is identical to how backbone objects work, except that machina performs a deep extend, which means you can inherit from an FSM, adding new handlers to a state defined by the base (and you can override already-declared handlers, etc.).  With this being the case, it's better to think of machina's inhertiance as "blending" and not just extending. Let's look at an example:</p>
-
-<div class="highlight highlight-javascript"><pre><span class="pl-s">var</span> BaseFsm <span class="pl-k">=</span> machina.Fsm.extend({
-    <span class="pl-en">initialize</span>: <span class="pl-st">function</span>() {
-        <span class="pl-c">// do stuff here if you want to perform more setup work</span>
-        <span class="pl-c">// this executes prior to any state transitions or handler invocations</span>
-    },
-    states<span class="pl-k">:</span> {
-        uninitialized<span class="pl-k">:</span> {
-            <span class="pl-en">start</span>: <span class="pl-st">function</span>() {
-                <span class="pl-v">this</span>.transition(<span class="pl-s1"><span class="pl-pds">"</span>first<span class="pl-pds">"</span></span>);
-            }
-        },
-        first<span class="pl-k">:</span> {
-            <span class="pl-en">handlerA</span> : <span class="pl-st">function</span>() {
-                <span class="pl-c">// do stuff</span>
-            }
-        }
-    }
-});
-<span class="pl-c">// getting an instance from our extended constructor function above</span>
-<span class="pl-s">var</span> baseFsm <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">BaseFsm</span>();
-
-<span class="pl-c">// taking the BaseFsm constructor function and doing more</span>
-<span class="pl-s">var</span> ChildFsm <span class="pl-k">=</span> BaseFsm.extend({
-    states<span class="pl-k">:</span> {
-        uninitialized<span class="pl-k">:</span> {
-            <span class="pl-en">skipToTheEnd</span>: <span class="pl-st">function</span>() {
-                <span class="pl-v">this</span>.transition(<span class="pl-s1"><span class="pl-pds">"</span>second<span class="pl-pds">"</span></span>);
-            }
-        },
-        first<span class="pl-k">:</span> {
-            <span class="pl-en">handlerA</span> : <span class="pl-st">function</span>() {
-                <span class="pl-v">this</span>.transition(<span class="pl-s1"><span class="pl-pds">"</span>second<span class="pl-pds">"</span></span>);
-            }
-            <span class="pl-en">handlerB</span> : <span class="pl-st">function</span>() {
-                <span class="pl-c">// do some work...</span>
-            }
-        },
-        second<span class="pl-k">:</span> {
-            <span class="pl-en">handlerC</span> : <span class="pl-st">function</span>() {
-                <span class="pl-c">// do stuff</span>
-            }
-        }
-    }
-});
-
-<span class="pl-c">// This instance will have a blending of BaseFsm and ChildFsm's states/handlers</span>
-<span class="pl-s">var</span> childFsm <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">ChildFsm</span>();</pre></div>
-
-<h2>
-<a id="the-machinafsm-prototype" class="anchor" href="#the-machinafsm-prototype" aria-hidden="true"><span class="octicon octicon-link"></span></a>The machina.Fsm Prototype</h2>
-
-<p>Each instance of an machina FSM has the following methods available via it's prototype:</p>
-
-<ul>
-<li>
-<code>emit(eventName, [other args...])</code> - looks in the <code>events</code> object for a matching event name, and then iterates through the subscriber callbacks for that event and invokes each one, passing in any additional args that were passed to <code>emit</code>. (NOTE: - this call is currently aliased as <code>emit</code> as well.)</li>
-<li>
-<code>handle(msgType, [other args...])</code> - This is the main way you should be interacting with an FSM instance (assuming no message bus is present).  It will try to find a matching eventName/msgType under the current state and invoke it, if one exists.  Otherwise it will look for a catch-all handler, or simply ignore the message and raise the "NoHandler" event.</li>
-<li>
-<code>transition(newState)</code> - Called when transitioning into a new state.</li>
-<li>
-<code>deferUntilTransition(stateName)</code> - calling this within a state handler function will queue the handler's arguments to be executed at a later time.  If you don't provide the <code>stateName</code> argument, it will replay the event after the next state transition.  Providing the <code>stateName</code> argument will queue the event until the FSM transitions into that state.</li>
-<li>
-<code>deferUntilNextHandler()</code> - calling this within a state handler function will queue the handler's arguments to be executed after the next handler is invoked.</li>
-<li>
-<code>processQueue()</code> - called internally during state transitions and after handler methods have been invoked.  This call processes any queued events (queued by use of <code>deferUntilTransition</code> and/or <code>deferUntilNextHandler</code>).</li>
-<li>
-<code>clearQueue(type, name)</code> - allows you to clear out queued events that have been deferred either until another handler or another state transition. The <code>type</code> parameter can be either "transition" or "handler".  If you pass "transition" for the <code>type</code>, then the optional <code>name</code> parameter allows you to clear events queued for a specific state transition. Not providing a <code>name</code> when the <code>type</code> is "transition" will clear out all events queued for <em>any</em> state transition.</li>
-<li>
-<code>on(eventName, callback)</code> - used to subscribe to events that the FSM generates.</li>
-<li>
-<code>off(eventName, callback)</code> - used to unsubscribe to FSM events.</li>
-</ul>
-
-<p>In addition to the prototype members, every instance of an FSM has these instance-specific values as well:</p>
-
-<ul>
-<li>
-<code>_currentAction</code> - concatenates "{state}.{handler}" for the operation in progress.  This is provided as a convenience for both logging (if needed) and if you need to check during an operation to see if the last action taken is the same action being taken now.</li>
-<li>
-<code>_priorAction</code> - concatenates "{state}.{handler" for the last operation that took place.  See the above explanation for more context.</li>
-<li>
-<code>eventListeners</code> - an object containing the event names (keys) and an array of subscribers listening to the event.  You should not need to interact with this directly. Instead, use the <code>on</code> and <code>off</code> prototype methods.</li>
-<li>
-<code>eventQueue</code> - an array of input/events that have been deferred by calling <code>deferUntilTransition</code> or <code>deferUntilNextHandler</code>. This queue is processed automatically for you.</li>
-<li>
-<code>namespace</code> - the namespace value you passed in during instantiaton, or a default value machina provides.</li>
-<li>
-<code>priorState</code> - the last state in which the FSM was in before the current one.  This could be useful if you have conditional transition behavior as you move into a new state which depends on what state you're moving <em>from</em>.</li>
-<li>
-<code>state</code> - string value of the current state of the FSM.  This will match one of the state names in the <code>states</code> object.  Do <em>not</em> change this value directly.  Use the <code>transition()</code> method on the prototype to change an FSM's state.</li>
-<li>
-<code>states</code> - the object literal of states &amp; handlers you passed in when you created the FSM.</li>
-<li>
-<code>targetReplayState</code> - used internally during transitions to manage the proper replay of queued events if multiple transitions result from one initial transition.</li>
-</ul>
-
-<h2>
-<a id="the-top-level-machina-object" class="anchor" href="#the-top-level-machina-object" aria-hidden="true"><span class="octicon octicon-link"></span></a>The Top Level machina object</h2>
-
-<p>The top level <code>machina</code> object has the following members:</p>
-
-<ul>
-<li>
-<code>Fsm</code> - the constructor function used to create FSMs.</li>
-<li>
-<code>utils</code> - contains helper functions that can be overridden to change default behavior(s) in machina:
-
-<ul>
-<li>
-<code>getDefaultOptions</code> - returns the default options object for any machina instance</li>
-<li>
-<code>makeFsmNamespace</code> - function that provides a default "channel" or "exchange" for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)</li>
-</ul>
-</li>
-<li>
-<code>on</code> - function used to subscribe a callback to top-level machina events (currently the only event published at this level is "newFsm")</li>
-<li>
-<code>off</code> - function used to unsubscribe a callback to top-level machina events.</li>
-<li>
-<code>eventListeners</code> - an object literal containing the top-level <code>emit</code> call as well as susbcribers to any top-level events.</li>
-</ul>
-
-<h2>
-<a id="pulling-machina-into-your-environment" class="anchor" href="#pulling-machina-into-your-environment" aria-hidden="true"><span class="octicon octicon-link"></span></a>Pulling machina into your environment</h2>
-
-<p>machina depends on <a href="https://lodash.com/">lodash (2.4.1 or greater)</a>. If you are using npm or bower - lodash will be pulled down automatically when you install machina - otherwise you'll need to grab it manually.</p>
+<p>First - you need to include it in your environment (browser, node, etc.):</p>
 
 <div class="highlight highlight-javascript"><pre><span class="pl-c">// If you're not using an AMD loader, machina is available on the window</span>
+<span class="pl-c">// Just make sure you have lodash loaded before machina</span>
 <span class="pl-s">var</span> MyFsm <span class="pl-k">=</span> machina.Fsm.extend({ <span class="pl-c">/* your stuff */</span>});
 
 <span class="pl-c">// If you're using an AMD loader:</span>
@@ -327,14 +66,460 @@
     <span class="pl-k">return</span> machina.Fsm.extend({ <span class="pl-c">/* your stuff */</span>});
 });
 
-<span class="pl-c">// machina v0.3.x</span>
-<span class="pl-c">// In node.js, the module returns a factory function:</span>
+<span class="pl-c">// node.js/CommonJS:</span>
+<span class="pl-s">var</span> machina <span class="pl-k">=</span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">'</span>machina<span class="pl-pds">'</span></span>);
+
+<span class="pl-c">// FYI machina v0.3.x &amp; earlier returned a factory</span>
+<span class="pl-c">// function in CommonJS environments:</span>
 <span class="pl-s">var</span> lodash <span class="pl-k">=</span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">'</span>lodash<span class="pl-pds">'</span></span>);
 <span class="pl-s">var</span> machina <span class="pl-k">=</span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">'</span>machina<span class="pl-pds">'</span></span>)(lodash);
-<span class="pl-s">var</span> MyFsm <span class="pl-k">=</span> machina.Fsm.extend({ <span class="pl-c">/* your stuff */</span>});
+<span class="pl-s">var</span> MyFsm <span class="pl-k">=</span> machina.Fsm.extend({ <span class="pl-c">/* your stuff */</span>});</pre></div>
 
-<span class="pl-c">// This changed in v0.4 FYI - it no longer exports a factory:</span>
-<span class="pl-s">var</span> machina <span class="pl-k">=</span> <span class="pl-s3">require</span>(<span class="pl-s1"><span class="pl-pds">'</span>machina<span class="pl-pds">'</span></span>);</pre></div>
+<p>Great, now that we know how to pull it in, let's create an FSM to represent a vehicle traffic light at a pedestrian crosswalk:</p>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-s">var</span> vehicleSignal <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">machina.Fsm</span>( {
+
+    <span class="pl-c">// the initialize method is called right after the FSM</span>
+    <span class="pl-c">// instance is constructed, giving you a place for any</span>
+    <span class="pl-c">// setup behavior, etc. It receives the same arguments</span>
+    <span class="pl-c">// (options) as the constructor function.</span>
+    <span class="pl-en">initialize</span>: <span class="pl-st">function</span>( <span class="pl-vpf">options</span> ) {
+        <span class="pl-c">// your setup code goes here...</span>
+    },
+
+    namespace<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>vehicle-signal<span class="pl-pds">"</span></span>,
+
+    <span class="pl-c">// `initialState` tells machina what state to start the FSM in.</span>
+    <span class="pl-c">// The default value is "uninitialized". Not providing</span>
+    <span class="pl-c">// this value will throw an exception in v1.0+</span>
+    initialState<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>uninitialized<span class="pl-pds">"</span></span>,
+
+    <span class="pl-c">// The states object's top level properties are the</span>
+    <span class="pl-c">// states in which the FSM can exist. Each state object</span>
+    <span class="pl-c">// contains input handlers for the different inputs</span>
+    <span class="pl-c">// handled while in that state.</span>
+    states<span class="pl-k">:</span> {
+        uninitialized<span class="pl-k">:</span> {
+            <span class="pl-c">// Input handlers are usually functions. They can</span>
+            <span class="pl-c">// take arguments, too (even though this one doesn't)</span>
+            <span class="pl-c">// The "*" handler is special (more on that in a bit)</span>
+            <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">*</span><span class="pl-pds">"</span></span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.deferUntilTransition();
+                <span class="pl-c">// the `transition` method takes a target state (as a string)</span>
+                <span class="pl-c">// and transitions to it. You should NEVER directly assign the</span>
+                <span class="pl-c">// state property on an FSM. Also - while it's certainly OK to</span>
+                <span class="pl-c">// call `transition` externally, you usually end up with the</span>
+                <span class="pl-c">// cleanest approach if you endeavor to transition *internally*</span>
+                <span class="pl-c">// and just pass input to the FSM.</span>
+                <span class="pl-v">this</span>.transition( <span class="pl-s1"><span class="pl-pds">"</span>green<span class="pl-pds">"</span></span> );
+            }
+        },
+        green<span class="pl-k">:</span> {
+            <span class="pl-c">// _onEnter is a special handler that is invoked</span>
+            <span class="pl-c">// immediately as the FSM transitions into the new state</span>
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.timer <span class="pl-k">=</span> <span class="pl-s3">setTimeout</span>( <span class="pl-st">function</span>() {
+                    <span class="pl-v">this</span>.handle( <span class="pl-s1"><span class="pl-pds">"</span>timeout<span class="pl-pds">"</span></span> );
+                }.bind( <span class="pl-v">this</span> ), <span class="pl-c1">30000</span> );
+                <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>vehicles<span class="pl-pds">"</span></span>, { status<span class="pl-k">:</span> GREEN } );
+            },
+            <span class="pl-c">// If all you need to do is transition to a new state</span>
+            <span class="pl-c">// inside an input handler, you can provide the string</span>
+            <span class="pl-c">// name of the state in place of the input handler function.</span>
+            timeout<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>green-interruptible<span class="pl-pds">"</span></span>,
+            <span class="pl-en">pedestrianWaiting</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.deferUntilTransition( <span class="pl-s1"><span class="pl-pds">"</span>green-interruptible<span class="pl-pds">"</span></span> );
+            },
+            <span class="pl-c">// _onExit is a special handler that is invoked just before</span>
+            <span class="pl-c">// the FSM leaves the current state and transitions to another</span>
+            <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>() {
+                <span class="pl-s3">clearTimeout</span>( <span class="pl-v">this</span>.timer );
+            }
+        },
+        <span class="pl-s1"><span class="pl-pds">"</span>green-interruptible<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+            pedestrianWaiting<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>yellow<span class="pl-pds">"</span></span>
+        },
+        yellow<span class="pl-k">:</span> {
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.timer <span class="pl-k">=</span> <span class="pl-s3">setTimeout</span>( <span class="pl-st">function</span>() {
+                    <span class="pl-v">this</span>.handle( <span class="pl-s1"><span class="pl-pds">"</span>timeout<span class="pl-pds">"</span></span> );
+                }.bind( <span class="pl-v">this</span> ), <span class="pl-c1">5000</span> );
+                <span class="pl-c">// machina FSMs are event emitters. Here we're</span>
+                <span class="pl-c">// emitting a custom event and data, etc.</span>
+                <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>vehicles<span class="pl-pds">"</span></span>, { status<span class="pl-k">:</span> YELLOW } );
+            },
+            timeout<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>red<span class="pl-pds">"</span></span>,
+            <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>() {
+                <span class="pl-s3">clearTimeout</span>( <span class="pl-v">this</span>.timer );
+            }
+        },
+        red<span class="pl-k">:</span> {
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.timer <span class="pl-k">=</span> <span class="pl-s3">setTimeout</span>( <span class="pl-st">function</span>() {
+                    <span class="pl-v">this</span>.handle( <span class="pl-s1"><span class="pl-pds">"</span>timeout<span class="pl-pds">"</span></span> );
+                }.bind( <span class="pl-v">this</span> ), <span class="pl-c1">1000</span> );
+                <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>vehicles<span class="pl-pds">"</span></span>, { status<span class="pl-k">:</span> RED } );
+            },
+            _reset<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>green<span class="pl-pds">"</span></span>,
+            <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>() {
+                <span class="pl-s3">clearTimeout</span>(<span class="pl-v">this</span>.timer);
+            }
+        }
+    }
+
+    <span class="pl-c">// While you can call the FSM's `handle` method externally, it doesn't</span>
+    <span class="pl-c">// make for a terribly expressive API. As a general rule, you wrap calls</span>
+    <span class="pl-c">// to `handle` with more semantically meaningful method calls like these:</span>
+    <span class="pl-en">reset</span>: <span class="pl-st">function</span>() {
+        <span class="pl-v">this</span>.handle( <span class="pl-s1"><span class="pl-pds">"</span>_reset<span class="pl-pds">"</span></span> );
+    },
+
+    <span class="pl-en">pedestrianWaiting</span>: <span class="pl-st">function</span>() {
+        <span class="pl-v">this</span>.handle( <span class="pl-s1"><span class="pl-pds">"</span>pedestrianWaiting<span class="pl-pds">"</span></span> );
+    }
+} );
+
+<span class="pl-c">// Now, to use it:</span>
+<span class="pl-c">// This call causes the FSM to transition from uninitialized -&gt; green</span>
+<span class="pl-c">// &amp; queues up pedestrianWaiting input, which replays after the timeout</span>
+<span class="pl-c">// causes a transition to green-interruptible....which immediately</span>
+<span class="pl-c">// transitions to yellow since we have a pedestrian waiting. After the</span>
+<span class="pl-c">// next timeout, we end up in "red".</span>
+vehicleSignal.pedestrianWaiting();
+<span class="pl-c">// Once the FSM is in the "red" state, we can reset it to "green" by calling:</span>
+vehicleSignal.<span class="pl-s3">reset</span>();</pre></div>
+
+<p>Though the code comments give you a lot of detail, let's break down what's happening in the above FSM:</p>
+
+<ul>
+<li>When you are creating an FSM, the constructor takes one argument, the <code>options</code> arg - which is an object that contains (at least) the <code>states</code> &amp; <code>initialState</code> values for your FSM, as well as an optional <code>initialize</code> method (which is invoked at the end of the underlying constructor function) and any additional properties or methods you want on the FSM.</li>
+<li>It can exist in one of five possible states: <code>uninitialized</code>, <code>green</code>, <code>green-interruptible</code>, <code>yellow</code> and <code>red</code>. (Only one state can be active at a time.)</li>
+<li>The states themselves are objects under the <code>states</code> property on the FSM, and contain handlers whose names match the input types that the FSM accepts while in that state.</li>
+<li>It starts in the <code>uninitialized</code> state.</li>
+<li>It accepts input either by calling <code>handle</code> directly and passing the input type as a string (plus any arguments), or by calling top level methods you put on your FSM's prototype that wrap the calls to <code>handle</code> with a more expressive API.</li>
+<li>You do <em>not</em> assign the state value of the FSM directly, instead, you use <code>transition(stateName)</code> to transition to a different state.</li>
+<li>Special "input handlers" exist in machina: <code>_onEnter</code>, <code>_onExit</code> and <code>*</code>. In fact, the very first state (<code>uninitialized</code>) in this FSM is using <code>*</code>. It's the "catch-all" handler which, if provided, will match any input in that state that's not explicitly matched by name. In this case, any input handled in <code>uninitialized</code> will cause the FSM to defer the input (queue it up for replay after transitioning), and immediately transfer to <code>green</code>. (This is just to demonstrate how a start-up-only state can automatically transfer into active state(s) as clients begin using the FSM. )</li>
+</ul>
+
+<blockquote>
+<p>Note - input handlers can return values. Just be aware that this is not reliable in hierarchical FSMs.</p>
+</blockquote>
+
+<h3>
+<a id="going-further" class="anchor" href="#going-further" aria-hidden="true"><span class="octicon octicon-link"></span></a>Going Further</h3>
+
+<p>machina provides two constructor functions for creating an FSM: <code>machina.Fsm</code> and <code>machina.BehavioralFsm</code>:</p>
+
+<h4>
+<a id="the-behavioralfsm-constructor" class="anchor" href="#the-behavioralfsm-constructor" aria-hidden="true"><span class="octicon octicon-link"></span></a>The BehavioralFsm Constructor</h4>
+
+<p><code>BehavioralFsm</code> is new to machina as of v1.0 (though the <code>Fsm</code> constructor now inherits from it). The <code>BehavioralFsm</code> constructor lets you create an FSM that defines <em>behavior</em> (hence the name) that you want applied to multiple, separate instances of <em>state</em>. A <code>BehavioralFsm</code> instance does not (should not!) track state locally, on itself. For example, consider this scenario....where we get to twist our <code>vehicleSignal</code> FSM beyond reason: <img class="emoji" title=":smile:" alt=":smile:" src="https://assets-cdn.github.com/images/icons/emoji/unicode/1f604.png" height="20" width="20" align="absmiddle"></p>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-s">var</span> vehicleSignal <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">machina.BehavioralFsm</span>( {
+
+    <span class="pl-en">initialize</span>: <span class="pl-st">function</span>( <span class="pl-vpf">options</span> ) {
+        <span class="pl-c">// your setup code goes here...</span>
+    },
+
+    namespace<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>vehicle-signal<span class="pl-pds">"</span></span>,
+
+    initialState<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>uninitialized<span class="pl-pds">"</span></span>,
+
+    states<span class="pl-k">:</span> {
+        uninitialized<span class="pl-k">:</span> {
+            <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">*</span><span class="pl-pds">"</span></span>: <span class="pl-st">function</span>( <span class="pl-vpf">client</span> ) {
+                <span class="pl-v">this</span>.deferUntilTransition( client );
+                <span class="pl-v">this</span>.transition( client, <span class="pl-s1"><span class="pl-pds">"</span>green<span class="pl-pds">"</span></span> );
+            }
+        },
+        green<span class="pl-k">:</span> {
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>( <span class="pl-vpf">client</span> ) {
+                client.timer <span class="pl-k">=</span> <span class="pl-s3">setTimeout</span>( <span class="pl-st">function</span>() {
+                    <span class="pl-v">this</span>.handle(  client, <span class="pl-s1"><span class="pl-pds">"</span>timeout<span class="pl-pds">"</span></span> );
+                }.bind( <span class="pl-v">this</span> ), <span class="pl-c1">30000</span> );
+                <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>vehicles<span class="pl-pds">"</span></span>, { client<span class="pl-k">:</span> client, status<span class="pl-k">:</span> GREEN } );
+            },
+            timeout<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>green-interruptible<span class="pl-pds">"</span></span>,
+            <span class="pl-en">pedestrianWaiting</span>: <span class="pl-st">function</span>( <span class="pl-vpf">client</span> ) {
+                <span class="pl-v">this</span>.deferUntilTransition(  client, <span class="pl-s1"><span class="pl-pds">"</span>green-interruptible<span class="pl-pds">"</span></span> );
+            },
+            <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>( <span class="pl-vpf">client</span> ) {
+                <span class="pl-s3">clearTimeout</span>( client.timer );
+            }
+        },
+        <span class="pl-s1"><span class="pl-pds">"</span>green-interruptible<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+            pedestrianWaiting<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>yellow<span class="pl-pds">"</span></span>
+        },
+        yellow<span class="pl-k">:</span> {
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>( <span class="pl-vpf">client</span> ) {
+                client.timer <span class="pl-k">=</span> <span class="pl-s3">setTimeout</span>( <span class="pl-st">function</span>() {
+                    <span class="pl-v">this</span>.handle( client, <span class="pl-s1"><span class="pl-pds">"</span>timeout<span class="pl-pds">"</span></span> );
+                }.bind( <span class="pl-v">this</span> ), <span class="pl-c1">5000</span> );
+                <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>vehicles<span class="pl-pds">"</span></span>, { client<span class="pl-k">:</span> client, status<span class="pl-k">:</span> YELLOW } );
+            },
+            timeout<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>red<span class="pl-pds">"</span></span>,
+            <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>( <span class="pl-vpf">client</span> ) {
+                <span class="pl-s3">clearTimeout</span>( client.timer );
+            }
+        },
+        red<span class="pl-k">:</span> {
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>( <span class="pl-vpf">client</span> ) {
+                client.timer <span class="pl-k">=</span> <span class="pl-s3">setTimeout</span>( <span class="pl-st">function</span>() {
+                    <span class="pl-v">this</span>.handle( client, <span class="pl-s1"><span class="pl-pds">"</span>timeout<span class="pl-pds">"</span></span> );
+                }.bind( <span class="pl-v">this</span> ), <span class="pl-c1">1000</span> );
+            },
+            _reset<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>green<span class="pl-pds">"</span></span>,
+            <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>( <span class="pl-vpf">client</span> ) {
+                <span class="pl-s3">clearTimeout</span>( client.timer );
+            }
+        }
+    },
+
+    <span class="pl-en">reset</span>: <span class="pl-st">function</span>( <span class="pl-vpf">client</span> ) {
+        <span class="pl-v">this</span>.handle(  client, <span class="pl-s1"><span class="pl-pds">"</span>_reset<span class="pl-pds">"</span></span> );
+    },
+
+    <span class="pl-en">pedestrianWaiting</span>: <span class="pl-st">function</span>( <span class="pl-vpf">client</span> ) {
+        <span class="pl-v">this</span>.handle( client, <span class="pl-s1"><span class="pl-pds">"</span>pedestrianWaiting<span class="pl-pds">"</span></span> );
+    }
+} );
+
+<span class="pl-c">// Now we can have multiple 'instances' of traffic lights that all share the same FSM:</span>
+<span class="pl-s">var</span> light1 <span class="pl-k">=</span> { location<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>Dijsktra Ave &amp; Hunt Blvd<span class="pl-pds">"</span></span>, direction<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>north-south<span class="pl-pds">"</span></span> };
+<span class="pl-s">var</span> light2 <span class="pl-k">=</span> { location<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>Dijsktra Ave &amp; Hunt Blvd<span class="pl-pds">"</span></span>, direction<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>east-west<span class="pl-pds">"</span></span> };
+
+<span class="pl-c">// to use the behavioral fsm, we pass the "client" in as the first arg to API calls:</span>
+vehicleSignal.pedestrianWaiting( light1 );
+
+<span class="pl-c">// Now let's signal a pedestrian waiting at light2</span>
+vehicleSignal.pedestrianWaiting( light2 );
+
+<span class="pl-c">// if you were to inspect light1 and light2, you'd see they both have</span>
+<span class="pl-c">// a __machina__ property, which contains metadata related to this FSM.</span>
+<span class="pl-c">// For example, light1.__machina__.vehicleSignal.state might be "green"</span>
+<span class="pl-c">// and light2.__machina__.vehicleSignal.state might be "yellow" (depending</span>
+<span class="pl-c">// on when you check). The point is - the "clients' state" is tracked</span>
+<span class="pl-c">// separately from each other, and from the FSM. Here's a snapshot of</span>
+<span class="pl-c">// light1 right after the vehicleSignal.pedestrianWaiting( light1 ) call:</span>
+
+{
+  <span class="pl-s1"><span class="pl-pds">"</span>location<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>Dijsktra Ave &amp; Hunt Blvd<span class="pl-pds">"</span></span>,
+  <span class="pl-s1"><span class="pl-pds">"</span>direction<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>north-south<span class="pl-pds">"</span></span>,
+  <span class="pl-s1"><span class="pl-pds">"</span>__machina__<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+    <span class="pl-s1"><span class="pl-pds">"</span>vehicle-signal<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+      <span class="pl-s1"><span class="pl-pds">"</span>inputQueue<span class="pl-pds">"</span></span><span class="pl-k">:</span> [
+        {
+          <span class="pl-s1"><span class="pl-pds">"</span>type<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>transition<span class="pl-pds">"</span></span>,
+          <span class="pl-s1"><span class="pl-pds">"</span>untilState<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>green-interruptible<span class="pl-pds">"</span></span>,
+          <span class="pl-s1"><span class="pl-pds">"</span>args<span class="pl-pds">"</span></span><span class="pl-k">:</span> [
+            {
+              <span class="pl-s1"><span class="pl-pds">"</span>inputType<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>pedestrianWaiting<span class="pl-pds">"</span></span>,
+              <span class="pl-s1"><span class="pl-pds">"</span>delegated<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">false</span>
+            }
+          ]
+        }
+      ],
+      <span class="pl-s1"><span class="pl-pds">"</span>targetReplayState<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>green<span class="pl-pds">"</span></span>,
+      <span class="pl-s1"><span class="pl-pds">"</span>state<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>green<span class="pl-pds">"</span></span>,
+      <span class="pl-s1"><span class="pl-pds">"</span>priorState<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>uninitialized<span class="pl-pds">"</span></span>,
+      <span class="pl-s1"><span class="pl-pds">"</span>priorAction<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>,
+      <span class="pl-s1"><span class="pl-pds">"</span>currentAction<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>,
+      <span class="pl-s1"><span class="pl-pds">"</span>currentActionArgs<span class="pl-pds">"</span></span><span class="pl-k">:</span> [
+        {
+          <span class="pl-s1"><span class="pl-pds">"</span>inputType<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>pedestrianWaiting<span class="pl-pds">"</span></span>,
+          <span class="pl-s1"><span class="pl-pds">"</span>delegated<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">false</span>
+        }
+      ],
+      <span class="pl-s1"><span class="pl-pds">"</span>inExitHandler<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">false</span>
+    }
+  },
+  <span class="pl-s1"><span class="pl-pds">"</span>timer<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">11</span>
+}
+</pre></div>
+
+<p>Though we're using the <em>same FSM for behavior</em>, the <em>state is tracked separately</em>. This enables you to keep a smaller memory footprint, especially in situations where you'd otherwise have lots of individual instances of the same FSM in play. More importantly, though, it allows you to take a more functional approach to FSM behavior and state should you prefer to do so. (As a side note, it also makes it much simpler to store a client's state and re-load it later and have the FSM pick up where it left off, etc.)</p>
+
+<h4>
+<a id="the-fsm-constructor" class="anchor" href="#the-fsm-constructor" aria-hidden="true"><span class="octicon octicon-link"></span></a>The Fsm Constructor</h4>
+
+<p>If you've used machina prior to v1.0, the <code>Fsm</code> constructor is what you're familiar with. It's functionally equivalent to the <code>BehavioralFsm</code> (in fact, it inherits from it), except that it can only deal with one client: <em>itself</em>. There's no need to pass a <code>client</code> argument to the API calls on an <code>Fsm</code> instance, since it only acts on itself. All of the metadata that was stamped on our <code>light1</code> and <code>light2</code> clients above (under the <code>__machina__</code> property) is at the instance level on an <code>Fsm</code> (as it has been historically for this constructor).</p>
+
+<h3>
+<a id="wait---whats-this-about-inheritance" class="anchor" href="#wait---whats-this-about-inheritance" aria-hidden="true"><span class="octicon octicon-link"></span></a>Wait - What's This About Inheritance?</h3>
+
+<p>machina's FSM constructor functions are simple to extend. If you don't need an instance, but just want a modified constructor function to use later to create instances, you can do something like this:</p>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-s">var</span> TrafficLightFsm <span class="pl-k">=</span> machina.Fsm.extend({ <span class="pl-c">/* your options */</span> });
+
+<span class="pl-c">// later/elsewhere in your code:</span>
+<span class="pl-s">var</span> trafficLight <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">TrafficLightFsm</span>();
+
+<span class="pl-c">// you can also override any of the options:</span>
+<span class="pl-s">var</span> anotherLight <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">TrafficLightFsm</span>({ initialState<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>go<span class="pl-pds">"</span></span> });</pre></div>
+
+<p>The <code>extend</code> method works similar to other frameworks (like Backbone, for example). The primary difference is this: <em>the states object will be deep merged across the prototype chain</em> into an instance-level <code>states</code> property (so it doesn't mutate the prototype chain). This means you can add new states as well as add new (or override existing) handlers to existing states as you inherit from "parent" FSMs. This can be very useful, but – as with all things inheritance-related – use with caution!</p>
+
+<h3>
+<a id="and-you-mentioned-events" class="anchor" href="#and-you-mentioned-events" aria-hidden="true"><span class="octicon octicon-link"></span></a>And You Mentioned Events?</h3>
+
+<p>machina FSMs are event emitters, and subscribing to them is pretty easy:</p>
+
+<div class="highlight highlight-javascript"><pre>
+<span class="pl-c">// I'd like to know when the transition event occurs</span>
+trafficLight.on(<span class="pl-s1"><span class="pl-pds">"</span>transition<span class="pl-pds">"</span></span>, <span class="pl-st">function</span> (<span class="pl-vpf">data</span>){
+    <span class="pl-en">console</span><span class="pl-s3">.log</span>(<span class="pl-s1"><span class="pl-pds">"</span>we just transitioned from <span class="pl-pds">"</span></span> <span class="pl-k">+</span> data.fromState <span class="pl-k">+</span> <span class="pl-s1"><span class="pl-pds">"</span> to <span class="pl-pds">"</span></span> <span class="pl-k">+</span> data.toState);
+});
+
+<span class="pl-c">// Or, maybe I want to know when ANY event occurs</span>
+trafficLight.on(<span class="pl-s1"><span class="pl-pds">"</span>*<span class="pl-pds">"</span></span>, <span class="pl-st">function</span> (<span class="pl-vpf">eventName</span>, <span class="pl-vpf">data</span>){
+    <span class="pl-en">console</span><span class="pl-s3">.log</span>(<span class="pl-s1"><span class="pl-pds">"</span>this thing happened:<span class="pl-pds">"</span></span>, eventName);
+});
+</pre></div>
+
+<p>Unsubscribing can be done a couple of ways:</p>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-c">//each listener gets a return value</span>
+<span class="pl-s">var</span> sub <span class="pl-k">=</span> trafficLight.on(<span class="pl-s1"><span class="pl-pds">"</span>transition<span class="pl-pds">"</span></span>, someCallback);
+sub.off(); <span class="pl-c">// unsubscribes the handler</span>
+
+<span class="pl-c">// OR, we can use the FSM's prototype method -</span>
+<span class="pl-c">// remove this specific subscription:</span>
+trafficLight.off(<span class="pl-s1"><span class="pl-pds">"</span>transition<span class="pl-pds">"</span></span>, someCallback);
+<span class="pl-c">// remove all transition subscribers</span>
+trafficLight.off(<span class="pl-s1"><span class="pl-pds">"</span>transition<span class="pl-pds">"</span></span>);
+<span class="pl-c">// remove ALL subscribers, period:</span>
+trafficLight.off();</pre></div>
+
+<p>You can emit your own custom events in addition to the built-in events machina emits. To read more about these events, see the <a href="https://github.com/ifandelse/machina.js/wiki">wiki</a>.</p>
+
+<h3>
+<a id="things-suddenly-got-hierarchical" class="anchor" href="#things-suddenly-got-hierarchical" aria-hidden="true"><span class="octicon octicon-link"></span></a>Things Suddenly Got Hierarchical!</h3>
+
+<p>One of the most exciting additions in v1.0: machina now supports hierarchical state machines. Remember our earlier example of the <code>vehicleSignal</code> FSM? Well, that's only <em>part</em> of a pedestrian crosswalk. Pedestrians need their own signal as well - typically a sign that signals "Walk" and "Do Not Walk". Let's peek at what an FSM for this might look like:</p>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-s">var</span> pedestrianSignal <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">machina.Fsm</span>( {
+    namespace<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>pedestrian-signal<span class="pl-pds">"</span></span>,
+    initialState<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>uninitialized<span class="pl-pds">"</span></span>,
+    <span class="pl-en">reset</span>: <span class="pl-st">function</span>() {
+        <span class="pl-v">this</span>.transition( <span class="pl-s1"><span class="pl-pds">"</span>walking<span class="pl-pds">"</span></span> );
+    },
+    states<span class="pl-k">:</span> {
+        uninitialized<span class="pl-k">:</span> {
+            <span class="pl-s1"><span class="pl-pds">"</span><span class="pl-en">*</span><span class="pl-pds">"</span></span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.deferUntilTransition();
+                <span class="pl-v">this</span>.transition( <span class="pl-s1"><span class="pl-pds">"</span>walking<span class="pl-pds">"</span></span> );
+            }
+        },
+        walking<span class="pl-k">:</span> {
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.timer <span class="pl-k">=</span> <span class="pl-s3">setTimeout</span>( <span class="pl-st">function</span>() {
+                    <span class="pl-v">this</span>.handle( <span class="pl-s1"><span class="pl-pds">"</span>timeout<span class="pl-pds">"</span></span> );
+                }.bind( <span class="pl-v">this</span> ), <span class="pl-c1">30000</span> );
+                <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>pedestrians<span class="pl-pds">"</span></span>, { status<span class="pl-k">:</span> WALK } );
+            },
+            timeout<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>flashing<span class="pl-pds">"</span></span>,
+            <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>() {
+                <span class="pl-s3">clearTimeout</span>( <span class="pl-v">this</span>.timer );
+            }
+        },
+        flashing<span class="pl-k">:</span> {
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.timer <span class="pl-k">=</span> <span class="pl-s3">setTimeout</span>( <span class="pl-st">function</span>() {
+                    <span class="pl-v">this</span>.handle( <span class="pl-s1"><span class="pl-pds">"</span>timeout<span class="pl-pds">"</span></span> );
+                }.bind( <span class="pl-v">this</span> ), <span class="pl-c1">5000</span> );
+                <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>pedestrians<span class="pl-pds">"</span></span>, { status<span class="pl-k">:</span> DO_NOT_WALK, flashing<span class="pl-k">:</span> <span class="pl-c1">true</span> } );
+            },
+            timeout<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>dontwalk<span class="pl-pds">"</span></span>,
+            <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>() {
+                <span class="pl-s3">clearTimeout</span>( <span class="pl-v">this</span>.timer );
+            }
+        },
+        dontwalk<span class="pl-k">:</span> {
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.timer <span class="pl-k">=</span> <span class="pl-s3">setTimeout</span>( <span class="pl-st">function</span>() {
+                    <span class="pl-v">this</span>.handle( <span class="pl-s1"><span class="pl-pds">"</span>timeout<span class="pl-pds">"</span></span> );
+                }.bind( <span class="pl-v">this</span> ), <span class="pl-c1">1000</span> );
+            },
+            _reset<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>walking<span class="pl-pds">"</span></span>,
+            <span class="pl-en">_onExit</span>: <span class="pl-st">function</span>() {
+                <span class="pl-s3">clearTimeout</span>( <span class="pl-v">this</span>.timer );
+            }
+        }
+    }
+} )</pre></div>
+
+<p>In many ways, our <code>pedestrianSignal</code> is similar to the <code>vehicleSignal</code> FSM:</p>
+
+<ul>
+<li>It starts in the <code>uninitialized</code> state, and the first input causes it to transition to <code>walking</code> before actually processing the input.</li>
+<li>It can only be in one of four states: <code>uninitialized</code>, <code>walking</code>, <code>flashing</code> and <code>dontwalk</code>.</li>
+<li>This FSM's input is primarily internally-executed, based on timers (<code>setTimeout</code> calls).</li>
+</ul>
+
+<p>Now - we <em>could</em> stand up an instance of <code>pedestrianSignal</code> and <code>vehicleSignal</code>, and subscribe them to each other's <code>transition</code> events. This would make them "siblings" - where <code>pedestrianSignal</code> could, for example, only transition to <code>walking</code> when <code>vehicleSignal</code> is in the <code>red</code> state, etc. While there are scenarios where this sort of "sibling" approach is useful, what we really have is a hierarchy. There are two higher level states that each FSM represents, a "vehicles-can-cross" state and a "pedestrians-can-cross" state. With machina v1.0, we can create an FSM to model these higher states, and attach our <code>pedestrianSignal</code> and <code>vehicleSignal</code> FSMs to their parent states:</p>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-s">var</span> crosswalk <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">machina.Fsm</span>( {
+    namespace<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>crosswalk<span class="pl-pds">"</span></span>,
+    initialState<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>vehiclesEnabled<span class="pl-pds">"</span></span>,
+    states<span class="pl-k">:</span> {
+        vehiclesEnabled<span class="pl-k">:</span> {
+            _child<span class="pl-k">:</span> vehicleSignal,
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>pedestrians<span class="pl-pds">"</span></span>, { status<span class="pl-k">:</span> DO_NOT_WALK } );
+            },
+            timeout<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>pedestriansEnabled<span class="pl-pds">"</span></span>
+        },
+        pedestriansEnabled<span class="pl-k">:</span> {
+            _child<span class="pl-k">:</span> pedestrianSignal,
+            <span class="pl-en">_onEnter</span>: <span class="pl-st">function</span>() {
+                <span class="pl-v">this</span>.emit( <span class="pl-s1"><span class="pl-pds">"</span>vehicles<span class="pl-pds">"</span></span>, { status<span class="pl-k">:</span> RED } );
+            },
+            timeout<span class="pl-k">:</span> <span class="pl-s1"><span class="pl-pds">"</span>vehiclesEnabled<span class="pl-pds">"</span></span>
+        }
+    }
+} );</pre></div>
+
+<p>Notice how each state has a <code>_child</code> property? This property can be used to assign an FSM instance to act as a child FSM for this parent state (or a factory function that produces an instance to be used, etc.). Here's how it works:</p>
+
+<ul>
+<li>When an FSM is handling input, it attempts to let the child FSM handle it first. If the child emits a <code>nohandler</code> event, the parent FSM will take over and attempt to handle it. For example - if a <code>pedestrianWaiting</code> input is fed to the above FSM while in the <code>vehiclesEnabled</code> state, it will be passed on to the <code>vehicleSignal</code> FSM to be handled there.</li>
+<li>Events emitted from the child FSM are bubbled up to be emitted by the top level parent (except for the <code>nohandler</code> event).</li>
+<li>If a child FSM handles input that it does not have a handler for, it will bubble the input up to the parent FSM to be handled there. Did you notice that both our <code>pedestrianSignal</code> and <code>vehicleSignal</code> FSMs queue up a <code>timeout</code> input in the <code>dontwalk</code> and <code>red</code> states, respectively? However, neither of those FSMs have an input handler for <code>timeout</code> in those states. When these FSMs become part of the hierarchy above, as children of the <code>crosswalk</code> FSM, the <code>timeout</code> input will bubble up to the parent FSM to be handled, where there <em>are</em> handlers for it.</li>
+<li>When the parent FSM transitions to a new state, any child FSM from a previous state is ignored entirely (i.e. - events emitted, or input bubbled, will <em>not</em> be handled in the parent). If the parent FSM transitions back to that state, it will resume listening to the child FSM, etc.</li>
+<li>As the parent state transitions into any of its states, it will tell the child FSM to handle a <code>_reset</code> input. This gives you a hook to move the child FSM to the correct state before handling any further input. For example, you'll notice our <code>pedestrianSignal</code> FSM has a <code>_reset</code> input handler in the <code>dontwalk</code> state, which transitions the FSM to the <code>walking</code> state.</li>
+</ul>
+
+<blockquote>
+<p>Caveats: This feature is very new to machina, so expect it to evolve a bit. I plan to fine-tune how events bubble in a hierarchy a bit more, and potentially give the parent FSM the ability to express the state down the hierachy (e.g. <code>vehiclesEnabled.green</code> or <code>pedestriansEnabled.dontwalk</code>).</p>
+</blockquote>
+
+<h3>
+<a id="the-top-level-machina-object" class="anchor" href="#the-top-level-machina-object" aria-hidden="true"><span class="octicon octicon-link"></span></a>The Top Level machina object</h3>
+
+<p>The top level <code>machina</code> object has the following members:</p>
+
+<ul>
+<li>
+<code>Fsm</code> - the constructor function used to create FSMs.</li>
+<li>
+<code>BehavioralFsm</code> – the constructor function used to create BehavioralFSM instances.</li>
+<li>
+<code>utils</code> - contains helper functions that can be overridden to change default behavior(s) in machina:
+
+<ul>
+<li>
+<code>makeFsmNamespace</code> - function that provides a default "channel" or "exchange" for an FSM instance.  (e.g. - fsm.0, fsm.1, etc.)</li>
+</ul>
+</li>
+<li>
+<code>on</code> - method used to subscribe a callback to top-level machina events (currently the only event published at this level is <code>newFsm</code>)</li>
+<li>
+<code>off</code> - method used to unsubscribe a callback to top-level machina events.</li>
+<li>
+<code>emit</code> - top-level method used to emit events.</li>
+<li>
+<code>eventListeners</code> - an object literal containing the susbcribers to any top-level events.</li>
+</ul>
 
 <h2>
 <a id="build-tests--examples" class="anchor" href="#build-tests--examples" aria-hidden="true"><span class="octicon octicon-link"></span></a>Build, Tests &amp; Examples</h2>
@@ -345,19 +530,22 @@
 <li>Install node.js (and consider using <a href="https://github.com/creationix/nvm">nvm</a> to manage your node versions)</li>
 <li>run <code>npm install</code> &amp; <code>bower install</code> to install all dependencies</li>
 <li>To build, run <code>npm run build</code> - then check the lib folder for the output</li>
+<li>To run the examples:
+
+<ul>
+<li><code>npm start</code></li>
+<li>navigate in your browser to <a href="http://localhost:3080/">http://localhost:3080/</a>
+</li>
+</ul>
+</li>
 <li>To run tests &amp; examples:
 
 <ul>
 <li>To run node-based tests: <code>npm run test</code>
 </li>
-<li>To run browser-based tests &amp; examples:
-
-<ul>
-<li>run <code>npm start</code>
+<li>To run istanbul (code test coverage): <code>npm run coverage</code>
 </li>
-<li>navigate in your browser to <a href="http://localhost:3080/">http://localhost:3080/</a>
-</li>
-</ul>
+<li>To see a browser-based istanbul report: <code>npm run show-coverage</code>
 </li>
 </ul>
 </li>
@@ -367,14 +555,18 @@
 <a id="release-notes" class="anchor" href="#release-notes" aria-hidden="true"><span class="octicon octicon-link"></span></a>Release Notes</h2>
 
 <p>Go <a href="https://github.com/ifandelse/machina.js/blob/master/changelog.md">here</a> to see the changelog.</p>
+
+<h2>
+<a id="have-more-questions" class="anchor" href="#have-more-questions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Have More Questions?</h2>
+
+<p>Read the <a href="https://github.com/ifandelse/machina.js/wiki">wiki</a> and the source – you might find your answer and more! Check out the <a href="https://github.com/ifandelse/machina.js/issues/4">issue</a> opened by <a href="https://github.com/burin" class="user-mention">@burin</a> - a <em>great</em> example of how to use github issues to ask questions, provide sample code, etc. I only ask that if you open an issue, that it be <em>focused on a specific problem or bug</em> (not wide-open ambiguity, please).</p>
       </section>
       <footer>
-        <p>This project is maintained by <a href="https://github.com/ifandelse">ifandelse</a></p>
-        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+        <p><small>Hosted on <a href="http://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
       </footer>
     </div>
-    <script src="javascripts/scale.fix.js"></script>
-              <script type="text/javascript">
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+		          <script type="text/javascript">
             var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
             document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
           </script>
