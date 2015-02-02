@@ -163,6 +163,8 @@ Though the code comments give you a lot of detail, let's break down what's happe
 * You do *not* assign the state value of the FSM directly, instead, you use `transition(stateName)` to transition to a different state.
 * Special "input handlers" exist in machina: `_onEnter`, `_onExit` and `*`. In fact, the very first state (`uninitialized`) in this FSM is using `*`. It's the "catch-all" handler which, if provided, will match any input in that state that's not explicitly matched by name. In this case, any input handled in `uninitialized` will cause the FSM to defer the input (queue it up for replay after transitioning), and immediately transfer to `green`. (This is just to demonstrate how a start-up-only state can automatically transfer into active state(s) as clients begin using the FSM. )
 
+>Note - input handlers can return values. Just be aware that this is not reliable in hierarchical FSMs.
+
 ###Going Further
 machina provides two constructor functions for creating an FSM: `machina.Fsm` and `machina.BehavioralFsm`:
 
