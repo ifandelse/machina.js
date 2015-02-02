@@ -1,9 +1,9 @@
-#machina v1.0.0-1
+# machina v1.0.0-1
 
-##What is it?
+## What is it?
 Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been *loosely* inspired by the Erlang/OTP FSM behaviors.
 
-##Why Would I Use It?
+## Why Would I Use It?
 Finite state machines are a great conceptual model for many concerns facing developers – from conditional UI, connectivity monitoring & management to initialization and more. State machines can simplify tangled paths of asynchronous code, they're easy to test, and they inherently lend themselves to helping you avoid unexpected edge-case-state pitfalls. machina aims to give you the tools you need to model state machines in JavaScript, without being too prescriptive on the problem domain you're solving for.
 
 Some frequent use cases for machina:
@@ -13,7 +13,7 @@ Some frequent use cases for machina:
 * initiliazation of node.js processes or single-page-apps
 * responding to user input devices (remotes, keyboard, mouse, etc.)
 
-###Quick Example
+### Quick Example
 
 First - you need to include it in your environment (browser, node, etc.):
 
@@ -165,10 +165,10 @@ Though the code comments give you a lot of detail, let's break down what's happe
 
 >Note - input handlers can return values. Just be aware that this is not reliable in hierarchical FSMs.
 
-###Going Further
+### Going Further
 machina provides two constructor functions for creating an FSM: `machina.Fsm` and `machina.BehavioralFsm`:
 
-####The BehavioralFsm Constructor
+#### The BehavioralFsm Constructor
 `BehavioralFsm` is new to machina as of v1.0 (though the `Fsm` constructor now inherits from it). The `BehavioralFsm` constructor lets you create an FSM that defines *behavior* (hence the name) that you want applied to multiple, separate instances of *state*. A `BehavioralFsm` instance does not (should not!) track state locally, on itself. For example, consider this scenario....where we get to twist our `vehicleSignal` FSM beyond reason: :smile:
 
 ```javascript
@@ -297,10 +297,10 @@ vehicleSignal.pedestrianWaiting( light2 );
 
 Though we're using the *same FSM for behavior*, the *state is tracked separately*. This enables you to keep a smaller memory footprint, especially in situations where you'd otherwise have lots of individual instances of the same FSM in play. More importantly, though, it allows you to take a more functional approach to FSM behavior and state should you prefer to do so. (As a side note, it also makes it much simpler to store a client's state and re-load it later and have the FSM pick up where it left off, etc.)
 
-####The Fsm Constructor
+#### The Fsm Constructor
 If you've used machina prior to v1.0, the `Fsm` constructor is what you're familiar with. It's functionally equivalent to the `BehavioralFsm` (in fact, it inherits from it), except that it can only deal with one client: *itself*. There's no need to pass a `client` argument to the API calls on an `Fsm` instance, since it only acts on itself. All of the metadata that was stamped on our `light1` and `light2` clients above (under the `__machina__` property) is at the instance level on an `Fsm` (as it has been historically for this constructor).
 
-###Wait - What's This About Inheritance?
+### Wait - What's This About Inheritance?
 machina's FSM constructor functions are simple to extend. If you don't need an instance, but just want a modified constructor function to use later to create instances, you can do something like this:
 
 ```javascript
@@ -315,7 +315,7 @@ var anotherLight = new TrafficLightFsm({ initialState: "go" });
 
 The `extend` method works similar to other frameworks (like Backbone, for example). The primary difference is this: *the states object will be deep merged across the prototype chain* into an instance-level `states` property (so it doesn't mutate the prototype chain). This means you can add new states as well as add new (or override existing) handlers to existing states as you inherit from "parent" FSMs. This can be very useful, but – as with all things inheritance-related – use with caution!
 
-###And You Mentioned Events?
+### And You Mentioned Events?
 machina FSMs are event emitters, and subscribing to them is pretty easy:
 
 ```javascript
@@ -350,7 +350,7 @@ trafficLight.off();
 
 You can emit your own custom events in addition to the built-in events machina emits. To read more about these events, see the [wiki](https://github.com/ifandelse/machina.js/wiki).
 
-###Things Suddenly Got Hierarchical!
+### Things Suddenly Got Hierarchical!
 One of the most exciting additions in v1.0: machina now supports hierarchical state machines. Remember our earlier example of the `vehicleSignal` FSM? Well, that's only *part* of a pedestrian crosswalk. Pedestrians need their own signal as well - typically a sign that signals "Walk" and "Do Not Walk". Let's peek at what an FSM for this might look like:
 
 ```javascript
