@@ -1,3 +1,9 @@
+###v1.0.0-2 (pre-release)
+
+* Updated README with note about handler return values & fixed strict markdown parsing
+* Updated name in bower.json
+* Updated lodash to v3.3.1
+
 ###v1.0.0-1 (pre-release)
 * Added the `BehavioralFsm` constructor function/prototype.
 * Refactored the `Fsm` constructor to extend `BehavioralFsm`.
