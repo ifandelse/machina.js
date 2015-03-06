@@ -1,11 +1,11 @@
 {
 	"name": "machina.js",
-	"version": "1.0.0-1",
+	"version": "1.0.0-2",
 	"main": "lib/machina.js",
 	"scripts": [
         "lib/machina.js"
     ],
 	"dependencies": {
-		"lodash/lodash": "2.4.1"
+		"lodash/lodash": "3.3.1"
 	}
 }
