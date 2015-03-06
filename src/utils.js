@@ -27,8 +27,10 @@ function getDefaultClientMeta() {
 		inputQueue: [],
 		targetReplayState: "",
 		state: undefined,
+		prior: undefined,
 		priorState: undefined,
 		priorAction: "",
+		current: undefined,
 		currentAction: "",
 		currentActionArgs: undefined,
 		inExitHandler: false

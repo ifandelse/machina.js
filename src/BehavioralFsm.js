@@ -117,9 +117,10 @@ _.extend( BehavioralFsm.prototype, {
 		return result;
 	},
 
-	transition: function( client, newState ) {
+	transition: function( client, newState, attrs ) {
 		var clientMeta = this.ensureClientMeta( client );
 		var curState = clientMeta.state;
+		var current = clientMeta.current;
 		var curStateObj = this.states[ curState ];
 		var newStateObj = this.states[ newState ];
 		var childDef;
@@ -140,7 +141,12 @@ _.extend( BehavioralFsm.prototype, {
 				}
 				clientMeta.targetReplayState = newState;
 				clientMeta.priorState = curState;
+				clientMeta.prior = current;
 				clientMeta.state = newState;
+				clientMeta.current = {
+					state: curState,
+					attrs: _.extend( {}, attrs)
+				};
 				if ( child ) {
 					this.hierarchy[ child.namespace ] = utils.listenToChild( this, child );
 				}
@@ -185,9 +191,9 @@ _.extend( BehavioralFsm.prototype, {
 		}
 	},
 
-	deferAndTransition: function( client, stateName ) {
+	deferAndTransition: function( client, stateName, attrs ) {
 		this.deferUntilTransition( client, stateName );
-		this.transition( client, stateName );
+		this.transition( client, stateName, attrs );
 	},
 
 	processQueue: function( client ) {
