@@ -81,6 +81,13 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 						}
 					} );
 				} );
+				it( "should throw if handle is passed an undefined input value", function() {
+					var fsm = fsmFactory.instanceWithOptions();
+					var client = { name: "Dijkstra" };
+					( function() {
+						fsm.handle( client );
+					} ).should.throw( /input argument passed/ );
+				} );
 				it( "should handle input without arguments", function() {
 					var fsm = fsmFactory.instanceWithOptions();
 					var events = [];

@@ -61,6 +61,12 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 				} );
 			} );
 			describe( "When acting on itself as the client", function() {
+				it( "should throw if handle is passed an undefined input value", function() {
+					var fsm = fsmFactory.instanceWithOptions();
+					( function() {
+						fsm.handle();
+					} ).should.throw( /input argument passed/ );
+				} );
 				it( "should handle input without arguments", function() {
 					var fsm = fsmFactory.instanceWithOptions();
 					var events = [];

@@ -60,6 +60,9 @@ _.extend( BehavioralFsm.prototype, {
 		var delegated;
 		var ticket;
 		var inputDef = input;
+		if ( typeof input === "undefined" ) {
+			throw new Error( "The input argument passed to the FSM's handle method is undefined. Did you forget to pass the input name?" );
+		}
 		if ( typeof input === "string" ) {
 			inputDef = { inputType: input, delegated: false, ticket: undefined };
 		}
