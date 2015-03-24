@@ -125,7 +125,7 @@ _.extend( BehavioralFsm.prototype, {
 		var newStateObj = this.states[ newState ];
 		var childDef;
 		var child;
-		if ( !clientMeta.inExitHandler && newState !== curState ) {
+		if ( !clientMeta.inExitHandler ) {
 			if ( newStateObj ) {
 				if ( newStateObj._child ) {
 					newStateObj._child = getChildFsmInstance( newStateObj._child );
