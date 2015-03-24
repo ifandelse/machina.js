@@ -1,11 +1,14 @@
 {
   "name": "machina",
   "description": "A library for creating powerful and flexible finite state machines. Loosely inspired by Erlang/OTP's gen_fsm behavior.",
-  "version": "1.0.0-2",
+  "version": "1.0.0",
   "homepage": "http://machina-js.org/",
   "repository": {
     "type": "git",
     "url": "git://github.com/ifandelse/machina.js.git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
   },
   "author": "Jim Cowart (http://ifandelse.com)",
   "contributors": [
@@ -85,7 +88,7 @@
     "node": ">=0.4.0"
   },
   "dependencies": {
-    "lodash": "~3.3.1"
+    "lodash": "3.x"
   },
   "devDependencies": {
     "bower": "~1.2.8",

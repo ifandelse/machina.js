@@ -1,10 +1,14 @@
-###v1.0.0-2 (pre-release)
+### v1.0.0
+
+* Updated lodash dependency version to `3.x`
+
+### v1.0.0-2 (pre-release)
 
 * Updated README with note about handler return values & fixed strict markdown parsing
 * Updated name in bower.json
 * Updated lodash to v3.3.1
 
-###v1.0.0-1 (pre-release)
+### v1.0.0-1 (pre-release)
 * Added the `BehavioralFsm` constructor function/prototype.
 * Refactored the `Fsm` constructor to extend `BehavioralFsm`.
 * Hierarchical FSM trees are now possible. Child FSMs can be placed on the `_child` property of a state object (the instance directly, or a factory method that returns the child FSM instance).
@@ -37,30 +41,30 @@
 	* `inExitHandler`
 * Added `deferAndTransition` to the `BehavioralFsm` prototype.
 
-###v0.4.3
+### v0.4.3
 * Apparently I fail at component.json spec-fulness. Removing `~` prefix on version number in component.json.
 
-###v0.4.2
+### v0.4.2
 * The lodash dep for component.json was using a wildcard instead of locking at supported version(s).
 
-###v0.4.1
+### v0.4.1
 * If an exception is thrown in an event handler, machina now logs `exception.stack` rather than the exception message only.
 
-###v0.4.0
+### v0.4.0
 * No changes from v0.4.0-2 other than making this the official v0.4 release
 
-###v0.4.0-2
+### v0.4.0-2
 * Input handlers now support returning a value (thanks to @Codelica for the PR)
 
-###v0.4.0-1 (first v0.4 pre-release of many)
+### v0.4.0-1 (first v0.4 pre-release of many)
 * Adjusted UMD to check for AMD before CommonJS.
 * CommonJS wrapper no longer returns a factory function, instead it returns the module value. **BREAKING CHANGE** (for node.js users, at least).
 
-###v0.3.8
+### v0.3.8
 * Fixed a bug where the instance-level `initialState` member was getting set to undefined if a `states` object was provided on the options constructor arg but not an `initialState`.
 * Added some code comments to the un-minified source as well to better explain the inheritance behavior changes.
 
-###v0.3.7
+### v0.3.7
 * Underscore.js is no longer a dependency - it has been replaced with Lodash.
 * Fixed issue where instances sharing a derived machina constructor that *did not* specify instance level state objects were sharing the prototype's `states` object from the parent Fsm constructor. The `states` object and `initialState` property are now built/blended together from the prototype chain and deep-clone-extended over the instance itself, so that they will always be instance level.
 * Added Alex Robson (@arobson) to contributors list in package.json - he was instrumental in helping me track down and squash the above-mentioned bug.
