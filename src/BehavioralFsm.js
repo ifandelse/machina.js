@@ -153,7 +153,8 @@ _.extend( BehavioralFsm.prototype, {
 				var eventPayload = this.buildEventPayload( client, {
 					fromState: clientMeta.priorState,
 					action: clientMeta.currentAction,
-					toState: newState
+					toState: newState,
+					withData: current
 				} );
 				this.emit( TRANSITION, eventPayload );
 				if ( newStateObj._onEnter ) {
