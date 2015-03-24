@@ -154,7 +154,7 @@ _.extend( BehavioralFsm.prototype, {
 					fromState: clientMeta.priorState,
 					action: clientMeta.currentAction,
 					toState: newState,
-					withData: current
+					withAttrs: attrs
 				} );
 				this.emit( TRANSITION, eventPayload );
 				if ( newStateObj._onEnter ) {
