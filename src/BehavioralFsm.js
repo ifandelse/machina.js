@@ -144,7 +144,7 @@ _.extend( BehavioralFsm.prototype, {
 				clientMeta.prior = current;
 				clientMeta.state = newState;
 				clientMeta.current = {
-					state: curState,
+					state: newState,
 					attrs: _.extend( {}, attrs)
 				};
 				if ( child ) {
