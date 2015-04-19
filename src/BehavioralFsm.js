@@ -56,9 +56,6 @@ _.extend( BehavioralFsm.prototype, {
 	},
 
 	handle: function( client, input ) {
-		var inputType;
-		var delegated;
-		var ticket;
 		var inputDef = input;
 		if ( typeof input === "undefined" ) {
 			throw new Error( "The input argument passed to the FSM's handle method is undefined. Did you forget to pass the input name?" );
@@ -78,6 +75,7 @@ _.extend( BehavioralFsm.prototype, {
 		var handler;
 		var isCatchAll = false;
 		var child;
+		var action;
 		var result;
 		if ( !clientMeta.inExitHandler ) {
 			child = stateObj._child && stateObj._child.instance;
@@ -125,7 +123,6 @@ _.extend( BehavioralFsm.prototype, {
 		var curState = clientMeta.state;
 		var curStateObj = this.states[ curState ];
 		var newStateObj = this.states[ newState ];
-		var childDef;
 		var child;
 		if ( !clientMeta.inExitHandler && newState !== curState ) {
 			if ( newStateObj ) {
