@@ -1,3 +1,5 @@
+/* global _, getLeaklessArgs */
+/* jshint -W098 */
 var emitter = {
 
 	emit: function( eventName ) {
@@ -9,7 +11,7 @@ var emitter = {
 				} else {
 					try {
 						callback.apply( this, args );
-					} catch (exception) {
+					} catch ( exception ) {
 						/* istanbul ignore else  */
 						if ( console && typeof console.log !== "undefined" ) {
 							console.log( exception.stack );
@@ -25,7 +27,7 @@ var emitter = {
 				} else {
 					try {
 						callback.apply( this, args.slice( 1 ) );
-					} catch (exception) {
+					} catch ( exception ) {
 						/* istanbul ignore else  */
 						if ( console && typeof console.log !== "undefined" ) {
 							console.log( exception.stack );
@@ -63,5 +65,5 @@ var emitter = {
 				this.eventListeners[ eventName ] = [];
 			}
 		}
-	},
+	}
 };

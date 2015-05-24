@@ -188,15 +188,15 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							data: {
 								state: "uninitialized",
 								queuedArgs: {
-									"args": [
+									args: [
 										{
 											inputType: "letsDoThis",
 											delegated: false,
 											ticket: undefined
 										}
 									],
-									"type": "transition",
-									"untilState": "ready"
+									type: "transition",
+									untilState: "ready"
 								},
 								namespace: fsm.namespace
 							}
@@ -277,7 +277,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								ticket: undefined,
 								namespace: fsm.namespace
 							}
-					} ] );
+						} ] );
 				} );
 				it( "should handle deferred-until-transition input properly (with NO target state)", function() {
 					var fsm = fsmFactory.instanceWithOptions( {
@@ -302,22 +302,22 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					fsm.transition( "done" );
 					events.should.eql( [
 						{
-							"eventName": "handling",
-							"data": {
-								"inputType": "letsDoThis",
+							eventName: "handling",
+							data: {
+								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
 								namespace: fsm.namespace
 							}
 						},
 						{
-							"eventName": "deferred",
-							"data": {
-								"state": "uninitialized",
-								"queuedArgs": {
-									"type": "transition",
-									"untilState": undefined,
-									"args": [
+							eventName: "deferred",
+							data: {
+								state: "uninitialized",
+								queuedArgs: {
+									type: "transition",
+									untilState: undefined,
+									args: [
 										{
 											inputType: "letsDoThis",
 											delegated: false,
@@ -329,44 +329,44 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							}
 						},
 						{
-							"eventName": "handled",
-							"data": {
-								"inputType": "letsDoThis",
+							eventName: "handled",
+							data: {
+								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
 								namespace: fsm.namespace
 							}
 						},
 						{
-							"eventName": "transition",
-							"data": {
-								"fromState": "uninitialized",
-								"action": "",
-								"toState": "done",
+							eventName: "transition",
+							data: {
+								fromState: "uninitialized",
+								action: "",
+								toState: "done",
 								namespace: fsm.namespace
 							}
 						},
 						{
-							"eventName": "done-OnEnterFiring",
-							"data": undefined
+							eventName: "done-OnEnterFiring",
+							data: undefined
 						},
 						{
-							"eventName": "handling",
-							"data": {
-								"inputType": "letsDoThis",
+							eventName: "handling",
+							data: {
+								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
 								namespace: fsm.namespace
 							}
 						},
 						{
-							"eventName": "weAlreadyDidThat",
-							"data": undefined
+							eventName: "weAlreadyDidThat",
+							data: undefined
 						},
 						{
-							"eventName": "handled",
-							"data": {
-								"inputType": "letsDoThis",
+							eventName: "handled",
+							data: {
+								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
 								namespace: fsm.namespace
@@ -381,7 +381,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								letsDoThis: function() {
 									this.deferAndTransition( "ready" );
 								}
-							},
+							}
 						}
 					} );
 					var events = [];
@@ -392,106 +392,106 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					fsm.handle( "start" );
 					events.should.eql( [
 						{
-							"eventName": "handling",
-							"data": {
-								"inputType": "letsDoThis",
-								"delegated": false,
-								"ticket": undefined,
-								"namespace": "specialSauceNamespace"
+							eventName: "handling",
+							data: {
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "deferred",
-							"data": {
-								"state": "uninitialized",
-								"queuedArgs": {
-									"type": "transition",
-									"untilState": "ready",
-									"args": [
+							eventName: "deferred",
+							data: {
+								state: "uninitialized",
+								queuedArgs: {
+									type: "transition",
+									untilState: "ready",
+									args: [
 										{
-											"inputType": "letsDoThis",
-											"delegated": false,
-											"ticket": undefined
+											inputType: "letsDoThis",
+											delegated: false,
+											ticket: undefined
 										}
 									]
 								},
-								"namespace": "specialSauceNamespace"
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "transition",
-							"data": {
-								"fromState": "uninitialized",
-								"action": "uninitialized.letsDoThis",
-								"toState": "ready",
-								"namespace": "specialSauceNamespace"
+							eventName: "transition",
+							data: {
+								fromState: "uninitialized",
+								action: "uninitialized.letsDoThis",
+								toState: "ready",
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "ready-OnEnterFiring",
-							"data": undefined
-						},
-						{
-							"eventName": "handling",
-							"data": {
-								"inputType": "letsDoThis",
-								"delegated": false,
-								"ticket": undefined,
-								"namespace": "specialSauceNamespace"
-							}
-						},
-						{
-							"eventName": "WeAreDoingThis",
-							"data": {
-								"someprop": "someval"
-							}
-						},
-						{
-							"eventName": "ready-OnExitFiring",
+							eventName: "ready-OnEnterFiring",
 							data: undefined
 						},
 						{
-							"eventName": "transition",
-							"data": {
-								"fromState": "ready",
-								"action": "ready.letsDoThis",
-								"toState": "notQuiteDone",
-								"namespace": "specialSauceNamespace"
+							eventName: "handling",
+							data: {
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "handled",
-							"data": {
-								"inputType": "letsDoThis",
-								"delegated": false,
-								"ticket": undefined,
-								"namespace": "specialSauceNamespace"
+							eventName: "WeAreDoingThis",
+							data: {
+								someprop: "someval"
 							}
 						},
 						{
-							"eventName": "handled",
-							"data": {
-								"inputType": "letsDoThis",
-								"delegated": false,
-								"ticket": undefined,
-								"namespace": "specialSauceNamespace"
+							eventName: "ready-OnExitFiring",
+							data: undefined
+						},
+						{
+							eventName: "transition",
+							data: {
+								fromState: "ready",
+								action: "ready.letsDoThis",
+								toState: "notQuiteDone",
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "nohandler",
-							"data": {
-								"args": [
+							eventName: "handled",
+							data: {
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								namespace: "specialSauceNamespace"
+							}
+						},
+						{
+							eventName: "handled",
+							data: {
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								namespace: "specialSauceNamespace"
+							}
+						},
+						{
+							eventName: "nohandler",
+							data: {
+								args: [
 									fsm,
 									{
-										"inputType": "start",
-										"delegated": false,
-										"ticket": undefined
+										inputType: "start",
+										delegated: false,
+										ticket: undefined
 									}
 								],
-								"inputType": "start",
-								"delegated": false,
-								"namespace": "specialSauceNamespace",
-								"ticket": undefined
+								inputType: "start",
+								delegated: false,
+								namespace: "specialSauceNamespace",
+								ticket: undefined
 							}
 						}
 					] );
@@ -541,9 +541,9 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							data: {
 								state: "uninitialized",
 								queuedArgs: {
-									"type": "transition",
-									"untilState": "ready",
-									"args": [
+									type: "transition",
+									untilState: "ready",
+									args: [
 										{
 											inputType: "letsDoThis",
 											delegated: false,
@@ -637,9 +637,9 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					fsm.handle( "deferMeUntilNotQuiteDone" );
 					fsm.inputQueue.should.eql( [
 						{
-							"type": "transition",
-							"untilState": "done",
-							"args": [
+							type: "transition",
+							untilState: "done",
+							args: [
 								{
 									inputType: "deferMeUntilDone",
 									delegated: false,
@@ -648,9 +648,9 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							]
 						},
 						{
-							"type": "transition",
-							"untilState": "notQuiteDone",
-							"args": [
+							type: "transition",
+							untilState: "notQuiteDone",
+							args: [
 								{
 									inputType: "deferMeUntilNotQuiteDone",
 									delegated: false,
@@ -662,9 +662,9 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					fsm.clearQueue( "done" );
 					fsm.inputQueue.should.eql( [
 						{
-							"type": "transition",
-							"untilState": "notQuiteDone",
-							"args": [
+							type: "transition",
+							untilState: "notQuiteDone",
+							args: [
 								{
 									inputType: "deferMeUntilNotQuiteDone",
 									delegated: false,

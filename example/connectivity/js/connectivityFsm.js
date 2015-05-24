@@ -3,7 +3,6 @@ define( [
     'machina',
     'lodash'
  ], function( $, machina, _ ) {
-
 	var useStethoscope = function( fsm, steth ) {
 		_.each( [ 'heartbeat', 'no-heartbeat' ], function( eventName ) {
 			steth.on( eventName, function() {

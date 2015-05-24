@@ -1,4 +1,5 @@
-/*global module, define */
+ /*global module, define */
+ /* jshint -W117 */
 ( function( root, factory ) {
 	/* istanbul ignore if  */
 	if ( typeof define === "function" && define.amd ) {
@@ -21,4 +22,4 @@
 	//import("Fsm.js");
 	//import("api.js");
 	return machina;
-} ));
+} ) );

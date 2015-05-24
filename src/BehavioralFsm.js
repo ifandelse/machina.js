@@ -1,3 +1,4 @@
+/* global _, getDefaultBehavioralOptions, machina, NEW_FSM, utils, getLeaklessArgs, NO_HANDLER, HANDLING, HANDLED, TRANSITION, NEXT_TRANSITION, INVALID_STATE, DEFERRED, emitter, extend, getChildFsmInstance */
 var MACHINA_PROP = "__machina__";
 
 function BehavioralFsm( options ) {
@@ -56,9 +57,6 @@ _.extend( BehavioralFsm.prototype, {
 	},
 
 	handle: function( client, input ) {
-		var inputType;
-		var delegated;
-		var ticket;
 		var inputDef = input;
 		if ( typeof input === "undefined" ) {
 			throw new Error( "The input argument passed to the FSM's handle method is undefined. Did you forget to pass the input name?" );
@@ -79,6 +77,7 @@ _.extend( BehavioralFsm.prototype, {
 		var isCatchAll = false;
 		var child;
 		var result;
+		var action;
 		if ( !clientMeta.inExitHandler ) {
 			child = stateObj._child && stateObj._child.instance;
 			if ( child && !this.pendingDelegations[ inputDef.ticket ] && !inputDef.bubbling ) {
@@ -125,7 +124,6 @@ _.extend( BehavioralFsm.prototype, {
 		var curState = clientMeta.state;
 		var curStateObj = this.states[ curState ];
 		var newStateObj = this.states[ newState ];
-		var childDef;
 		var child;
 		if ( !clientMeta.inExitHandler && newState !== curState ) {
 			if ( newStateObj ) {

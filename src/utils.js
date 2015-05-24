@@ -1,3 +1,5 @@
+/* global _ */
+/* jshint -W098, -W003 */
 var slice = [].slice;
 var NEXT_TRANSITION = "transition";
 var HANDLING = "handling";
@@ -37,7 +39,7 @@ function getDefaultClientMeta() {
 
 function getLeaklessArgs( args, startIdx ) {
 	var result = [];
-	for (var i = ( startIdx || 0 ); i < args.length; i++) {
+	for ( var i = ( startIdx || 0 ); i < args.length; i++ ) {
 		result[ i ] = args[ i ];
 	}
 	return result;
@@ -67,7 +69,7 @@ function getChildFsmInstance( config ) {
 
 function listenToChild( fsm, child ) {
 	return child.on( "*", function( eventName, data ) {
-		switch (eventName) {
+		switch ( eventName ) {
 			case "nohandler":
 				if ( !data.ticket && !data.delegated && data.namespace !== fsm.namespace ) {
 					// Ok - we're dealing w/ a child handling input that should bubble up
@@ -100,12 +102,12 @@ var extend = function( protoProps, staticProps ) {
 	var parent = this;
 	var fsm; // placeholder for instance constructor
 	var machObj = {}; // object used to hold initialState & states from prototype for instance-level merging
-	var ctor = function() {}; // placeholder ctor function used to insert level in prototype chain
+	var Ctor = function() {}; // placeholder ctor function used to insert level in prototype chain
 
 	// The constructor function for the new subclass is either defined by you
 	// (the "constructor" property in your `extend` definition), or defaulted
 	// by us to simply call the parent's constructor.
-	if ( protoProps && protoProps.hasOwnProperty( 'constructor' ) ) {
+	if ( protoProps && protoProps.hasOwnProperty( "constructor" ) ) {
 		fsm = protoProps.constructor;
 	} else {
 		// The default machina constructor (when using inheritance) creates a
@@ -130,8 +132,8 @@ var extend = function( protoProps, staticProps ) {
 
 	// Set the prototype chain to inherit from `parent`, without calling
 	// `parent`'s constructor function.
-	ctor.prototype = parent.prototype;
-	fsm.prototype = new ctor();
+	Ctor.prototype = parent.prototype;
+	fsm.prototype = new Ctor();
 
 	// Add prototype properties (instance properties) to the subclass,
 	// if supplied.
@@ -160,7 +162,7 @@ var extend = function( protoProps, staticProps ) {
 function createUUID() {
 	var s = [];
 	var hexDigits = "0123456789abcdef";
-	for (var i = 0; i < 36; i++) {
+	for ( var i = 0; i < 36; i++ ) {
 		s[ i ] = hexDigits.substr( Math.floor( Math.random() * 0x10 ), 1 );
 	}
 	s[ 14 ] = "4"; // bits 12-15 of the time_hi_and_version field to 0010
@@ -177,7 +179,7 @@ var utils = {
 		return function() {
 			return "fsm." + machinaCount++;
 		};
-	})(),
+	} )(),
 	listenToChild: listenToChild,
 	getLeaklessArgs: getLeaklessArgs,
 	getDefaultOptions: getDefaultBehavioralOptions,

@@ -29,7 +29,6 @@ require( [
 	'postal.diags'
  ],
 	function( $ ) {
-
 		require( [ 'app' ], function( app ) {
 			// mockjax setup
 			// Mocked response for the heartbeat check
@@ -49,6 +48,5 @@ require( [
 			// more for convenience, our app gets a global namespace
 			window.app = app;
 		} );
-
 	}
 );

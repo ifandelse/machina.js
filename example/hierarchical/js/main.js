@@ -1,5 +1,4 @@
 ( function( global, $ ) {
-
 	var DO_NOT_WALK = "Do Not Walk";
 	var WALK = "Walk";
 	var RED = "red";
@@ -8,8 +7,7 @@
 	var $content = $( "#content" );
 
 	function writeToDom( eventName, data ) {
-		$content.prepend( "<div class='event-item'><h3>" + eventName + "</h3><div><pre>" +
-			JSON.stringify( data, null, 4 ) + "</pre></div>" );
+		$content.prepend( "<div class='event-item'><h3>" + eventName + "</h3><div><pre>" + JSON.stringify( data, null, 4 ) + "</pre></div>" );
 	}
 
 	// Child FSM
@@ -128,7 +126,7 @@
 		initialState: "vehiclesEnabled",
 		eventListeners: {
 			"*": [ function( eventName, data ) {
-					switch (eventName) {
+					switch ( eventName ) {
 						case "transition" :
 							writeToDom( eventName, data );
 							console.log( data.namespace, data.fromState, "->", data.toState );
@@ -171,7 +169,6 @@
 		}
 	} );
 
-
 	global.app = {
 		vehicleSignal: vehicleSignal,
 		pedestrianSignal: pedestrianSignal,
@@ -179,5 +176,4 @@
 	};
 
 	crosswalk.handle( "pedestrianWaiting" );
-
-}( window, jQuery ));
+}( window, jQuery ) );

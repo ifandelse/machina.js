@@ -107,7 +107,7 @@ module.exports = function( machina ) {
 							this.emit( "pedestrians", { status: DO_NOT_WALK } );
 						},
 						timeout: "pedestriansEnabled",
-						_child: vehicleSignal,
+						_child: vehicleSignal
 					},
 					pedestriansEnabled: {
 						_onEnter: function() {
@@ -224,7 +224,7 @@ module.exports = function( machina ) {
 								this.emit( "pedestrians", { status: DO_NOT_WALK, client: client } );
 							},
 							timeout: "pedestriansEnabled",
-							_child: vehicleSignal,
+							_child: vehicleSignal
 						},
 						pedestriansEnabled: {
 							_onEnter: function( client ) {

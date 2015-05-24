@@ -53,7 +53,6 @@ define( [
 				window.setTimeout( self.dequeue, self.slowMotionDelay );
 			} );
 
-
 			if ( !this.animating ) {
 				this.$el.dequeue( "slow-motion" );
 			}
@@ -120,7 +119,6 @@ define( [
 			this.updateLed( data.inputType );
 		},
 		handled: function( data ) {
-
 		},
 		checking: function() {
 			this.updateClass( "probing" );

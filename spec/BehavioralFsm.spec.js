@@ -268,15 +268,15 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							data: {
 								state: "uninitialized",
 								queuedArgs: {
-									"args": [
+									args: [
 										{
 											inputType: "letsDoThis",
 											delegated: false,
 											ticket: undefined
 										}
 									],
-									"type": "transition",
-									"untilState": "ready"
+									type: "transition",
+									untilState: "ready"
 								},
 								client: client,
 								namespace: fsm.namespace
@@ -365,7 +365,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 								ticket: undefined,
 								namespace: fsm.namespace
 							}
-					} ] );
+						} ] );
 				} );
 				it( "should handle deferred-until-transition input properly (with NO target state)", function() {
 					var fsm = fsmFactory.instanceWithOptions( {
@@ -391,33 +391,33 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					fsm.transition( client, "done" );
 					events.should.eql( [
 						{
-							"eventName": "transition",
-							"data": {
-								"action": "",
-								"fromState": undefined,
-								"toState": "uninitialized",
+							eventName: "transition",
+							data: {
+								action: "",
+								fromState: undefined,
+								toState: "uninitialized",
 								client: client,
 								namespace: fsm.namespace
 							}
 						},
 						{
-							"eventName": "handling",
-							"data": {
-								"client": client,
-								"inputType": "letsDoThis",
+							eventName: "handling",
+							data: {
+								client: client,
+								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
 								namespace: fsm.namespace
 							}
 						},
 						{
-							"eventName": "deferred",
-							"data": {
-								"state": "uninitialized",
-								"queuedArgs": {
-									"type": "transition",
-									"untilState": undefined,
-									"args": [
+							eventName: "deferred",
+							data: {
+								state: "uninitialized",
+								queuedArgs: {
+									type: "transition",
+									untilState: undefined,
+									args: [
 										{
 											inputType: "letsDoThis",
 											delegated: false,
@@ -430,48 +430,48 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							}
 						},
 						{
-							"eventName": "handled",
-							"data": {
-								"client": client,
-								"inputType": "letsDoThis",
+							eventName: "handled",
+							data: {
+								client: client,
+								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
 								namespace: fsm.namespace
 							}
 						},
 						{
-							"eventName": "transition",
-							"data": {
-								"fromState": "uninitialized",
-								"action": "",
-								"toState": "done",
+							eventName: "transition",
+							data: {
+								fromState: "uninitialized",
+								action: "",
+								toState: "done",
 								client: client,
 								namespace: fsm.namespace
 							}
 						},
 						{
-							"eventName": "done-OnEnterFiring",
-							"data": undefined
+							eventName: "done-OnEnterFiring",
+							data: undefined
 						},
 						{
-							"eventName": "handling",
-							"data": {
-								"client": client,
-								"inputType": "letsDoThis",
+							eventName: "handling",
+							data: {
+								client: client,
+								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
 								namespace: fsm.namespace
 							}
 						},
 						{
-							"eventName": "weAlreadyDidThat",
-							"data": undefined
+							eventName: "weAlreadyDidThat",
+							data: undefined
 						},
 						{
-							"eventName": "handled",
-							"data": {
-								"client": client,
-								"inputType": "letsDoThis",
+							eventName: "handled",
+							data: {
+								client: client,
+								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
 								namespace: fsm.namespace
@@ -486,7 +486,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 								letsDoThis: function( client ) {
 									this.deferAndTransition( client, "ready" );
 								}
-							},
+							}
 						}
 					} );
 					var events = [];
@@ -498,124 +498,124 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					fsm.handle( client, "start" );
 					events.should.eql( [
 						{
-							"eventName": "transition",
-							"data": {
-								"action": "",
-								"fromState": undefined,
-								"toState": "uninitialized",
-								"client": client,
-								"namespace": "specialSauceNamespace"
+							eventName: "transition",
+							data: {
+								action: "",
+								fromState: undefined,
+								toState: "uninitialized",
+								client: client,
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "handling",
-							"data": {
-								"inputType": "letsDoThis",
-								"delegated": false,
-								"ticket": undefined,
-								"client": client,
-								"namespace": "specialSauceNamespace"
+							eventName: "handling",
+							data: {
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								client: client,
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "deferred",
-							"data": {
-								"state": "uninitialized",
-								"queuedArgs": {
-									"type": "transition",
-									"untilState": "ready",
-									"args": [
+							eventName: "deferred",
+							data: {
+								state: "uninitialized",
+								queuedArgs: {
+									type: "transition",
+									untilState: "ready",
+									args: [
 										{
-											"inputType": "letsDoThis",
-											"delegated": false,
-											"ticket": undefined
+											inputType: "letsDoThis",
+											delegated: false,
+											ticket: undefined
 										}
 									]
 								},
-								"client": client,
-								"namespace": "specialSauceNamespace"
+								client: client,
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "transition",
-							"data": {
-								"fromState": "uninitialized",
-								"action": "uninitialized.letsDoThis",
-								"toState": "ready",
-								"client": client,
-								"namespace": "specialSauceNamespace"
+							eventName: "transition",
+							data: {
+								fromState: "uninitialized",
+								action: "uninitialized.letsDoThis",
+								toState: "ready",
+								client: client,
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "ready-OnEnterFiring",
-							"data": undefined
-						},
-						{
-							"eventName": "handling",
-							"data": {
-								"inputType": "letsDoThis",
-								"delegated": false,
-								"ticket": undefined,
-								"client": client,
-								"namespace": "specialSauceNamespace"
-							}
-						},
-						{
-							"eventName": "WeAreDoingThis",
-							"data": {
-								"someprop": "someval"
-							}
-						},
-						{
-							"eventName": "ready-OnExitFiring",
+							eventName: "ready-OnEnterFiring",
 							data: undefined
 						},
 						{
-							"eventName": "transition",
-							"data": {
-								"fromState": "ready",
-								"action": "ready.letsDoThis",
-								"toState": "notQuiteDone",
-								"client": client,
-								"namespace": "specialSauceNamespace"
+							eventName: "handling",
+							data: {
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								client: client,
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "handled",
-							"data": {
-								"inputType": "letsDoThis",
-								"delegated": false,
-								"ticket": undefined,
-								"client": client,
-								"namespace": "specialSauceNamespace"
+							eventName: "WeAreDoingThis",
+							data: {
+								someprop: "someval"
 							}
 						},
 						{
-							"eventName": "handled",
-							"data": {
-								"inputType": "letsDoThis",
-								"delegated": false,
-								"ticket": undefined,
-								"client": client,
-								"namespace": "specialSauceNamespace"
+							eventName: "ready-OnExitFiring",
+							data: undefined
+						},
+						{
+							eventName: "transition",
+							data: {
+								fromState: "ready",
+								action: "ready.letsDoThis",
+								toState: "notQuiteDone",
+								client: client,
+								namespace: "specialSauceNamespace"
 							}
 						},
 						{
-							"eventName": "nohandler",
-							"data": {
-								"args": [
+							eventName: "handled",
+							data: {
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								client: client,
+								namespace: "specialSauceNamespace"
+							}
+						},
+						{
+							eventName: "handled",
+							data: {
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								client: client,
+								namespace: "specialSauceNamespace"
+							}
+						},
+						{
+							eventName: "nohandler",
+							data: {
+								args: [
 									client,
 									{
-										"inputType": "start",
-										"delegated": false,
-										"ticket": undefined
+										inputType: "start",
+										delegated: false,
+										ticket: undefined
 									}
 								],
-								"inputType": "start",
-								"delegated": false,
-								"client": client,
-								"namespace": "specialSauceNamespace",
-								"ticket": undefined
+								inputType: "start",
+								delegated: false,
+								client: client,
+								namespace: "specialSauceNamespace",
+								ticket: undefined
 							}
 						}
 					] );
@@ -677,15 +677,15 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							data: {
 								state: "uninitialized",
 								queuedArgs: {
-									"args": [
+									args: [
 										{
 											inputType: "letsDoThis",
 											delegated: false,
 											ticket: undefined
 										}
 									],
-									"type": "transition",
-									"untilState": "ready"
+									type: "transition",
+									untilState: "ready"
 								},
 								client: client,
 								namespace: fsm.namespace
@@ -754,7 +754,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 								ticket: undefined,
 								namespace: fsm.namespace
 							}
-					} ] );
+						} ] );
 					client.__machina__[ fsm.namespace ].inputQueue.should.eql( [] );
 				} );
 				it( "should clear relevant queued input when calling clearQueue & passing the target state", function() {
@@ -779,9 +779,9 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					fsm.handle( client, "deferMeUntilNotQuiteDone" );
 					client.__machina__[ fsm.namespace ].inputQueue.should.eql( [
 						{
-							"type": "transition",
-							"untilState": "done",
-							"args": [
+							type: "transition",
+							untilState: "done",
+							args: [
 								{
 									inputType: "deferMeUntilDone",
 									delegated: false,
@@ -790,9 +790,9 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							]
 						},
 						{
-							"type": "transition",
-							"untilState": "notQuiteDone",
-							"args": [
+							type: "transition",
+							untilState: "notQuiteDone",
+							args: [
 								{
 									inputType: "deferMeUntilNotQuiteDone",
 									delegated: false,
@@ -804,9 +804,9 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					fsm.clearQueue( client, "done" );
 					client.__machina__[ fsm.namespace ].inputQueue.should.eql( [
 						{
-							"type": "transition",
-							"untilState": "notQuiteDone",
-							"args": [
+							type: "transition",
+							untilState: "notQuiteDone",
+							args: [
 								{
 									inputType: "deferMeUntilNotQuiteDone",
 									delegated: false,

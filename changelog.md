@@ -1,3 +1,9 @@
+### v1.0.1
+
+* Added JSCS, visited formatting overall
+* Updated package.json to include only essential files when published to npm
+* Added gulp tasks for jshint, jscs & showing coverage
+
 ### v1.0.0
 
 * Updated lodash dependency version to `3.x`

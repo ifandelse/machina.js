@@ -8,3 +8,5 @@ ext
 component.json
 .npmignore
 bower*
+coverage*
+report*

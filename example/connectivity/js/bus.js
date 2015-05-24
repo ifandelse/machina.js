@@ -1,17 +1,15 @@
 define( [
 	'postal',
 	'postal.diags'
-], function ( postal, DiagnosticsWireTap ) {
-
+], function( postal, DiagnosticsWireTap ) {
 	return {
-		_wiretaps : {
-			firehose : new DiagnosticsWireTap( "firehose", function ( x ) {
+		_wiretaps: {
+			firehose: new DiagnosticsWireTap( "firehose", function( x ) {
 				console.log( x );
 			} )
 		},
-		connectivityOutput : postal.channel( "connectivity.events", "#" ),
-		connectivityInput : postal.channel( "connectivity", "#" ),
-		heartbeat : postal.channel( "heartbeat", "#" )
+		connectivityOutput: postal.channel( "connectivity.events", "#" ),
+		connectivityInput: postal.channel( "connectivity", "#" ),
+		heartbeat: postal.channel( "heartbeat", "#" )
 	};
-
 } );

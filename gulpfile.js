@@ -12,6 +12,7 @@ var express = require( "express" );
 var path = require( "path" );
 var open = require( "open" );
 var port = 3080;
+var allSrcFiles = "./src/**/*.js";
 
 var banner = [ "/**",
     " * <%= pkg.name %> - <%= pkg.description %>",
@@ -94,4 +95,49 @@ gulp.task( "mocha", function() {
 gulp.task( "watch", [ "default", "mocha" ], function() {
 	gulp.watch( "src/**/*", [ "default" ] );
 	gulp.watch( "{lib,spec}/**/*", [ "mocha" ] );
+} );
+
+var jscs = require( "gulp-jscs" );
+var gulpChanged = require( "gulp-changed" );
+
+gulp.task( "format", [ "jshint" ], function() {
+	return gulp.src( [ "**/*.js", "!node_modules/**" ] )
+		.pipe( jscs( {
+			configPath: ".jscsrc",
+			fix: true
+		} ) )
+		.pipe( gulpChanged( ".", { hasChanged: gulpChanged.compareSha1Digest } ) )
+		.pipe( gulp.dest( "." ) );
+} );
+
+var jshint = require( "gulp-jshint" );
+var stylish = require( "jshint-stylish" );
+
+gulp.task( "jshint", function() {
+	return gulp.src( allSrcFiles )
+		.on( "error", function( error ) {
+			gutil.log( gutil.colors.red( error.message + " in " + error.fileName ) );
+			this.end();
+		} )
+		.pipe( jshint() )
+		.pipe( jshint.reporter( stylish ) )
+		.pipe( jshint.reporter( "fail" ) );
+} );
+
+gulp.task( "coverage", [ "format" ], function( cb ) {
+	gulp.src( [ allSrcFiles ] )
+		.pipe( istanbul() ) // Covering files
+		.pipe( istanbul.hookRequire() ) // Force `require` to return covered files
+		.on( "finish", function() {
+			gulp.src( [ "./spec/helpers/node-setup.js", allTestFiles ] )
+				.pipe( mocha() )
+				.pipe( istanbul.writeReports() ) // Creating the reports after tests runned
+				.on( "end", function() {
+					process.exit();
+				} );
+		} );
+} );
+
+gulp.task( "show-coverage", function() {
+	open( "./coverage/lcov-report/index.html" );
 } );

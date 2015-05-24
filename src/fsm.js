@@ -1,3 +1,5 @@
+/* global BehavioralFsm, _, utils, getDefaultClientMeta */
+/* jshint -W098 */
 var Fsm = BehavioralFsm.extend( {
 	constructor: function() {
 		BehavioralFsm.apply( this, arguments );
