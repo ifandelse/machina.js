@@ -49,7 +49,7 @@
 		"beforeOpeningRoundBrace": true
 	},
 	"disallowTrailingComma": true,
-	"disallowTrailingWhitespace": true,
+	"disallowTrailingWhitespace": "ignoreEmptyLines",
 	"maximumLineLength": null,
 	"requireBlocksOnNewline": true,
 	"requireCamelCaseOrUpperCaseIdentifiers": "ignoreProperties",

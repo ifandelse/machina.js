@@ -78,5 +78,9 @@ var Fsm = BehavioralFsm.extend( {
 	clearQueue: function( stateName ) {
 		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
 		return BehavioralFsm.prototype.clearQueue.apply( this, args );
+	},
+	compositeState: function() {
+		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
+		return BehavioralFsm.prototype.compositeState.apply( this, args );
 	}
 } );

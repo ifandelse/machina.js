@@ -84,7 +84,7 @@
 	"yui"         : false,  //defines globals exposed by the YUI JavaScript framework
 
 	"predef" : [  // Custom globals.
-		"define", "module", "require", "describe", "before", "beforeEach", "after", "afterEach", "it", "global"
+		"define", "module", "require", "describe", "before", "beforeEach", "after", "afterEach", "it", "global", "sinon", "_", "hierarchical"
 	],
 
 	// LEGACY

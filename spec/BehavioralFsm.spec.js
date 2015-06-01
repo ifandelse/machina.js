@@ -117,6 +117,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 						}
 					} );
 					client.__machina__[ fsm.namespace ].state.should.equal( "ready" );
+					fsm.compositeState( client ).should.equal( "ready" );
 				} );
 				it( "should handle input with arguments", function() {
 					var fsm = fsmFactory.instanceWithOptions();
@@ -130,6 +131,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					res = fsm.handle( client, "canWeDoThis", "Grace Hopper" );
 					res.should.equal( "yep, Grace Hopper can do it." );
 					client.__machina__[ fsm.namespace ].state.should.equal( "ready" );
+					fsm.compositeState( client ).should.equal( "ready" );
 				} );
 				it( "should handle an object form inputType", function() {
 					var fsm = fsmFactory.instanceWithOptions();
@@ -160,6 +162,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 						}
 					} );
 					client.__machina__[ fsm.namespace ].state.should.equal( "ready" );
+					fsm.compositeState( client ).should.equal( "ready" );
 				} );
 				it( "should handle object form inputType on catch-all handlers", function() {
 					var passedClient, passedInputType;
