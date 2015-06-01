@@ -157,6 +157,7 @@ _.extend( BehavioralFsm.prototype, {
 				if ( child ) {
 					child.handle( client, "_reset" );
 				}
+
 				if ( clientMeta.targetReplayState === newState ) {
 					this.processQueue( client, NEXT_TRANSITION );
 				}
@@ -213,6 +214,16 @@ _.extend( BehavioralFsm.prototype, {
 			};
 			clientMeta.inputQueue = _.filter( clientMeta.inputQueue, filter );
 		}
+	},
+
+	compositeState: function( client ) {
+		var clientMeta = this.ensureClientMeta( client );
+		var state = clientMeta.state;
+		var child = this.states[state]._child && this.states[state]._child.instance;
+		if ( child ) {
+			state += "." + child.compositeState( client );
+		}
+		return state;
 	}
 }, emitter );
 

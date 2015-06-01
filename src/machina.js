@@ -1,5 +1,5 @@
- /*global module, define */
- /* jshint -W117 */
+/*global module, define */
+/* jshint -W117 */
 ( function( root, factory ) {
 	/* istanbul ignore if  */
 	if ( typeof define === "function" && define.amd ) {

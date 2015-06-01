@@ -16,6 +16,7 @@ describe( "Hierarchical machina.Fsm", function() {
 		} );
 		it( "should report correct starting state for parent FSM", function() {
 			crosswalk.state.should.equal( "vehiclesEnabled" );
+			crosswalk.compositeState().should.equal( "vehiclesEnabled.green" );
 		} );
 		it( "should emit a 'pedestrians - do not walk' event", function() {
 			events[ 1 ].should.eql( { name: "pedestrians", data: { status: "Do Not Walk" } } );
@@ -84,6 +85,7 @@ describe( "Hierarchical machina.Fsm", function() {
 					}
 				} );
 				crosswalk.states.vehiclesEnabled._child.instance.state.should.equal( "green-interruptible" );
+				crosswalk.compositeState().should.equal( "vehiclesEnabled.green-interruptible" );
 			} );
 			it( "should not change parent FSM's state", function() {
 				crosswalk.state.should.equal( "vehiclesEnabled" );
@@ -126,6 +128,7 @@ describe( "Hierarchical machina.Fsm", function() {
 					}
 				} );
 				crosswalk.states.vehiclesEnabled._child.instance.state.should.equal( "yellow" );
+				crosswalk.compositeState().should.equal( "vehiclesEnabled.yellow" );
 			} );
 			it( "should emit a 'vehicles - yellow' event", function() {
 				events[ 2 ].should.eql( { name: "vehicles", data: { status: "yellow" } } );
@@ -173,6 +176,7 @@ describe( "Hierarchical machina.Fsm", function() {
 					}
 				} );
 				crosswalk.state.should.equal( "pedestriansEnabled" );
+				crosswalk.compositeState().should.equal( "pedestriansEnabled.walking" );
 			} );
 			it( "should emit a 'vehicles - red' event", function() {
 				events[ 2 ].should.eql( { name: "vehicles", data: { status: "red" } } );

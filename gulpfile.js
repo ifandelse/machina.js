@@ -1,7 +1,6 @@
 var gulp = require( "gulp" );
 var fileImports = require( "gulp-imports" );
 var header = require( "gulp-header" );
-var beautify = require( "gulp-beautify" );
 var hintNot = require( "gulp-hint-not" );
 var uglify = require( "gulp-uglify" );
 var rename = require( "gulp-rename" );
@@ -13,6 +12,12 @@ var path = require( "path" );
 var open = require( "open" );
 var port = 3080;
 var allSrcFiles = "./src/**/*.js";
+var allTestFiles = "./spec/**/*.spec.js";
+var mocha = require( "gulp-spawn-mocha" );
+var jscs = require( "gulp-jscs" );
+var gulpChanged = require( "gulp-changed" );
+var jshint = require( "gulp-jshint" );
+var stylish = require( "jshint-stylish" );
 
 var banner = [ "/**",
     " * <%= pkg.name %> - <%= pkg.description %>",
@@ -30,14 +35,10 @@ gulp.task( "combine", function() {
 		} ) )
 		.pipe( fileImports() )
 		.pipe( hintNot() )
-		.pipe( beautify( {
-			indentSize: 4
-		} ) )
-		.pipe( gulp.dest( "./lib/" ) )
 		.pipe( gulp.dest( "./lib/" ) )
 		.pipe( uglify( {
 			compress: {
-				negate_iife: false
+				negate_iife: false //jshint ignore: line
 			}
 		} ) )
 		.pipe( header( banner, {
@@ -47,9 +48,7 @@ gulp.task( "combine", function() {
 		.pipe( gulp.dest( "./lib/" ) );
 } );
 
-gulp.task( "default", function() {
-	gulp.run( "combine" );
-} );
+gulp.task( "default", [ "combine" ] );
 
 gulp.task( "report", function() {
 	gulp.src( "./lib/machina.js" )
@@ -79,8 +78,7 @@ gulp.task( "server", [ "combine", "report" ], function() {
 	open( "http://localhost:" + port + "/index.html" );
 } );
 
-var mocha = require( "gulp-spawn-mocha" );
-gulp.task( "mocha", function() {
+gulp.task( "test", function() {
 	return gulp.src( [ "spec/**/*.spec.js" ], { read: false } )
 		.pipe( mocha( {
 			require: [ "spec/helpers/node-setup.js" ],
@@ -92,13 +90,10 @@ gulp.task( "mocha", function() {
 		.on( "error", console.warn.bind( console ) );
 } );
 
-gulp.task( "watch", [ "default", "mocha" ], function() {
+gulp.task( "watch", [ "default", "test" ], function() {
 	gulp.watch( "src/**/*", [ "default" ] );
-	gulp.watch( "{lib,spec}/**/*", [ "mocha" ] );
+	gulp.watch( "{lib,spec}/**/*", [ "test" ] );
 } );
-
-var jscs = require( "gulp-jscs" );
-var gulpChanged = require( "gulp-changed" );
 
 gulp.task( "format", [ "jshint" ], function() {
 	return gulp.src( [ "**/*.js", "!node_modules/**" ] )
@@ -109,9 +104,6 @@ gulp.task( "format", [ "jshint" ], function() {
 		.pipe( gulpChanged( ".", { hasChanged: gulpChanged.compareSha1Digest } ) )
 		.pipe( gulp.dest( "." ) );
 } );
-
-var jshint = require( "gulp-jshint" );
-var stylish = require( "jshint-stylish" );
 
 gulp.task( "jshint", function() {
 	return gulp.src( allSrcFiles )
@@ -125,17 +117,15 @@ gulp.task( "jshint", function() {
 } );
 
 gulp.task( "coverage", [ "format" ], function( cb ) {
-	gulp.src( [ allSrcFiles ] )
-		.pipe( istanbul() ) // Covering files
-		.pipe( istanbul.hookRequire() ) // Force `require` to return covered files
-		.on( "finish", function() {
-			gulp.src( [ "./spec/helpers/node-setup.js", allTestFiles ] )
-				.pipe( mocha() )
-				.pipe( istanbul.writeReports() ) // Creating the reports after tests runned
-				.on( "end", function() {
-					process.exit();
-				} );
-		} );
+	return gulp
+		.src( allTestFiles, { read: false } )
+		.pipe( mocha( {
+			r: [ "spec/helpers/node-setup.js" ],
+			R: "spec",
+			istanbul: {
+				x: "spec/**/*"
+			}
+		} ) );
 } );
 
 gulp.task( "show-coverage", function() {

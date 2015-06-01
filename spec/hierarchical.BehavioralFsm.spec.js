@@ -18,6 +18,7 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 		} );
 		it( "should report correct starting state for parent FSM", function() {
 			client.__machina__.crosswalk.state.should.equal( "vehiclesEnabled" );
+			crosswalk.compositeState( client ).should.equal( "vehiclesEnabled.green" );
 		} );
 		it( "should emit a 'pedestrians - do not walk' event", function() {
 			events[ 3 ].should.eql( { name: "pedestrians", data: { status: "Do Not Walk", client: client } } );
@@ -91,6 +92,7 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 					}
 				} );
 				client.__machina__[ "vehicle-signal" ].state.should.equal( "green-interruptible" );
+				crosswalk.compositeState( client ).should.equal( "vehiclesEnabled.green-interruptible" );
 			} );
 			it( "should not change parent FSM's state", function() {
 				client.__machina__.crosswalk.state.should.equal( "vehiclesEnabled" );
@@ -136,6 +138,7 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 					}
 				} );
 				client.__machina__[ "vehicle-signal" ].state.should.equal( "yellow" );
+				crosswalk.compositeState( client ).should.equal( "vehiclesEnabled.yellow" );
 			} );
 			it( "should emit a 'vehicles - yellow' event", function() {
 				events[ 2 ].should.eql( { name: "vehicles", data: { status: "yellow", client: client } } );
@@ -187,6 +190,7 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 					}
 				} );
 				client.__machina__.crosswalk.state.should.equal( "pedestriansEnabled" );
+				crosswalk.compositeState( client ).should.equal( "pedestriansEnabled.walking" );
 			} );
 			it( "should emit a 'vehicles - red' event", function() {
 				events[ 2 ].should.eql( { name: "vehicles", data: { status: "red", client: client } } );

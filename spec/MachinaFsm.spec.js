@@ -37,6 +37,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 				} );
 				it( "should transition to the intialState", function() {
 					fsm.state.should.equal( "uninitialized" );
+					fsm.compositeState().should.equal( "uninitialized" );
 				} );
 				it( "should set the expected states and input handlers", function() {
 					fsm.states.should.eql( fsmFactory.options.states );
@@ -93,6 +94,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 						}
 					} );
 					fsm.state.should.equal( "ready" );
+					fsm.compositeState().should.equal( "ready" );
 				} );
 				it( "should handle input with arguments", function() {
 					var fsm = fsmFactory.instanceWithOptions();
@@ -105,6 +107,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					res = fsm.handle( "canWeDoThis", "Grace Hopper" );
 					res.should.equal( "yep, Grace Hopper can do it." );
 					fsm.state.should.equal( "ready" );
+					fsm.compositeState().should.equal( "ready" );
 				} );
 				it( "should handle an object form inputType", function() {
 					var fsm = fsmFactory.instanceWithOptions();
@@ -130,6 +133,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							namespace: fsm.namespace }
 					} );
 					fsm.state.should.equal( "ready" );
+					fsm.compositeState().should.equal( "ready" );
 				} );
 				it( "should transition properly", function() {
 					var fsm = fsmFactory.instanceWithOptions();
@@ -805,8 +809,10 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 
 					fsmA.initialState.should.equal( "uninitialized" );
 					fsmA.state.should.equal( "uninitialized" );
+					fsmA.compositeState().should.equal( "uninitialized" );
 					fsmB.initialState.should.equal( "done" );
 					fsmB.state.should.equal( "done" );
+					fsmB.compositeState().should.equal( "done" );
 
 					// Acting on fsmA should not affect fsmB
 					fsmA.handle( "start" );
