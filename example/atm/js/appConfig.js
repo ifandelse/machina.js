@@ -2,7 +2,7 @@
 	var infuserDefault = infuser.defaults;
 
 	infuser.defaults = $.extend( true, infuserDefault, {
-		templateUrl: "/example/atm/templates",
+		templateUrl: "/machina.js/example/atm/templates",
 		bindingInstruction: function( template, model ) {
 			return template( model );
 		},
