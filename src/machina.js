@@ -19,7 +19,7 @@
 	//import("utils.js");
 	//import("emitter.js");
 	//import("BehavioralFsm.js");
-	//import("Fsm.js");
+	//import("fsm.js");
 	//import("api.js");
 	return machina;
 } ) );

@@ -1,7 +1,7 @@
 {
   "name": "machina",
   "description": "A library for creating powerful and flexible finite state machines. Loosely inspired by Erlang/OTP's gen_fsm behavior.",
-  "version": "1.0.1",
+  "version": "1.1.1",
   "homepage": "http://machina-js.org/",
   "repository": {
     "type": "git",
@@ -59,6 +59,10 @@
     {
       "name": "Brad Fol",
       "url": "https://github.com/bradfol"
+    },
+    {
+      "name": "Ignacio Carbajo",
+      "url": "http://ignaciocarbajo.com"
     }
   ],
   "keywords": [

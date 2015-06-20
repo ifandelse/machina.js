@@ -1,4 +1,4 @@
-# machina v1.0.1
+# machina v1.1.1
 
 ## What is it?
 Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been *loosely* inspired by the Erlang/OTP FSM behaviors.
@@ -444,7 +444,18 @@ Notice how each state has a `_child` property? This property can be used to assi
 * When the parent FSM transitions to a new state, any child FSM from a previous state is ignored entirely (i.e. - events emitted, or input bubbled, will *not* be handled in the parent). If the parent FSM transitions back to that state, it will resume listening to the child FSM, etc.
 * As the parent state transitions into any of its states, it will tell the child FSM to handle a `_reset` input. This gives you a hook to move the child FSM to the correct state before handling any further input. For example, you'll notice our `pedestrianSignal` FSM has a `_reset` input handler in the `dontwalk` state, which transitions the FSM to the `walking` state.
 
->Caveats: This feature is very new to machina, so expect it to evolve a bit. I plan to fine-tune how events bubble in a hierarchy a bit more, and potentially give the parent FSM the ability to express the state down the hierachy (e.g. `vehiclesEnabled.green` or `pedestriansEnabled.dontwalk`).
+In v1.1.0, machina added the `compositeState()` method to the `BehavioralFsm` and `Fsm` prototypes. This means you can get the current state of the FSM hierarchy. For example:
+
+```javascript
+// calling compositeState on Fsm instances
+console.log( crosswalk.compositeState() ); // vehiclesEnabled.green
+
+// calling compositeState on BehavioralFsm instances
+// (you have to pass the client arg)
+console.log( crosswalk.compositeState( fsmClient ) ); // pedestriansEnabled.walking
+```
+
+>Caveats: This feature is very new to machina, so expect it to evolve a bit. I plan to fine-tune how events bubble in a hierarchy a bit more.
 
 ### The Top Level machina object
 The top level `machina` object has the following members:

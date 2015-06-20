@@ -1,3 +1,14 @@
+### v1.1.1
+
+* Added `compositeState` method to the `BehavioralFsm` and `Fsm` prototypes.
+* Added compositeState assertions to tests where state is also being checked.
+* Fixed issue with atm example AccountView.
+* Tweaked istanbul setup to use gulp-spawn-mocha option.
+* Additional whitespace cleanup (removing last vestiges of node-beautify)
+
+### v1.1.0
+* This was an accidental re-publishing of v1.0.1. Oops.
+
 ### v1.0.1
 
 * Added JSCS, visited formatting overall
