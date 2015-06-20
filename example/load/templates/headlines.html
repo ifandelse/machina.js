@@ -1,0 +1,15 @@
+<ul>
+	<% _.each(items, function(item, i) { %>
+	<li>
+		<div class="left">
+			<div class="lnk">
+				<a href="<%= item.url %>" atl="<%= item.title %>" target="_blank">
+					<%= item.title %>
+				</a>
+			</div>
+			<div class="info">Posted By: <%= item.postedBy %>&nbsp;<%= item.postedAgo %></div>
+		</div>
+		<div class="right big"><div><%= item.commentCount %></div>comment(s)</div>
+	</li>
+	<% }) %>
+</ul>

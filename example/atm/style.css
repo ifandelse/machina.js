@@ -1,0 +1,133 @@
+body {
+	font-family: monospace, prestige;
+    background-color: black;
+    color:#5fba3d;
+}
+
+div {
+    font-family: monospace, prestige;
+}
+
+input {
+    font-family: monospace, prestige;
+}
+
+input[type="text"], .atm-login input[type="password"] {
+    background-color: silver;
+    border-style: none;
+    cursor: cell;
+    height: 1.5em;
+    margin-top: .45em;
+}
+
+#content {
+    width:800px;
+    height: 500px;
+}
+
+.atm-nav {
+    float: left;
+    margin-right: .5em;
+}
+
+.atm-nav-btn {
+    background-color:#0034dc;
+    color:white;
+    width: 6em;
+    text-align: right;
+    padding-right:.25em;
+    padding-top: .6em;
+    height:2em;
+    margin-bottom: .25em;
+    cursor:pointer;
+    font-variant: small-caps;
+    font-size: 1.45em;
+    border: .05em solid #0034dc;
+}
+
+.atm-nav-btn:hover {
+    border: .05em solid white;
+}
+
+.atm-screen {
+    float: right;
+}
+
+.atm-header {
+    clear:both;
+    font-size: 1.5em;
+    margin-bottom: .5em;
+}
+
+#screen .atm-header {
+    color: black;
+    background-color: #5fba3d;
+    text-align: center;
+    margin-top:.25em;
+}
+
+.atm-wrapper {
+    float: left;
+    display: block;
+}
+
+.atm-login {
+    width: 75%;
+    margin: 0px auto;
+}
+
+.atm-row {
+    clear:both;
+    margin-top: .25em;
+}
+
+.atm-info {
+    color: white;
+}
+
+.atm-login label {
+    float:left;
+    text-align: right;
+    width:5em;
+    margin-right: .25em;
+}
+
+.atm-login input {
+    float:right;
+}
+
+.atm-login .atm-ctrl {
+    margin-top: .5em;
+    text-align: right;
+}
+
+.atm-error {
+    clear:both;
+    background-color:#d5381a;
+    color:#080808;
+    width: 22em;
+    text-align: center;
+}
+
+#auth {
+    width: 7em;
+    background-color:#e5df43;
+    color:#d5381a;
+    border-style: none;
+    margin: 1em .25em 1em 0;
+}
+
+#amount[type="text"] {
+    width: 7em;
+    text-align: right;
+}
+
+.atm-result-label {
+    float:left;
+}
+
+.atm-result-value {
+    float:right;
+    color: white;
+    margin-left: .5em;
+}
