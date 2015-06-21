@@ -1,6 +1,6 @@
 /* global BehavioralFsm, _, utils, getDefaultClientMeta */
 /* jshint -W098 */
-var Fsm = BehavioralFsm.extend( {
+var Fsm = {
 	constructor: function() {
 		BehavioralFsm.apply( this, arguments );
 		this.ensureClientMeta();
@@ -58,29 +58,20 @@ var Fsm = BehavioralFsm.extend( {
 		} else {
 			return { data: data || null, namespace: this.namespace };
 		}
-	},
-	handle: function( inputType ) {
-		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
-		return BehavioralFsm.prototype.handle.apply( this, args );
-	},
-	transition: function( newState ) {
-		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
-		return BehavioralFsm.prototype.transition.apply( this, args );
-	},
-	deferUntilTransition: function( stateName ) {
-		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
-		return BehavioralFsm.prototype.deferUntilTransition.apply( this, args );
-	},
-	processQueue: function() {
-		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
-		return BehavioralFsm.prototype.processQueue.apply( this, args );
-	},
-	clearQueue: function( stateName ) {
-		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
-		return BehavioralFsm.prototype.clearQueue.apply( this, args );
-	},
-	compositeState: function() {
-		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
-		return BehavioralFsm.prototype.compositeState.apply( this, args );
 	}
+};
+
+_.each( [
+	"handle",
+	"transition",
+	"deferUntilTransition",
+	"processQueue",
+	"clearQueue"
+], function( methodWithClientInjected ) {
+	Fsm[methodWithClientInjected] = function() {
+		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
+		return BehavioralFsm.prototype[methodWithClientInjected].apply( this, args );
+	};
 } );
+ 
+Fsm = BehavioralFsm.extend( Fsm );
