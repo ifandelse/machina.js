@@ -1,3 +1,7 @@
+### v1.1.2
+
+* Internal improvements to the `Fsm` prototype, thanks to @igncp.
+
 ### v1.1.1
 
 * Added `compositeState` method to the `BehavioralFsm` and `Fsm` prototypes.

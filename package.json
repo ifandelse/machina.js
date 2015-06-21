@@ -1,7 +1,7 @@
 {
   "name": "machina",
   "description": "A library for creating powerful and flexible finite state machines. Loosely inspired by Erlang/OTP's gen_fsm behavior.",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "homepage": "http://machina-js.org/",
   "repository": {
     "type": "git",
@@ -101,7 +101,7 @@
   "devDependencies": {
     "bower": "1.x",
     "express": "~3.4.7",
-    "gulp": "~3.8.11",
+    "gulp": "~3.9.0",
     "gulp-changed": "^1.2.1",
     "gulp-header": "~1.2.2",
     "gulp-hint-not": "~0.0.3",
@@ -110,14 +110,14 @@
     "gulp-jshint": "^1.11.0",
     "gulp-plato": "~1.0.2",
     "gulp-rename": "~1.2.2",
-    "gulp-spawn-mocha": "^2.0.1",
+    "gulp-spawn-mocha": "^2.2.1",
     "gulp-uglify": "~1.2.0",
     "gulp-util": "~3.0.4",
-    "jshint-stylish": "^2.0.0",
+    "jshint-stylish": "^2.0.1",
     "mocha": "^2.2.5",
     "open": "~0.0.4",
     "should": "^6.0.3",
-    "sinon": "1.14.1"
+    "sinon": "~1.15.3"
   },
   "licenses": [
     {
