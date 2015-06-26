@@ -3,7 +3,6 @@ require.config( {
 		text: "../../../bower/requirejs-text/text",
 		backbone: '../../../bower/backbone/backbone',
 		lodash: '../../../bower/lodash/lodash',
-		underscore: '../../../bower/lodash/lodash.underscore',
 		mockjax: '../../../bower/jquery-mockjax/jquery.mockjax',
 		machina: '/lib/machina',
 		'machina.postal': '../../../bower/machina.postal/lib/machina.postal',
@@ -11,6 +10,11 @@ require.config( {
 		'postal.diags': '../../../bower/postal.diagnostics/lib/postal.diagnostics.min',
 		jquery: '../../../bower/jquery/jquery',
 		conduitjs: '../../../bower/conduitjs/lib/conduit'
+	},
+	map: {
+		"*": {
+			"underscore": "lodash"
+		}
 	},
 	shim: {
 		mockjax: [ 'jquery' ],
