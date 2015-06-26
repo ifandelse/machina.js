@@ -2,8 +2,8 @@ require.config( {
 	paths: {
 		text: "../../../bower/requirejs-text/text",
 		backbone: '../../../bower/backbone/backbone',
-		lodash: '../../../bower/lodash/dist/lodash',
-		underscore: '../../../bower/lodash/dist/lodash.underscore',
+		lodash: '../../../bower/lodash/lodash',
+		underscore: '../../../bower/lodash/lodash.underscore',
 		mockjax: '../../../bower/jquery-mockjax/jquery.mockjax',
 		machina: '/lib/machina',
 		'machina.postal': '../../../bower/machina.postal/lib/machina.postal',
