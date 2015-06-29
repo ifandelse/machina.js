@@ -177,7 +177,7 @@ var utils = {
 	makeFsmNamespace: ( function() {
 		var machinaCount = 0;
 		return function() {
-			return "fsm." + machinaCount++;
+			return "fsm" + machinaCount++;
 		};
 	} )(),
 	listenToChild: listenToChild,
