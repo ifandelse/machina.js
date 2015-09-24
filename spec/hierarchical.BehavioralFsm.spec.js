@@ -250,4 +250,50 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 			} );
 		} );
 	} );
+	describe( "when re-inputting client with state into a new FSM instance ", function() {
+		var crosswalk;
+		var events = [];
+		var resetHandled = false;
+		var client = {};
+		var newCrosswalk;
+		before( function() {
+			this.clock = sinon.useFakeTimers();
+			crosswalk = hierarchical.behavioralCrosswalkFactory( {
+				eventListeners: {
+					"*": [ function( eventName, data ) {
+							events.push( { name: eventName, data: data } );
+						}
+					]
+				}
+			} );
+			crosswalk.handle( client, "start" );
+			this.clock.tick( 35000 );
+			this.clock.restore();
+		} );
+		it( "should report correct previous state", function() {
+			newCrosswalk = hierarchical.behavioralCrosswalkFactory( {
+				eventListeners: {
+					"*": [ function( eventName, data ) {
+							events.push( { name: eventName, data: data } );
+						}
+					]
+				}
+			} );
+
+			client.__machina__.crosswalk.state.should.equal( "vehiclesEnabled" );
+			crosswalk.compositeState( client ).should.equal( "vehiclesEnabled.green-interruptible" );
+		} );
+		it( "should continue on as normal", function () {
+			this.clock = sinon.useFakeTimers();
+
+			crosswalk.handle( client, "pedestrianWaiting" );
+			events = [];
+
+			this.clock.tick( 45000 );
+			this.clock.restore();
+
+			client.__machina__.crosswalk.state.should.equal( "vehiclesEnabled" );
+			crosswalk.compositeState( client ).should.equal( "vehiclesEnabled.green" );
+		});
+	} );
 } );

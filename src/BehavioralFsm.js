@@ -78,9 +78,16 @@ _.extend( BehavioralFsm.prototype, {
 		var child;
 		var result;
 		var action;
+		var recoveredChild = false;
 		if ( !clientMeta.inExitHandler ) {
 			child = stateObj._child && stateObj._child.instance;
-			if ( child && !this.pendingDelegations[ inputDef.ticket ] && !inputDef.bubbling ) {
+			if (!child && stateObj._child) {
+				stateObj._child = getChildFsmInstance( stateObj._child );
+				child = stateObj._child && stateObj._child.instance;
+				this.hierarchy[ child.namespace ] = utils.listenToChild( this, child );
+				recoveredChild = true;
+			}
+			if ( child && ((!this.pendingDelegations[ inputDef.ticket ] && !inputDef.bubbling) || recoveredChild )) {
 				inputDef.ticket = ( inputDef.ticket || utils.createUUID() );
 				inputDef.delegated = true;
 				this.pendingDelegations[ inputDef.ticket ] = { delegatedTo: child.namespace };
@@ -219,7 +226,7 @@ _.extend( BehavioralFsm.prototype, {
 	compositeState: function( client ) {
 		var clientMeta = this.ensureClientMeta( client );
 		var state = clientMeta.state;
-		var child = this.states[state]._child && this.states[state]._child.instance;
+		var child = this.states[state]._child && (this.states[state]._child.instance || this.states[state]._child);
 		if ( child ) {
 			state += "." + child.compositeState( client );
 		}
