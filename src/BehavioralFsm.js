@@ -137,13 +137,23 @@ _.extend( BehavioralFsm.prototype, {
 					clientMeta.inExitHandler = false;
 				}
 				if ( curStateObj && curStateObj._child && curStateObj._child.instance && this.hierarchy[ curStateObj._child.instance.namespace ] ) {
-					this.hierarchy[ curStateObj._child.instance.namespace ].off();
+					this.hierarchy[ curStateObj._child.instance.namespace ].usage -= 1;
+
+					if ( this.hierarchy[ curStateObj._child.instance.namespace ].usage == 0 ) {
+						this.hierarchy[ curStateObj._child.instance.namespace ].off();
+						delete this.hierarchy[ curStateObj._child.instance.namespace ];
+					}
 				}
 				clientMeta.targetReplayState = newState;
 				clientMeta.priorState = curState;
 				clientMeta.state = newState;
 				if ( child ) {
-					this.hierarchy[ child.namespace ] = utils.listenToChild( this, child );
+					if ( this.hierarchy[ child.namespace ] ) {
+						this.hierarchy[ child.namespace ].usage += 1;
+					} else {
+						this.hierarchy[ child.namespace ] = utils.listenToChild( this, child );
+						this.hierarchy[ child.namespace ].usage = 1;
+				    }
 				}
 				var eventPayload = this.buildEventPayload( client, {
 					fromState: clientMeta.priorState,
