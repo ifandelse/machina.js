@@ -1,25 +1,11 @@
-/*global module, define */
-/* jshint -W117 */
-( function( root, factory ) {
-	/* istanbul ignore if  */
-	if ( typeof define === "function" && define.amd ) {
-		// AMD. Register as an anonymous module.
-		define( [ "lodash" ], function( _ ) {
-			return factory( _, root );
-		} );
-	/* istanbul ignore else  */
-	} else if ( typeof module === "object" && module.exports ) {
-		// Node, or CommonJS-Like environments
-		module.exports = factory( require( "lodash" ) );
-	} else {
-		// Browser globals
-		root.machina = factory( root._, root );
+var _ = require( "lodash" );
+var emitter = require( "./emitter" );
+
+module.exports = _.merge( emitter.instance, {
+	Fsm: require( "./Fsm" ),
+	BehavioralFsm: require( "./BehavioralFsm" ),
+	utils: require( "./utils" ),
+	eventListeners: {
+		newFsm: []
 	}
-}( this, function( _, global, undefined ) {
-	//import("utils.js");
-	//import("emitter.js");
-	//import("BehavioralFsm.js");
-	//import("fsm.js");
-	//import("api.js");
-	return machina;
-} ) );
+} );

@@ -3,11 +3,7 @@
 	"excludeFiles": [
 		"node_modules/**",
 		"coverage/**",
-		"example/**",
-		"bower/**",
-		"ext/**",
-		"report/**",
-		"lib/machina.min.js"
+		"lib/**"
 	],
 
 	"esnext": true,
@@ -49,7 +45,7 @@
 		"beforeOpeningRoundBrace": true
 	},
 	"disallowTrailingComma": true,
-	"disallowTrailingWhitespace": "ignoreEmptyLines",
+	"disallowTrailingWhitespace": true,
 	"maximumLineLength": null,
 	"requireBlocksOnNewline": true,
 	"requireCamelCaseOrUpperCaseIdentifiers": "ignoreProperties",

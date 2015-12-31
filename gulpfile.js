@@ -1,58 +1,109 @@
 var gulp = require( "gulp" );
-var fileImports = require( "gulp-imports" );
-var header = require( "gulp-header" );
-var hintNot = require( "gulp-hint-not" );
-var uglify = require( "gulp-uglify" );
-var rename = require( "gulp-rename" );
-var plato = require( "gulp-plato" );
 var gutil = require( "gulp-util" );
-var pkg = require( "./package.json" );
-var express = require( "express" );
-var path = require( "path" );
-var open = require( "open" );
-var port = 3080;
-var allSrcFiles = "./src/**/*.js";
-var allTestFiles = "./spec/**/*.spec.js";
-var mocha = require( "gulp-spawn-mocha" );
+var rename = require( "gulp-rename" );
+var uglify = require( "gulp-uglify" );
+var _ = require( "lodash" );
+var eslint = require( "gulp-eslint" );
 var jscs = require( "gulp-jscs" );
 var gulpChanged = require( "gulp-changed" );
-var jshint = require( "gulp-jshint" );
-var stylish = require( "jshint-stylish" );
+var webpack = require( "gulp-webpack" );
+var path = require( "path" );
+var karma = require( "karma" );
+var mocha = require( "gulp-spawn-mocha" );
+var sourcemaps = require( "gulp-sourcemaps" );
+var express = require( "express" );
+var open = require( "open" );
+var port = 3080;
 
-var banner = [ "/**",
-    " * <%= pkg.name %> - <%= pkg.description %>",
-    " * Author: <%= pkg.author %>",
-    " * Version: v<%= pkg.version %>",
-    " * Url: <%= pkg.homepage %>",
-    " * License(s): <% pkg.licenses.forEach(function( license, idx ){ %><%= license.type %><% if(idx !== pkg.licenses.length-1) { %>, <% } %><% }); %>",
-    " */",
-    "" ].join( "\n" );
+gulp.task( "default", [ "build" ] );
 
-gulp.task( "combine", function() {
-	gulp.src( [ "./src/machina.js" ] )
-		.pipe( header( banner, {
-			pkg: pkg
-		} ) )
-		.pipe( fileImports() )
-		.pipe( hintNot() )
-		.pipe( gulp.dest( "./lib/" ) )
+gulp.task( "build", [ "format" ], function() {
+	return gulp.src( "src/machina.js" )
+		.pipe( webpack( require( "./webpack.config.js" ) ) )
+		.pipe( gulp.dest( "lib/" ) )
+		.pipe( sourcemaps.init( { loadMaps: true } ) )
 		.pipe( uglify( {
+			preserveComments: "license",
 			compress: {
-				negate_iife: false //jshint ignore: line
+				/*eslint-disable */
+				negate_iife: false
+				/*eslint-enable */
 			}
 		} ) )
-		.pipe( header( banner, {
-			pkg: pkg
-		} ) )
 		.pipe( rename( "machina.min.js" ) )
-		.pipe( gulp.dest( "./lib/" ) );
+		.pipe( sourcemaps.write( "./" ) )
+		.pipe( gulp.dest( "lib/" ) );
 } );
 
-gulp.task( "default", [ "combine" ] );
+function runTests( options, done ) {
+	var server = new karma.Server( _.extend( {
+		configFile: path.join( __dirname, "/karma.conf.js" ),
+		singleRun: true
 
-gulp.task( "report", function() {
-	gulp.src( "./lib/machina.js" )
-		.pipe( plato( "report" ) );
+		// no-op keeps karma from process.exit'ing gulp
+	}, options ), done || function() {} );
+
+	server.start();
+}
+
+gulp.task( "test", [ "build" ], function( done ) {
+	runTests( { reporters: [ "spec" ] }, function( err ) {
+		if ( err !== 0 ) {
+			// Exit with the error code
+			process.exit( err );
+		} else {
+			done( null );
+		}
+	} );
+} );
+
+gulp.task( "coverage", [ "build" ], function( done ) {
+	runTests( {}, function( err ) {
+		if ( err !== 0 ) {
+			// Exit with the error code
+			process.exit( err );
+		} else {
+			done( null );
+		}
+	} );
+} );
+
+gulp.task( "mocha", [ "build" ], function() {
+	return gulp.src( [ "spec/**/*.spec.js" ], { read: false } )
+		.pipe( mocha( {
+			require: [ "spec/helpers/node-setup.js" ],
+			reporter: "spec",
+			colors: true,
+			inlineDiffs: true,
+			debug: false
+		} ) )
+		.on( "error", console.warn.bind( console ) );
+} );
+
+gulp.task( "lint", function() {
+	return gulp.src( [ "src/**/*.js", "spec/**/*.spec.js" ] )
+	.pipe( eslint() )
+	.pipe( eslint.format() )
+	.pipe( eslint.failOnError() );
+} );
+
+gulp.task( "format", [ "lint" ], function() {
+	return gulp.src( [ "*.js", "{spec,src}/**/*.js" ] )
+		.pipe( jscs( {
+			configPath: ".jscsrc",
+			fix: true
+		} ) )
+		.on( "error", function( error ) {
+			gutil.log( gutil.colors.red( error.message ) );
+			this.end();
+		} )
+		.pipe( gulpChanged( ".", { hasChanged: gulpChanged.compareSha1Digest } ) )
+		.pipe( gulp.dest( "." ) );
+} );
+
+gulp.task( "watch", function() {
+	gulp.watch( "src/**/*", [ "default" ] );
+	gulp.watch( "{lib,spec}/**/*", [ "mocha" ] );
 } );
 
 var createServers = function( port ) {
@@ -70,62 +121,12 @@ var createServers = function( port ) {
 
 var servers;
 
-gulp.task( "server", [ "combine", "report" ], function() {
+gulp.task( "server", [ "build" ], function() {
 	if ( !servers ) {
 		servers = createServers( port );
 	}
 
 	open( "http://localhost:" + port + "/index.html" );
-} );
-
-gulp.task( "test", function() {
-	return gulp.src( [ "spec/**/*.spec.js" ], { read: false } )
-		.pipe( mocha( {
-			require: [ "spec/helpers/node-setup.js" ],
-			reporter: "spec",
-			colors: true,
-			inlineDiffs: true,
-			debug: false
-		} ) )
-		.on( "error", console.warn.bind( console ) );
-} );
-
-gulp.task( "watch", [ "default", "test" ], function() {
-	gulp.watch( "src/**/*", [ "default" ] );
-	gulp.watch( "{lib,spec}/**/*", [ "test" ] );
-} );
-
-gulp.task( "format", [ "jshint" ], function() {
-	return gulp.src( [ "**/*.js", "!node_modules/**" ] )
-		.pipe( jscs( {
-			configPath: ".jscsrc",
-			fix: true
-		} ) )
-		.pipe( gulpChanged( ".", { hasChanged: gulpChanged.compareSha1Digest } ) )
-		.pipe( gulp.dest( "." ) );
-} );
-
-gulp.task( "jshint", function() {
-	return gulp.src( allSrcFiles )
-		.on( "error", function( error ) {
-			gutil.log( gutil.colors.red( error.message + " in " + error.fileName ) );
-			this.end();
-		} )
-		.pipe( jshint() )
-		.pipe( jshint.reporter( stylish ) )
-		.pipe( jshint.reporter( "fail" ) );
-} );
-
-gulp.task( "coverage", [ "format" ], function( cb ) {
-	return gulp
-		.src( allTestFiles, { read: false } )
-		.pipe( mocha( {
-			r: [ "spec/helpers/node-setup.js" ],
-			R: "spec",
-			istanbul: {
-				x: "spec/**/*"
-			}
-		} ) );
 } );
 
 gulp.task( "show-coverage", function() {

@@ -1,4 +1,6 @@
-/* global machina */
+require( "should/should" );
+var machina = require( "../lib/machina.js" );
+
 describe( "Machina Namespace Events", function() {
 	describe( "when subscribing to machina top-level events", function() {
 		describe( "when subscribing to specific events", function() {
@@ -20,18 +22,17 @@ describe( "Machina Namespace Events", function() {
 				var x = new machina.Fsm( { states: { uninitialized: {} } } );
 				res.should.eql( [ x ] );
 				machina.off( "newfsm", callback );
-				var y = new machina.Fsm( { states: { uninitialized: {} } } );
+				new machina.Fsm( { states: { uninitialized: {} } } );
 				res.should.eql( [ x ] );
 			} );
 			it( "should throw if useSafeEmit is set to false and a subscriber throws", function() {
 				machina.useSafeEmit = false;
-				var res;
 				var callback = function( fsm ) {
 					throw new Error( "O NOES!" );
 				};
 				machina.on( "newfsm", callback );
 				( function() {
-					var x = new machina.Fsm( { states: { uninitialized: {} } } );
+					new machina.Fsm( { states: { uninitialized: {} } } );
 				} ).should.throw( /O NOES/ );
 				machina.off( "newfsm", callback );
 			} );
@@ -46,7 +47,7 @@ describe( "Machina Namespace Events", function() {
 					res = msg;
 				};
 				machina.on( "newfsm", callback );
-				var x = new machina.Fsm( { states: { uninitialized: {} } } );
+				new machina.Fsm( { states: { uninitialized: {} } } );
 				res.should.match( /Error: O NOES!/ );
 				console.log = log;
 				machina.off( "newfsm", callback );
@@ -74,18 +75,17 @@ describe( "Machina Namespace Events", function() {
 				res[ 0 ].eventName.should.equal( "newfsm" );
 				res.length.should.equal( 1 );
 				machina.off( "*", callback );
-				var y = new machina.Fsm( { states: { uninitialized: {} } } );
+				new machina.Fsm( { states: { uninitialized: {} } } );
 				res.length.should.equal( 1 );
 			} );
 			it( "should throw if useSafeEmit is set to false and a subscriber throws", function() {
 				machina.useSafeEmit = false;
-				var res;
 				var callback = function( eventName, fsm ) {
 					throw new Error( "O NOES!" );
 				};
 				machina.on( "*", callback );
 				( function() {
-					var x = new machina.Fsm( { states: { uninitialized: {} } } );
+					new machina.Fsm( { states: { uninitialized: {} } } );
 				} ).should.throw( /O NOES/ );
 			} );
 			it( "should console.log if useSafeEmit is set to true and a subscriber throws", function() {
@@ -99,7 +99,7 @@ describe( "Machina Namespace Events", function() {
 					res = msg;
 				};
 				machina.on( "*", callback );
-				var x = new machina.Fsm( { states: { uninitialized: {} } } );
+				new machina.Fsm( { states: { uninitialized: {} } } );
 				res.should.match( /Error: O NOES!/ );
 				console.log = log;
 			} );

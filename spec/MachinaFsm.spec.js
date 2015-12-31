@@ -1,4 +1,6 @@
-/* global _ */
+var _ = require( "lodash" );
+var machina = require( "../lib/machina.js" );
+var specFactory = require( "./helpers/fsmFactory.js" )( machina );
 
 /*
     This is a spec factory that takes a description and
@@ -44,12 +46,12 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 				} );
 				it( "should throw if the initialState prop isn't set", function() {
 					( function() {
-						var fsm = fsmFactory.instanceWithOptions( { initialState: null } );
+						fsmFactory.instanceWithOptions( { initialState: null } );
 					} ).should.throw( /You must specify an initial state for this FSM/ );
 				} );
 				it( "should throw if the initial state specified doesn't exist", function() {
 					( function() {
-						var fsm = fsmFactory.instanceWithOptions( { initialState: "howdy" } );
+						fsmFactory.instanceWithOptions( { initialState: "howdy" } );
 					} ).should.throw( /The initial state specified does not exist in the states object/ );
 				} );
 				it( "should invoke a custom initialize method", function() {
@@ -837,6 +839,6 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 	} );
 }
 
-_.each( global.specFactory.machinaFsm, function( val, key ) {
+_.each( specFactory.machinaFsm, function( val, key ) {
 	runMachinaFsmSpec( key, val );
 } );

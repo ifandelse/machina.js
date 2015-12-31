@@ -1,8 +1,12 @@
+var _ = require( "lodash" );
+var sinon = require( "sinon" );
+var machina = require( "../lib/machina.js" );
+var hierarchical = require( "./helpers/hierarchicalFsm.js" )( machina );
+
 describe( "Hierarchical machina.Fsm", function() {
 	describe( "when creating a hierarchy", function() {
 		var crosswalk;
 		var events = [];
-		var resetHandled = false;
 		before( function() {
 			crosswalk = hierarchical.crosswalkFactory( {
 				eventListeners: {
@@ -48,7 +52,6 @@ describe( "Hierarchical machina.Fsm", function() {
 		describe( "and the input originates from timer in child", function() {
 			var crosswalk;
 			var events = [];
-			var resetHandled = false;
 			before( function() {
 				this.clock = sinon.useFakeTimers();
 				crosswalk = hierarchical.crosswalkFactory( {
@@ -94,7 +97,6 @@ describe( "Hierarchical machina.Fsm", function() {
 		describe( "and the input originates from parent FSM", function() {
 			var crosswalk;
 			var events = [];
-			var resetHandled = false;
 			before( function() {
 				this.clock = sinon.useFakeTimers();
 				crosswalk = hierarchical.crosswalkFactory( {
@@ -137,7 +139,6 @@ describe( "Hierarchical machina.Fsm", function() {
 		describe( "and input isn't handled in child, but parent instead", function() {
 			var crosswalk;
 			var events = [];
-			var resetHandled = false;
 			before( function() {
 				this.clock = sinon.useFakeTimers();
 				crosswalk = hierarchical.crosswalkFactory( {
@@ -199,7 +200,6 @@ describe( "Hierarchical machina.Fsm", function() {
 		describe( "and parent FSM transitions into previously held state", function() {
 			var crosswalk;
 			var events = [];
-			var resetHandled = false;
 			before( function() {
 				this.clock = sinon.useFakeTimers();
 				crosswalk = hierarchical.crosswalkFactory( {

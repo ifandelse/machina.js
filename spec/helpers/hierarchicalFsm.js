@@ -1,4 +1,5 @@
-/* global _ */
+var _ = require( "lodash" );
+
 module.exports = function( machina ) {
 	var DO_NOT_WALK = "Do Not Walk";
 	var WALK = "Walk";

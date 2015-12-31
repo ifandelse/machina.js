@@ -1,5 +1,6 @@
-/* global _ */
-
+var _ = require( "lodash" );
+var machina = require( "../lib/machina.js" );
+var specFactory = require( "./helpers/fsmFactory.js" )( machina );
 /*
     This is a spec factory that takes a description and
     an object containing factory methods necessary to get
@@ -1109,6 +1110,6 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 	} );
 }
 
-_.each( global.specFactory.behavioral, function( val, key ) {
+_.each( specFactory.behavioral, function( val, key ) {
 	runBehavioralFsmSpec( key, val );
 } );

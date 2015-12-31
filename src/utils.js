@@ -1,14 +1,13 @@
-/* global _ */
-/* jshint -W098, -W003 */
 var slice = [].slice;
-var NEXT_TRANSITION = "transition";
-var HANDLING = "handling";
-var HANDLED = "handled";
-var NO_HANDLER = "nohandler";
-var TRANSITION = "transition";
-var INVALID_STATE = "invalidstate";
-var DEFERRED = "deferred";
-var NEW_FSM = "newfsm";
+var events = require( "./events.js" );
+var _ = require( "lodash" );
+
+var makeFsmNamespace = ( function() {
+	var machinaCount = 0;
+	return function() {
+		return "fsm." + machinaCount++;
+	};
+} )();
 
 function getDefaultBehavioralOptions() {
 	return {
@@ -17,7 +16,7 @@ function getDefaultBehavioralOptions() {
 			"*": []
 		},
 		states: {},
-		namespace: utils.makeFsmNamespace(),
+		namespace: makeFsmNamespace(),
 		useSafeEmit: false,
 		hierarchy: {},
 		pendingDelegations: {}
@@ -44,7 +43,14 @@ function getLeaklessArgs( args, startIdx ) {
 	}
 	return result;
 }
+/*
+	handle ->
+		child = stateObj._child && stateObj._child.instance;
 
+	transition ->
+		newStateObj._child = getChildFsmInstance( newStateObj._child );
+		child = newStateObj._child && newStateObj._child.instance;
+*/
 function getChildFsmInstance( config ) {
 	if ( !config ) {
 		return;
@@ -54,6 +60,7 @@ function getChildFsmInstance( config ) {
 		// is this a config object with a factory?
 		if ( config.factory ) {
 			childFsmDefinition = config;
+			childFsmDefinition.instance = childFsmDefinition.factory();
 		} else {
 			// assuming this is a machina instance
 			childFsmDefinition.factory = function() {
@@ -68,9 +75,11 @@ function getChildFsmInstance( config ) {
 }
 
 function listenToChild( fsm, child ) {
+	// Need to investigate potential for discarded event
+	// listener memory leak in long-running, deeply-nested hierarchies.
 	return child.on( "*", function( eventName, data ) {
 		switch ( eventName ) {
-			case "nohandler":
+			case events.NO_HANDLER:
 				if ( !data.ticket && !data.delegated && data.namespace !== fsm.namespace ) {
 					// Ok - we're dealing w/ a child handling input that should bubble up
 					data.args[ 1 ].bubbling = true;
@@ -80,7 +89,7 @@ function listenToChild( fsm, child ) {
 					fsm.handle.apply( fsm, data.args );
 				}
 				break;
-			case "handling" :
+			case events.HANDLING :
 				var ticket = data.ticket;
 				if ( ticket && fsm.pendingDelegations[ ticket ] ) {
 					delete fsm.pendingDelegations[ ticket ];
@@ -173,16 +182,14 @@ function createUUID() {
 	return s.join( "" );
 }
 
-var utils = {
-	makeFsmNamespace: ( function() {
-		var machinaCount = 0;
-		return function() {
-			return "fsm." + machinaCount++;
-		};
-	} )(),
-	listenToChild: listenToChild,
-	getLeaklessArgs: getLeaklessArgs,
+module.exports = {
+	createUUID: createUUID,
+	extend: extend,
+	getDefaultBehavioralOptions: getDefaultBehavioralOptions,
 	getDefaultOptions: getDefaultBehavioralOptions,
 	getDefaultClientMeta: getDefaultClientMeta,
-	createUUID: createUUID
+	getChildFsmInstance: getChildFsmInstance,
+	getLeaklessArgs: getLeaklessArgs,
+	listenToChild: listenToChild,
+	makeFsmNamespace: makeFsmNamespace
 };

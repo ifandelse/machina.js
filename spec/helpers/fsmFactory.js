@@ -1,4 +1,5 @@
-/* global _ */
+var _ = require( "lodash" );
+
 module.exports = function( machina ) {
 	var BehavioralFsm = machina.BehavioralFsm;
 	var Fsm = machina.Fsm;

@@ -1,5 +1,7 @@
-/* global BehavioralFsm, _, utils, getDefaultClientMeta */
-/* jshint -W098 */
+var BehavioralFsm = require( "./BehavioralFsm" );
+var utils = require( "./utils" );
+var _ = require( "lodash" );
+
 var Fsm = {
 	constructor: function() {
 		BehavioralFsm.apply( this, arguments );
@@ -18,7 +20,7 @@ var Fsm = {
 	ensureClientMeta: function ensureClientMeta() {
 		if ( !this._stamped ) {
 			this._stamped = true;
-			_.defaults( this, _.cloneDeep( getDefaultClientMeta() ) );
+			_.defaults( this, _.cloneDeep( utils.getDefaultClientMeta() ) );
 			this.initClient();
 		}
 		return this;
@@ -68,10 +70,12 @@ _.each( [
 	"processQueue",
 	"clearQueue"
 ], function( methodWithClientInjected ) {
-	Fsm[methodWithClientInjected] = function() {
+	Fsm[ methodWithClientInjected ] = function() {
 		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
-		return BehavioralFsm.prototype[methodWithClientInjected].apply( this, args );
+		return BehavioralFsm.prototype[ methodWithClientInjected ].apply( this, args );
 	};
 } );
- 
+
 Fsm = BehavioralFsm.extend( Fsm );
+
+module.exports = Fsm;
