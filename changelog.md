@@ -1,3 +1,12 @@
+### v2.0.0
+
+* Refactored to use CommonJS modules and changed the build process to use webpack to generate a UMD.
+* Added the `transitioned` event, which fires after the `_onEnter` handler of a new state has completed execution.
+* Added support for additional custom arguments to be passed to the `transition` call, which then get passed as arguments to the `_onEnter` handler of the new state.
+* Fixed issue reported in #110, where behavioral FSMs were not correctly configuring the hierarchy (listening to correct child FSMs, reporting composite state correctly, etc.).
+* Removed Plato Reports.
+* Added Karma-based runner and related files.
+
 ### v1.1.2
 
 * Internal improvements to the `Fsm` prototype, thanks to @igncp.

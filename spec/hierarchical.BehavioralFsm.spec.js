@@ -31,7 +31,7 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 			client.__machina__[ "vehicle-signal" ].state.should.equal( "green" );
 		} );
 		it( "should issue reset input to child FSM of active parent state", function() {
-			events[ 5 ].should.eql( {
+			events[ 6 ].should.eql( {
 				name: "handling",
 				data: {
 					inputType: "_reset",
@@ -43,7 +43,7 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 			} );
 		} );
 		it( "should emit a 'vehicles - green' event", function() {
-			events[ 8 ].should.eql( { name: "vehicles", data: { status: "green", client: client } } );
+			events[ 9 ].should.eql( { name: "vehicles", data: { status: "green", client: client } } );
 		} );
 		it( "should not be listening to any events from child FSM of inactive parent state", function() {
 			_.any( events, function( item ) {
@@ -197,7 +197,7 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 				events[ 2 ].should.eql( { name: "vehicles", data: { status: "red", client: client } } );
 			} );
 			it( "should have child FSM of active parent state handle _reset input", function() {
-				events[ 4 ].should.eql( {
+				events[ 5 ].should.eql( {
 					name: "handling",
 					data: {
 						inputType: "_reset",
@@ -209,7 +209,7 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 				} );
 			} );
 			it( "should emit a 'pedestrians - walk' event", function() {
-				events[ 7 ].should.eql( { name: "pedestrians", data: { status: "Walk", client: client } } );
+				events[ 8 ].should.eql( { name: "pedestrians", data: { status: "Walk", client: client } } );
 			} );
 		} );
 		describe( "and parent FSM transitions into previously held state", function() {
@@ -234,7 +234,7 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 				this.clock.restore();
 			} );
 			it( "should cause child FSM to handle a _reset input", function() {
-				events[ 18 ].should.eql( {
+				events[ 22 ].should.eql( {
 					name: "transition",
 					data: {
 						fromState: "yellow",
@@ -246,7 +246,7 @@ describe( "Hierarchical machina.BehavioralFsm", function() {
 				} );
 			} );
 			it( "should emit a 'vehicles - green' event", function() {
-				events[ 19 ].should.eql( { name: "vehicles", data: { status: "green", client: client } } );
+				events[ 23 ].should.eql( { name: "vehicles", data: { status: "green", client: client } } );
 			} );
 		} );
 	} );

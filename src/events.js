@@ -4,6 +4,7 @@ module.exports = {
 	HANDLED: "handled",
 	NO_HANDLER: "nohandler",
 	TRANSITION: "transition",
+	TRANSITIONED: "transitioned",
 	INVALID_STATE: "invalidstate",
 	DEFERRED: "deferred",
 	NEW_FSM: "newfsm"

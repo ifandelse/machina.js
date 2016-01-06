@@ -79,6 +79,10 @@ _.extend( BehavioralFsm.prototype, {
 			[ _args[ 0 ] ].concat( _args.slice( 2 ) );
 	},
 
+	getSystemHandlerArgs: function( args, client ) {
+		return [ client ].concat( args );
+	},
+
 	handle: function( client, input ) {
 		var inputDef = input;
 		if ( typeof input === "undefined" ) {
@@ -148,6 +152,7 @@ _.extend( BehavioralFsm.prototype, {
 		var curStateObj = this.states[ curState ];
 		var newStateObj = this.states[ newState ];
 		var child;
+		var args = utils.getLeaklessArgs( arguments ).slice( 2 );
 		if ( !clientMeta.inExitHandler && newState !== curState ) {
 			if ( newStateObj ) {
 				child = this.configForState( newState );
@@ -166,7 +171,8 @@ _.extend( BehavioralFsm.prototype, {
 				} );
 				this.emit( events.TRANSITION, eventPayload );
 				if ( newStateObj._onEnter ) {
-					newStateObj._onEnter.call( this, client );
+					newStateObj._onEnter.apply( this, this.getSystemHandlerArgs( args, client ) );
+					this.emit( events.TRANSITIONED, eventPayload );
 				}
 				if ( child ) {
 					child.handle( client, "_reset" );

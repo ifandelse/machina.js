@@ -51,6 +51,11 @@ var Fsm = {
 			_args.slice( 1 ) :
 			_args.slice( 2 );
 	},
+
+	getSystemHandlerArgs: function( args, client ) {
+		return args;
+	},
+
 	// "classic" machina FSM do not emit the client property on events (which would be the FSM itself)
 	buildEventPayload: function() {
 		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );

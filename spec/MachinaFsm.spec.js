@@ -86,7 +86,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							namespace: fsm.namespace
 						}
 					} );
-					events[ 3 ].should.eql( {
+					events[ 4 ].should.eql( {
 						eventName: "handled",
 						data: {
 							inputType: "start",
@@ -127,7 +127,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							namespace: fsm.namespace
 						}
 					} );
-					events[ 3 ].should.eql( {
+					events[ 4 ].should.eql( {
 						eventName: "handled",
 						data: { inputType: "start",
 							delegated: true,
@@ -237,6 +237,15 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 						{
 							eventName: "ready-OnEnterFiring",
 							data: undefined
+						},
+						{
+							data: {
+								action: "uninitialized.start",
+								fromState: "uninitialized",
+								namespace: "specialSauceNamespace",
+								toState: "ready"
+							},
+							eventName: "transitioned"
 						},
 						{
 							eventName: "handling",
@@ -357,6 +366,15 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							data: undefined
 						},
 						{
+							data: {
+								action: "",
+								fromState: "uninitialized",
+								namespace: "specialSauceNamespace",
+								toState: "done"
+							},
+							eventName: "transitioned"
+						},
+						{
 							eventName: "handling",
 							data: {
 								inputType: "letsDoThis",
@@ -436,6 +454,15 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 						{
 							eventName: "ready-OnEnterFiring",
 							data: undefined
+						},
+						{
+							data: {
+								action: "uninitialized.letsDoThis",
+								fromState: "uninitialized",
+								namespace: "specialSauceNamespace",
+								toState: "ready"
+							},
+							eventName: "transitioned"
 						},
 						{
 							eventName: "handling",
@@ -611,6 +638,15 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							data: undefined
 						},
 						{
+							data: {
+								action: "uninitialized.start",
+								fromState: "uninitialized",
+								namespace: "specialSauceNamespace",
+								toState: "ready"
+							},
+							eventName: "transitioned"
+						},
+						{
 							eventName: "handled",
 							data: {
 								inputType: "start",
@@ -700,7 +736,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					fsm.handle( "start" );
 					events.map( function( evnt ) {
 						return evnt.eventName;
-					} ).should.eql( [ "handling", "transition", "ready-OnEnterFiring", "handled" ] );
+					} ).should.eql( [ "handling", "transition", "ready-OnEnterFiring", "transitioned", "handled" ] );
 				} );
 				it( "should allow specific events to be subscribed to", function() {
 					var fsm = fsmFactory.instanceWithOptions();
@@ -818,13 +854,34 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 
 					// Acting on fsmA should not affect fsmB
 					fsmA.handle( "start" );
-					eventA.length.should.equal( 4 );
+					eventA.length.should.equal( 5 );
 					eventB.length.should.equal( 0 );
 
 					fsmB.handle( "letsDoThis" );
 					fsmB.handle( "start" );
-					eventA.length.should.equal( 4 );
+					eventA.length.should.equal( 5 );
 					eventB.length.should.equal( 2 );
+				} );
+			} );
+			describe( "When passing arguments to transition", function() {
+				it( "should pass the arguments to the _onEnter handler", function() {
+					var custom;
+					var fsm = fsmFactory.instanceWithOptions( {
+						states: {
+							uninitialized: {
+								start: function() {
+									this.transition( "ready", "Custom args!" );
+								}
+							},
+							ready: {
+								_onEnter: function( customArgs ) {
+									custom = customArgs;
+								}
+							}
+						}
+					} );
+					fsm.handle( "start" );
+					custom.should.equal( "Custom args!" );
 				} );
 			} );
 			if ( fsmFactory.extendingWithStaticProps ) {

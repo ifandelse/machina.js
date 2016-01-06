@@ -29,7 +29,7 @@ describe( "Hierarchical machina.Fsm", function() {
 			crosswalk.states.vehiclesEnabled._child.instance.state.should.equal( "green" );
 		} );
 		it( "should issue reset input to child FSM of active parent state", function() {
-			events[ 2 ].should.eql( {
+			events[ 3 ].should.eql( {
 				name: "handling",
 				data: {
 					inputType: "_reset",
@@ -40,7 +40,7 @@ describe( "Hierarchical machina.Fsm", function() {
 			} );
 		} );
 		it( "should emit a 'vehicles - green' event", function() {
-			events[ 5 ].should.eql( { name: "vehicles", data: { status: "green" } } );
+			events[ 6 ].should.eql( { name: "vehicles", data: { status: "green" } } );
 		} );
 		it( "should not be listening to any events from child FSM of inactive parent state", function() {
 			_.any( events, function( item ) {
@@ -183,7 +183,7 @@ describe( "Hierarchical machina.Fsm", function() {
 				events[ 2 ].should.eql( { name: "vehicles", data: { status: "red" } } );
 			} );
 			it( "should have child FSM of active parent state handle _reset input", function() {
-				events[ 3 ].should.eql( {
+				events[ 4 ].should.eql( {
 					name: "handling",
 					data: {
 						inputType: "_reset",
@@ -194,7 +194,7 @@ describe( "Hierarchical machina.Fsm", function() {
 				} );
 			} );
 			it( "should emit a 'pedestrians - walk' event", function() {
-				events[ 6 ].should.eql( { name: "pedestrians", data: { status: "Walk" } } );
+				events[ 7 ].should.eql( { name: "pedestrians", data: { status: "Walk" } } );
 			} );
 		} );
 		describe( "and parent FSM transitions into previously held state", function() {
@@ -217,7 +217,7 @@ describe( "Hierarchical machina.Fsm", function() {
 				this.clock.restore();
 			} );
 			it( "should cause child FSM to handle a _reset input", function() {
-				events[ 17 ].should.eql( {
+				events[ 21 ].should.eql( {
 					name: "transition",
 					data: {
 						fromState: "yellow",
@@ -228,7 +228,7 @@ describe( "Hierarchical machina.Fsm", function() {
 				} );
 			} );
 			it( "should emit a 'vehicles - green' event", function() {
-				events[ 18 ].should.eql( { name: "vehicles", data: { status: "green" } } );
+				events[ 22 ].should.eql( { name: "vehicles", data: { status: "green" } } );
 			} );
 		} );
 	} );
