@@ -1,4 +1,4 @@
-### v2.0.0
+### v2.0.0-1
 
 * Refactored to use CommonJS modules and changed the build process to use webpack to generate a UMD.
 * Added the `transitioned` event, which fires after the `_onEnter` handler of a new state has completed execution.
