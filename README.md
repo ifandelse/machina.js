@@ -128,7 +128,7 @@ var vehicleSignal = new machina.Fsm( {
                 clearTimeout(this.timer);
             }
         }
-    }
+    },
 
     // While you can call the FSM's `handle` method externally, it doesn't
     // make for a terribly expressive API. As a general rule, you wrap calls
