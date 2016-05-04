@@ -84,7 +84,7 @@ var vehicleSignal = new machina.Fsm( {
                 this.timer = setTimeout( function() {
                     this.handle( "timeout" );
                 }.bind( this ), 30000 );
-                this.emit( "vehicles", { status: GREEN } );
+                this.emit( "vehicles", { status: "GREEN" } );
             },
             // If all you need to do is transition to a new state
             // inside an input handler, you can provide the string
@@ -109,7 +109,7 @@ var vehicleSignal = new machina.Fsm( {
                 }.bind( this ), 5000 );
                 // machina FSMs are event emitters. Here we're
                 // emitting a custom event and data, etc.
-                this.emit( "vehicles", { status: YELLOW } );
+                this.emit( "vehicles", { status: "YELLOW" } );
             },
             timeout: "red",
             _onExit: function() {
@@ -121,7 +121,7 @@ var vehicleSignal = new machina.Fsm( {
                 this.timer = setTimeout( function() {
                     this.handle( "timeout" );
                 }.bind( this ), 1000 );
-                this.emit( "vehicles", { status: RED } );
+                this.emit( "vehicles", { status: "RED" } );
             },
             _reset: "green",
             _onExit: function() {
