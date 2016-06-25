@@ -1,3 +1,11 @@
+### v2.0.0
+
+* Fix example code in README.md
+* Fixed #122 - Missing comma in readme example
+* Cleared out the currentActionArgs at the end of the handle behavior. (Fixes #127)
+* Ignored example directory for npm publishes.
+* Updated npm scripts to include call-through for all gulp tasks.
+
 ### v2.0.0-1
 
 * Refactored to use CommonJS modules and changed the build process to use webpack to generate a UMD.
