@@ -141,6 +141,7 @@ _.extend( BehavioralFsm.prototype, {
 				}
 				clientMeta.priorAction = clientMeta.currentAction;
 				clientMeta.currentAction = "";
+				clientMeta.currentActionArgs = undefined;
 			}
 		}
 		return result;

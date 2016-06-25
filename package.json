@@ -153,7 +153,11 @@
     "build": "gulp",
     "start": "gulp server",
     "test": "./node_modules/mocha/bin/mocha -r spec/helpers/node-setup.js spec",
+    "mocha": "gulp mocha",
     "coverage": "./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -x 'spec/**/*'  -- -r spec/helpers/node-setup.js spec spec/*.spec.js",
-    "show-coverage": "open ./coverage/lcov-report/index.html"
+    "show-coverage": "open ./coverage/lcov-report/index.html",
+    "lint": "gulp lint",
+    "format": "gulp format",
+    "watch": "gulp watch"
   }
 }
