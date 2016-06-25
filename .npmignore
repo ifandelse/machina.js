@@ -10,3 +10,4 @@ component.json
 bower*
 coverage*
 report*
+example/*
