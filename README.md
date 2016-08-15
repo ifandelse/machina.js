@@ -10,7 +10,7 @@ Some frequent use cases for machina:
 
 * online/offline connectivity management
 * conditional UI (menus, navigation, workflow)
-* initiliazation of node.js processes or single-page-apps
+* initialization of node.js processes or single-page-apps
 * responding to user input devices (remotes, keyboard, mouse, etc.)
 
 ### Quick Example
