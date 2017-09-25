@@ -488,7 +488,6 @@ machina.js uses [gulp.js](http://gulpjs.com/) to build.
 
 Go [here](https://github.com/ifandelse/machina.js/blob/master/changelog.md) to see the changelog.
 
-##Have More Questions?
+## Have More Questions?
+
 Read the [wiki](https://github.com/ifandelse/machina.js/wiki) and the source – you might find your answer and more! Check out the [issue](https://github.com/ifandelse/machina.js/issues/4) opened by @burin - a *great* example of how to use github issues to ask questions, provide sample code, etc. I only ask that if you open an issue, that it be *focused on a specific problem or bug* (not wide-open ambiguity, please).
-
-
