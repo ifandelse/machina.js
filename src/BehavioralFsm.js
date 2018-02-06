@@ -173,8 +173,8 @@ _.extend( BehavioralFsm.prototype, {
 				this.emit( events.TRANSITION, eventPayload );
 				if ( newStateObj._onEnter ) {
 					newStateObj._onEnter.apply( this, this.getSystemHandlerArgs( args, client ) );
-					this.emit( events.TRANSITIONED, eventPayload );
 				}
+				this.emit( events.TRANSITIONED, eventPayload );
 				if ( child ) {
 					child.handle( client, "_reset" );
 				}

@@ -97,7 +97,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					} );
 					var client = { name: "Dijkstra" };
 					fsm.handle( client, "start" );
-					events[ 1 ].should.eql( {
+					events[ 2 ].should.eql( {
 						eventName: "handling",
 						data: {
 							client: client,
@@ -107,7 +107,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							namespace: fsm.namespace
 						}
 					} );
-					events[ 5 ].should.eql( {
+					events[ 6 ].should.eql( {
 						eventName: "handled",
 						data: {
 							client: client,
@@ -142,7 +142,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					} );
 					var client = { name: "Dijkstra" };
 					fsm.handle( client, { inputType: "start", delegated: true, ticket: "8675309" } );
-					events[ 1 ].should.eql( {
+					events[ 2 ].should.eql( {
 						eventName: "handling",
 						data: {
 							client: client,
@@ -152,7 +152,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							namespace: fsm.namespace
 						}
 					} );
-					events[ 5 ].should.eql( {
+					events[ 6 ].should.eql( {
 						eventName: "handled",
 						data: {
 							client: client,
@@ -207,7 +207,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					} );
 					var client = { name: "Dijkstra" };
 					fsm.handle( client, "start" );
-					events[ 2 ].should.eql( {
+					events[ 3 ].should.eql( {
 						eventName: "transition",
 						data: {
 							fromState: "uninitialized",
@@ -217,8 +217,8 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							namespace: fsm.namespace
 						}
 					} );
-					events[ 3 ].should.eql( { eventName: "ready-OnEnterFiring", data: undefined } );
-					events[ 4 ].should.eql( {
+					events[ 4 ].should.eql( { eventName: "ready-OnEnterFiring", data: undefined } );
+					events[ 5 ].should.eql( {
 						eventName: "transitioned",
 						data: {
 							fromState: "uninitialized",
@@ -259,6 +259,16 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					events.should.eql( [
 						{
 							eventName: "transition",
+							data: {
+								fromState: undefined,
+								action: "",
+								toState: "uninitialized",
+								client: client,
+								namespace: fsm.namespace
+							}
+						},
+						{
+							eventName: "transitioned",
 							data: {
 								fromState: undefined,
 								action: "",
@@ -371,6 +381,16 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							}
 						},
 						{
+							eventName: "transitioned",
+							data: {
+								fromState: "ready",
+								action: "ready.letsDoThis",
+								toState: "notQuiteDone",
+								client: client,
+								namespace: fsm.namespace
+							}
+						},
+						{
 							eventName: "handled",
 							data: {
 								client: client,
@@ -416,6 +436,16 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					events.should.eql( [
 						{
 							eventName: "transition",
+							data: {
+								action: "",
+								fromState: undefined,
+								toState: "uninitialized",
+								client: client,
+								namespace: fsm.namespace
+							}
+						},
+						{
+							eventName: "transitioned",
 							data: {
 								action: "",
 								fromState: undefined,
@@ -542,6 +572,16 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							}
 						},
 						{
+							eventName: "transitioned",
+							data: {
+								action: "",
+								fromState: undefined,
+								toState: "uninitialized",
+								client: client,
+								namespace: "specialSauceNamespace"
+							}
+						},
+						{
 							eventName: "handling",
 							data: {
 								inputType: "letsDoThis",
@@ -625,6 +665,16 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							}
 						},
 						{
+							eventName: "transitioned",
+							data: {
+								fromState: "ready",
+								action: "ready.letsDoThis",
+								toState: "notQuiteDone",
+								client: client,
+								namespace: "specialSauceNamespace"
+							}
+						},
+						{
 							eventName: "handled",
 							data: {
 								inputType: "letsDoThis",
@@ -698,6 +748,16 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					events.should.eql( [
 						{
 							eventName: "transition",
+							data: {
+								fromState: undefined,
+								action: "",
+								toState: "uninitialized",
+								client: client,
+								namespace: fsm.namespace
+							}
+						},
+						{
+							eventName: "transitioned",
 							data: {
 								fromState: undefined,
 								action: "",
@@ -896,7 +956,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					} );
 					var client = { name: "Dijkstra" };
 					fsm.handle( client, "nope" );
-					events[ 1 ].eventName.should.equal( "nohandler" );
+					events[ 2 ].eventName.should.equal( "nohandler" );
 				} );
 			} );
 			describe( "When emitting events", function() {
@@ -910,7 +970,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					fsm.handle( client, "start" );
 					events.map( function( evnt ) {
 						return evnt.eventName;
-					} ).should.eql( [ "transition", "handling", "transition", "ready-OnEnterFiring", "transitioned", "handled" ] );
+					} ).should.eql( [ "transition", "transitioned", "handling", "transition", "ready-OnEnterFiring", "transitioned", "handled" ] );
 				} );
 				it( "should allow specific events to be subscribed to", function() {
 					var fsm = fsmFactory.instanceWithOptions();
@@ -1079,6 +1139,16 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							}
 						},
 						{
+							eventName: "transitioned",
+							data: {
+								fromState: undefined,
+								action: "",
+								toState: "uninitialized",
+								client: client,
+								namespace: fsm.namespace
+							}
+						},
+						{
 							eventName: "handling",
 							data: {
 								inputType: "start",
@@ -1129,7 +1199,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 
 					// Acting on fsmA should not affect fsmB
 					fsmA.handle( clientA, "start" );
-					eventA[ 2 ].should.eql( {
+					eventA[ 3 ].should.eql( {
 						eventName: "transition",
 						data: {
 							fromState: "uninitialized",
@@ -1139,12 +1209,12 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 							namespace: fsmA.namespace
 						}
 					} );
-					eventA[ 3 ].should.eql( { eventName: "ready-OnEnterFiring", data: undefined } );
+					eventA[ 4 ].should.eql( { eventName: "ready-OnEnterFiring", data: undefined } );
 					eventB.length.should.equal( 0 );
 
 					fsmB.handle( clientB, "letsDoThis" );
 					fsmB.handle( clientB, "start" );
-					eventA.length.should.equal( 6 );
+					eventA.length.should.equal( 7 );
 					eventB.length.should.equal( 5 );
 				} );
 			} );
