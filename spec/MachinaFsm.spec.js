@@ -276,6 +276,15 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							}
 						},
 						{
+							eventName: "transitioned",
+							data: {
+								fromState: "ready",
+								action: "ready.letsDoThis",
+								toState: "notQuiteDone",
+								namespace: fsm.namespace
+							}
+						},
+						{
 							eventName: "handled",
 							data: {
 								inputType: "letsDoThis",
@@ -485,6 +494,15 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 						},
 						{
 							eventName: "transition",
+							data: {
+								fromState: "ready",
+								action: "ready.letsDoThis",
+								toState: "notQuiteDone",
+								namespace: "specialSauceNamespace"
+							}
+						},
+						{
+							eventName: "transitioned",
 							data: {
 								fromState: "ready",
 								action: "ready.letsDoThis",
