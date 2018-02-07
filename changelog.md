@@ -1,3 +1,7 @@
+### v2.0.1
+
+* Fixed issue where the transitioned event was only firing if the state had handlers. (Fixes #137)
+
 ### v2.0.0
 
 * Fix example code in README.md
