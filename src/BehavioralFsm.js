@@ -222,7 +222,7 @@ _.extend( BehavioralFsm.prototype, {
 		clientMeta.inputQueue = _.difference( clientMeta.inputQueue, toProcess );
 		_.each( toProcess, function( item ) {
 			this.handle.apply( this, [ client ].concat( item.args ) );
-		}, this );
+		}.bind( this ) );
 	},
 
 	clearQueue: function( client, name ) {
