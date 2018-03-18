@@ -300,7 +300,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 										}
 									],
 									type: "transition",
-									untilState: "ready"
+									untilState: [ "ready" ]
 								},
 								client: client,
 								namespace: fsm.namespace
@@ -410,6 +410,143 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 								namespace: fsm.namespace
 							}
 						} ] );
+				} );
+				it( "should handle deferred-until-transition input properly (with multiple target states)", function() {
+					var fsm = fsmFactory.instanceWithOptions( {
+						states: {
+							uninitialized: {
+								letsDoThis: function( client ) {
+									this.deferUntilTransition( client, [ "done", "notQuiteDone" ] );
+								}
+							},
+							notQuiteDone: {
+								letsDoThis: function() {
+									this.emit( "weAlreadyDidThat" );
+								}
+							},
+							done: {
+								letsDoThis: function() {
+									this.emit( "weAlreadyDidThat" );
+								}
+							}
+						}
+					} );
+					var events = [];
+					fsm.on( "*", function( evnt, data ) {
+						events.push( { eventName: evnt, data: data } );
+					} );
+					var client = { name: "Dijkstra" };
+					fsm.handle( client, "letsDoThis" );
+					fsm.transition( client, "done" );
+					events.should.eql( [
+						{
+							eventName: "transition",
+							data: {
+								action: "",
+								fromState: undefined,
+								toState: "uninitialized",
+								client: client,
+								namespace: fsm.namespace
+							}
+						},
+						{
+							eventName: "transitioned",
+							data: {
+								action: "",
+								fromState: undefined,
+								toState: "uninitialized",
+								client: client,
+								namespace: fsm.namespace
+							}
+						},
+						{
+							eventName: "handling",
+							data: {
+								client: client,
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								namespace: fsm.namespace
+							}
+						},
+						{
+							eventName: "deferred",
+							data: {
+								state: "uninitialized",
+								queuedArgs: {
+									type: "transition",
+									untilState: [ "done", "notQuiteDone" ],
+									args: [
+										{
+											inputType: "letsDoThis",
+											delegated: false,
+											ticket: undefined
+										}
+									]
+								},
+								client: client,
+								namespace: fsm.namespace
+							}
+						},
+						{
+							eventName: "handled",
+							data: {
+								client: client,
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								namespace: fsm.namespace
+							}
+						},
+						{
+							eventName: "transition",
+							data: {
+								fromState: "uninitialized",
+								action: "",
+								toState: "done",
+								client: client,
+								namespace: fsm.namespace
+							}
+						},
+						{
+							eventName: "done-OnEnterFiring",
+							data: undefined
+						},
+						{
+							data: {
+								action: "",
+								client: client,
+								fromState: "uninitialized",
+								namespace: "specialSauceNamespace",
+								toState: "done"
+							},
+							eventName: "transitioned"
+						},
+						{
+							eventName: "handling",
+							data: {
+								client: client,
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								namespace: fsm.namespace
+							}
+						},
+						{
+							eventName: "weAlreadyDidThat",
+							data: undefined
+						},
+						{
+							eventName: "handled",
+							data: {
+								client: client,
+								inputType: "letsDoThis",
+								delegated: false,
+								ticket: undefined,
+								namespace: fsm.namespace
+							}
+						}
+					] );
 				} );
 				it( "should handle deferred-until-transition input properly (with NO target state)", function() {
 					var fsm = fsmFactory.instanceWithOptions( {
@@ -597,7 +734,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 								state: "uninitialized",
 								queuedArgs: {
 									type: "transition",
-									untilState: "ready",
+									untilState: [ "ready" ],
 									args: [
 										{
 											inputType: "letsDoThis",
@@ -733,7 +870,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					client.__machina__[ fsm.namespace ].inputQueue.should.eql( [
 						{
 							type: "transition",
-							untilState: "ready",
+							untilState: [ "ready" ],
 							args: [
 								{
 									inputType: "letsDoThis",
@@ -789,7 +926,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 										}
 									],
 									type: "transition",
-									untilState: "ready"
+									untilState: [ "ready" ]
 								},
 								client: client,
 								namespace: fsm.namespace
@@ -879,7 +1016,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 									this.deferUntilTransition( client, "done" );
 								},
 								deferMeUntilNotQuiteDone: function( client ) {
-									this.deferUntilTransition( client, "notQuiteDone" );
+									this.deferUntilTransition( client, [ "notQuiteDone", "done" ] );
 								}
 							}
 						}
@@ -894,7 +1031,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					client.__machina__[ fsm.namespace ].inputQueue.should.eql( [
 						{
 							type: "transition",
-							untilState: "done",
+							untilState: [ "done" ],
 							args: [
 								{
 									inputType: "deferMeUntilDone",
@@ -905,7 +1042,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 						},
 						{
 							type: "transition",
-							untilState: "notQuiteDone",
+							untilState: [ "notQuiteDone", "done" ],
 							args: [
 								{
 									inputType: "deferMeUntilNotQuiteDone",
@@ -919,7 +1056,7 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 					client.__machina__[ fsm.namespace ].inputQueue.should.eql( [
 						{
 							type: "transition",
-							untilState: "notQuiteDone",
+							untilState: [ "notQuiteDone" ],
 							args: [
 								{
 									inputType: "deferMeUntilNotQuiteDone",

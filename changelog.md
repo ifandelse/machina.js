@@ -1,3 +1,14 @@
+### v3.0.0
+
+* Updated `deferUntilTransition` to support passing the string value of a single state OR an array of target states.
+* Removed bower.json & component.json files.
+
+
+### v2.0.2
+
+* Fix broken formatting in README.md
+* Fixed issue where `this` gets lost on processQueue by changing binding approach - #147
+
 ### v2.0.1
 
 * Fixed issue where the transitioned event was only firing if the state had handlers. (Fixes #137)

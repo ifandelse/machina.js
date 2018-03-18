@@ -202,7 +202,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 										}
 									],
 									type: "transition",
-									untilState: "ready"
+									untilState: [ "ready" ]
 								},
 								namespace: fsm.namespace
 							}
@@ -439,7 +439,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								state: "uninitialized",
 								queuedArgs: {
 									type: "transition",
-									untilState: "ready",
+									untilState: [ "ready" ],
 									args: [
 										{
 											inputType: "letsDoThis",
@@ -565,7 +565,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					fsm.inputQueue.should.eql( [
 						{
 							type: "transition",
-							untilState: "ready",
+							untilState: [ "ready" ],
 							args: [
 								{
 									inputType: "letsDoThis",
@@ -593,7 +593,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								state: "uninitialized",
 								queuedArgs: {
 									type: "transition",
-									untilState: "ready",
+									untilState: [ "ready" ],
 									args: [
 										{
 											inputType: "letsDoThis",
@@ -698,7 +698,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					fsm.inputQueue.should.eql( [
 						{
 							type: "transition",
-							untilState: "done",
+							untilState: [ "done" ],
 							args: [
 								{
 									inputType: "deferMeUntilDone",
@@ -709,7 +709,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 						},
 						{
 							type: "transition",
-							untilState: "notQuiteDone",
+							untilState: [ "notQuiteDone" ],
 							args: [
 								{
 									inputType: "deferMeUntilNotQuiteDone",
@@ -723,7 +723,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					fsm.inputQueue.should.eql( [
 						{
 							type: "transition",
-							untilState: "notQuiteDone",
+							untilState: [ "notQuiteDone" ],
 							args: [
 								{
 									inputType: "deferMeUntilNotQuiteDone",
