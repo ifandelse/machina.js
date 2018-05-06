@@ -104,5 +104,47 @@ describe( "Machina Namespace Events", function() {
 				console.log = log;
 			} );
 		} );
+
+		after( function() {
+			machina.off( "*" );
+		} );
+	} );
+	describe( "when specifying a factory function", function() {
+		it( "should only be called once when specified as a function", function() {
+			var counter = 0;
+			var child = new machina.Fsm( { states: { uninitialized: {} } } );
+
+			new machina.Fsm( {
+				states: {
+					uninitialized: {
+						_child: function() {
+							counter += 1;
+							return child;
+						}
+					}
+				}
+			} );
+
+			counter.should.equal( 1 );
+		} );
+		it( "should only be called once when specified in a configuration object", function() {
+			var counter = 0;
+			var child = new machina.Fsm( { states: { uninitialized: {} } } );
+
+			new machina.Fsm( {
+				states: {
+					uninitialized: {
+						_child: {
+							factory: function() {
+								counter += 1;
+								return child;
+							}
+						}
+					}
+				}
+			} );
+
+			counter.should.equal( 1 );
+		} );
 	} );
 } );
