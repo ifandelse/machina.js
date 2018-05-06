@@ -27,7 +27,7 @@ _.extend( BehavioralFsm.prototype, {
 		this.transition( client, initialState );
 	},
 
-	configForState: function configForState( newState ) {
+	configForState: function configForState( newState, instantiateClient ) {
 		var newStateObj = this.states[ newState ];
 		var child;
 		_.each( this.hierarchy, function( childListener, key ) {
@@ -37,7 +37,10 @@ _.extend( BehavioralFsm.prototype, {
 		} );
 
 		if ( newStateObj._child ) {
-			newStateObj._child = utils.getChildFsmInstance( newStateObj._child );
+			if ( instantiateClient ) {
+				newStateObj._child = utils.getChildFsmInstance( newStateObj._child );
+			}
+
 			child = newStateObj._child && newStateObj._child.instance;
 			this.hierarchy[ child.namespace ] = utils.listenToChild( this, child );
 		}
@@ -106,7 +109,7 @@ _.extend( BehavioralFsm.prototype, {
 		var result;
 		var action;
 		if ( !clientMeta.inExitHandler ) {
-			child = this.configForState( currentState );
+			child = this.configForState( currentState, false );
 			if ( child && !this.pendingDelegations[ inputDef.ticket ] && !inputDef.bubbling ) {
 				inputDef.ticket = ( inputDef.ticket || utils.createUUID() );
 				inputDef.delegated = true;
@@ -156,7 +159,7 @@ _.extend( BehavioralFsm.prototype, {
 		var args = utils.getLeaklessArgs( arguments ).slice( 2 );
 		if ( !clientMeta.inExitHandler && newState !== curState ) {
 			if ( newStateObj ) {
-				child = this.configForState( newState );
+				child = this.configForState( newState, true );
 				if ( curStateObj && curStateObj._onExit ) {
 					clientMeta.inExitHandler = true;
 					curStateObj._onExit.call( this, client );
