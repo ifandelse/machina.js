@@ -60,7 +60,6 @@ function getChildFsmInstance( config ) {
 		// is this a config object with a factory?
 		if ( config.factory ) {
 			childFsmDefinition = config;
-			childFsmDefinition.instance = childFsmDefinition.factory();
 		} else {
 			// assuming this is a machina instance
 			childFsmDefinition.factory = function() {
