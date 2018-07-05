@@ -193,10 +193,11 @@ _.extend( BehavioralFsm.prototype, {
 
 	deferUntilTransition: function( client, stateName ) {
 		var clientMeta = this.ensureClientMeta( client );
+		var stateList = _.isArray( stateName ) ? stateName : ( stateName ? [ stateName ] : undefined );
 		if ( clientMeta.currentActionArgs ) {
 			var queued = {
 				type: events.NEXT_TRANSITION,
-				untilState: stateName,
+				untilState: stateList,
 				args: clientMeta.currentActionArgs
 			};
 			clientMeta.inputQueue.push( queued );
@@ -216,7 +217,7 @@ _.extend( BehavioralFsm.prototype, {
 	processQueue: function( client ) {
 		var clientMeta = this.ensureClientMeta( client );
 		var filterFn = function( item ) {
-			return ( ( !item.untilState ) || ( item.untilState === clientMeta.state ) );
+			return ( ( !item.untilState ) || ( _.includes( item.untilState, clientMeta.state ) ) );
 		};
 		var toProcess = _.filter( clientMeta.inputQueue, filterFn );
 		clientMeta.inputQueue = _.difference( clientMeta.inputQueue, toProcess );
@@ -230,8 +231,13 @@ _.extend( BehavioralFsm.prototype, {
 		if ( !name ) {
 			clientMeta.inputQueue = [];
 		} else {
+			// first pass we remove the target state from any `untilState` array
+			_.each( clientMeta.inputQueue, function( item ) {
+				item.untilState = _.without( item.untilState, name );
+			} );
+			// second pass we clear out deferred events with empty untilState arrays
 			var filter = function( evnt ) {
-				return ( name ? evnt.untilState !== name : true );
+				return evnt.untilState.length !== 0;
 			};
 			clientMeta.inputQueue = _.filter( clientMeta.inputQueue, filter );
 		}
