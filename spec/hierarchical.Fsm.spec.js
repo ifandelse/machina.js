@@ -43,7 +43,7 @@ describe( "Hierarchical machina.Fsm", function() {
 			events[ 6 ].should.eql( { name: "vehicles", data: { status: "green" } } );
 		} );
 		it( "should not be listening to any events from child FSM of inactive parent state", function() {
-			_.any( events, function( item ) {
+			_.some( events, function( item ) {
 				return item.name === "FakeEvent";
 			} ).should.equal( false );
 		} );

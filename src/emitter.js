@@ -19,7 +19,7 @@ function getInstance() {
 							}
 						}
 					}
-				}, this );
+				}.bind( this ) );
 			}
 			if ( this.eventListeners[ eventName ] ) {
 				_.each( this.eventListeners[ eventName ], function( callback ) {
@@ -35,7 +35,7 @@ function getInstance() {
 							}
 						}
 					}
-				}, this );
+				}.bind( this ) );
 			}
 		},
 
