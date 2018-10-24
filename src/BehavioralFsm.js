@@ -194,24 +194,41 @@ _.extend( BehavioralFsm.prototype, {
 	deferUntilTransition: function( client, stateName ) {
 		var clientMeta = this.ensureClientMeta( client );
 		var stateList = _.isArray( stateName ) ? stateName : ( stateName ? [ stateName ] : undefined );
+		var prom = null;
 		if ( clientMeta.currentActionArgs ) {
-			var queued = {
-				type: events.NEXT_TRANSITION,
-				untilState: stateList,
-				args: clientMeta.currentActionArgs
-			};
-			clientMeta.inputQueue.push( queued );
-			var eventPayload = this.buildEventPayload( client, {
-				state: clientMeta.state,
-				queuedArgs: queued
-			} );
-			this.emit( events.DEFERRED, eventPayload );
+			var addToQueue = ( function( callback ) {
+				var queued = {
+					type: events.NEXT_TRANSITION,
+					untilState: stateList,
+					args: clientMeta.currentActionArgs
+				};
+				if ( callback ) {
+					queued.callback = callback;
+				}
+				clientMeta.inputQueue.push( queued );
+
+				var eventPayload = this.buildEventPayload( client, {
+					state: clientMeta.state,
+					queuedArgs: queued
+				} );
+				this.emit( events.DEFERRED, eventPayload );
+			} ).bind( this );
+			if ( Promise ) {
+				prom = new Promise( function( resolve ) {
+					addToQueue( resolve );
+				} );
+			} else {
+				addToQueue();
+			}
 		}
+
+		return prom;
 	},
 
 	deferAndTransition: function( client, stateName ) {
-		this.deferUntilTransition( client, stateName );
+		var prom = this.deferUntilTransition( client, stateName );
 		this.transition( client, stateName );
+		return prom;
 	},
 
 	processQueue: function( client ) {
@@ -222,7 +239,10 @@ _.extend( BehavioralFsm.prototype, {
 		var toProcess = _.filter( clientMeta.inputQueue, filterFn );
 		clientMeta.inputQueue = _.difference( clientMeta.inputQueue, toProcess );
 		_.each( toProcess, function( item ) {
-			this.handle.apply( this, [ client ].concat( item.args ) );
+			var value = this.handle.apply( this, [ client ].concat( item.args ) );
+			if ( item.callback ) {
+				item.callback( value );
+			}
 		}.bind( this ) );
 	},
 
