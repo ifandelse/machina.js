@@ -1067,6 +1067,30 @@ function runBehavioralFsmSpec( description, fsmFactory ) {
 						}
 					] );
 				} );
+				( Promise ? it : it.skip )( "should return a promise when an action is deferred", function( done ) {
+					var fsm = fsmFactory.instanceWithOptions( {
+						states: {
+							uninitialized: {
+								deferMeUntilDone: function( client ) {
+									return this.deferUntilTransition( client, "done" );
+								}
+							},
+							done: {
+								deferMeUntilDone: function() {
+									return "Dijkstra";
+								}
+							}
+						}
+					} );
+					var client = {};
+					var prom = fsm.handle( client, "deferMeUntilDone" );
+					prom.should.be.an.instanceof( Promise );
+					fsm.transition( client, "done" );
+					prom.then( function( actual ) {
+						actual.should.equal( "Dijkstra" );
+						done();
+					} );
+				} );
 				it( "should throw an exception if a string is used as a client", function() {
 					var fsm = fsmFactory.instanceWithOptions();
 					( function() {
