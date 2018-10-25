@@ -1,8 +1,10 @@
+### v4.0.0
+* Updated lodash to 4.x (made this a major bump due to impact on client side bundling scenarios that still used lodash 3.x)
+
 ### v3.0.0
 
 * Updated `deferUntilTransition` to support passing the string value of a single state OR an array of target states.
 * Removed bower.json & component.json files.
-
 
 ### v2.0.2
 
