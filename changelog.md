@@ -1,3 +1,6 @@
+### v4.0.1
+* Updated express (dev dependency) to ^3.11
+
 ### v4.0.0
 * Updated lodash to 4.x (made this a major bump due to impact on client side bundling scenarios that still used lodash 3.x)
 
