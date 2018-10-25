@@ -104,7 +104,7 @@
   },
   "devDependencies": {
     "bower": "1.x",
-    "express": "~3.4.7",
+    "express": "^3.11.0",
     "gulp": "~3.9.0",
     "gulp-changed": "^1.2.1",
     "gulp-eslint": "^1.1.1",
