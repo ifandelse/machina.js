@@ -1,3 +1,6 @@
+### v4.0.2
+* Updated lodash to ^4.17.5
+
 ### v4.0.1
 * Updated express (dev dependency) to ^3.11
 
