@@ -137,7 +137,8 @@
     "open": "~0.0.4",
     "should": "^6.0.3",
     "sinon": "~1.11.0",
-    "source-map-loader": "^0.1.5"
+    "source-map-loader": "^0.1.5",
+    "typescript": "^3.5.2"
   },
   "licenses": [
     {
@@ -151,6 +152,7 @@
   ],
   "scripts": {
     "build": "gulp",
+    "build-types": "tsc",
     "start": "gulp server",
     "test": "./node_modules/mocha/bin/mocha -r spec/helpers/node-setup.js spec",
     "mocha": "gulp mocha",
@@ -159,5 +161,6 @@
     "lint": "gulp lint",
     "format": "gulp format",
     "watch": "gulp watch"
-  }
+  },
+  "types": "./types/index.d.ts"
 }
