@@ -1,3 +1,6 @@
+### v4.0.3
+* Updated lodash to ^4.17.15
+
 ### v4.0.2
 * Updated lodash to ^4.17.5
 
