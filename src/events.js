@@ -7,5 +7,5 @@ module.exports = {
 	TRANSITIONED: "transitioned",
 	INVALID_STATE: "invalidstate",
 	DEFERRED: "deferred",
-	NEW_FSM: "newfsm"
+	NEW_FSM: "newfsm",
 };

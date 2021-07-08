@@ -1,6 +1,6 @@
-var _ = require( "lodash" );
-var machina = require( "../lib/machina.js" );
-var specFactory = require( "./helpers/fsmFactory.js" )( machina );
+const _ = require( "lodash" );
+const machina = require( "../lib/machina.js" );
+const specFactory = require( "./helpers/fsmFactory.js" )( machina );
 
 /*
     This is a spec factory that takes a description and
@@ -12,7 +12,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 	describe( "MachinaFsm", function() {
 		describe( description, function() {
 			describe( "and assuming defaults", function() {
-				var fsm;
+				let fsm;
 				before( function() {
 					fsm = fsmFactory.instanceWithDefaults();
 				} );
@@ -23,11 +23,11 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					fsm.namespace.should.match( /fsm\.[0-9]*/ );
 				} );
 				it( "should default to empty states object", function() {
-					fsm.states.should.eql( { uninitialized: {} } );
+					fsm.states.should.eql( { uninitialized: {}, } );
 				} );
 			} );
 			describe( "and passing in options", function() {
-				var fsm;
+				let fsm;
 				before( function() {
 					fsm = fsmFactory.instanceWithOptions();
 				} );
@@ -46,35 +46,35 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 				} );
 				it( "should throw if the initialState prop isn't set", function() {
 					( function() {
-						fsmFactory.instanceWithOptions( { initialState: null } );
+						fsmFactory.instanceWithOptions( { initialState: null, } );
 					} ).should.throw( /You must specify an initial state for this FSM/ );
 				} );
 				it( "should throw if the initial state specified doesn't exist", function() {
 					( function() {
-						fsmFactory.instanceWithOptions( { initialState: "howdy" } );
+						fsmFactory.instanceWithOptions( { initialState: "howdy", } );
 					} ).should.throw( /The initial state specified does not exist in the states object/ );
 				} );
 				it( "should invoke a custom initialize method", function() {
-					var fsm = fsmFactory.instanceWithOptions( {
-						initialize: function() {
+					fsm = fsmFactory.instanceWithOptions( {
+						initialize() {
 							this.initializeHasExecuted = true;
-						}
+						},
 					} );
-					fsm.initializeHasExecuted.should.be.true;
+					fsm.initializeHasExecuted.should.be.true();
 				} );
 			} );
 			describe( "When acting on itself as the client", function() {
 				it( "should throw if handle is passed an undefined input value", function() {
-					var fsm = fsmFactory.instanceWithOptions();
+					const fsm = fsmFactory.instanceWithOptions();
 					( function() {
 						fsm.handle();
 					} ).should.throw( /input argument passed/ );
 				} );
 				it( "should handle input without arguments", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var events = [];
+					const fsm = fsmFactory.instanceWithOptions();
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
 					fsm.handle( "start" );
 					events[ 0 ].should.eql( {
@@ -83,8 +83,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							inputType: "start",
 							delegated: false,
 							ticket: undefined,
-							namespace: fsm.namespace
-						}
+							namespace: fsm.namespace,
+						},
 					} );
 					events[ 4 ].should.eql( {
 						eventName: "handled",
@@ -92,56 +92,55 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							inputType: "start",
 							delegated: false,
 							ticket: undefined,
-							namespace: fsm.namespace
-						}
+							namespace: fsm.namespace,
+						},
 					} );
 					fsm.state.should.equal( "ready" );
 					fsm.compositeState().should.equal( "ready" );
 				} );
 				it( "should handle input with arguments", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var events = [];
-					var res;
+					const fsm = fsmFactory.instanceWithOptions();
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
 					fsm.handle( "start" );
-					res = fsm.handle( "canWeDoThis", "Grace Hopper" );
+					const res = fsm.handle( "canWeDoThis", "Grace Hopper" );
 					res.should.equal( "yep, Grace Hopper can do it." );
 					fsm.state.should.equal( "ready" );
 					fsm.compositeState().should.equal( "ready" );
 				} );
 				it( "should handle an object form inputType", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var events = [];
+					const fsm = fsmFactory.instanceWithOptions();
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
-					fsm.handle( { inputType: "start", delegated: true, ticket: "8675309" } );
+					fsm.handle( { inputType: "start", delegated: true, ticket: "8675309", } );
 					events[ 0 ].should.eql( {
 						eventName: "handling",
 						data: {
 							inputType: "start",
 							delegated: true,
 							ticket: "8675309",
-							namespace: fsm.namespace
-						}
+							namespace: fsm.namespace,
+						},
 					} );
 					events[ 4 ].should.eql( {
 						eventName: "handled",
 						data: { inputType: "start",
 							delegated: true,
 							ticket: "8675309",
-							namespace: fsm.namespace }
+							namespace: fsm.namespace, },
 					} );
 					fsm.state.should.equal( "ready" );
 					fsm.compositeState().should.equal( "ready" );
 				} );
 				it( "should transition properly", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var events = [];
+					const fsm = fsmFactory.instanceWithOptions();
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
 					fsm.handle( "start" );
 					events[ 1 ].should.eql( {
@@ -150,16 +149,16 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 							fromState: "uninitialized",
 							action: "uninitialized.start",
 							toState: "ready",
-							namespace: fsm.namespace
-						}
+							namespace: fsm.namespace,
+						},
 					} );
-					events[ 2 ].should.eql( { eventName: "ready-OnEnterFiring", data: undefined } );
+					events[ 2 ].should.eql( { eventName: "ready-OnEnterFiring", data: undefined, } );
 				} );
 				it( "should emit an 'invalidstate' event when attempting to transition into a non-existent state", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var events = [];
+					const fsm = fsmFactory.instanceWithOptions();
+					const events = [];
 					fsm.on( "invalidstate", function( data ) {
-						events.push( { eventName: "invalidstate", data: data } );
+						events.push( { eventName: "invalidstate", data, } );
 					} );
 					fsm.transition( "gotoIsntHarmful" );
 					events[ 0 ].should.eql( {
@@ -167,15 +166,15 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 						data: {
 							state: "uninitialized",
 							attemptedState: "gotoIsntHarmful",
-							namespace: fsm.namespace
-						}
+							namespace: fsm.namespace,
+						},
 					} );
 				} );
 				it( "should handle deferred-until-transition input properly", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var events = [];
+					const fsm = fsmFactory.instanceWithOptions();
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
 					fsm.handle( "letsDoThis" );
 					fsm.handle( "start" );
@@ -186,8 +185,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "deferred",
@@ -198,14 +197,14 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 										{
 											inputType: "letsDoThis",
 											delegated: false,
-											ticket: undefined
-										}
+											ticket: undefined,
+										},
 									],
 									type: "transition",
-									untilState: [ "ready" ]
+									untilState: [ "ready", ],
 								},
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "handled",
@@ -213,8 +212,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "handling",
@@ -222,8 +221,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "start",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "transition",
@@ -231,21 +230,21 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								fromState: "uninitialized",
 								action: "uninitialized.start",
 								toState: "ready",
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "ready-OnEnterFiring",
-							data: undefined
+							data: undefined,
 						},
 						{
 							data: {
 								action: "uninitialized.start",
 								fromState: "uninitialized",
 								namespace: "specialSauceNamespace",
-								toState: "ready"
+								toState: "ready",
 							},
-							eventName: "transitioned"
+							eventName: "transitioned",
 						},
 						{
 							eventName: "handling",
@@ -253,18 +252,18 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "WeAreDoingThis",
 							data: {
-								someprop: "someval"
-							}
+								someprop: "someval",
+							},
 						},
 						{
 							eventName: "ready-OnExitFiring",
-							data: undefined
+							data: undefined,
 						},
 						{
 							eventName: "transition",
@@ -272,8 +271,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								fromState: "ready",
 								action: "ready.letsDoThis",
 								toState: "notQuiteDone",
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "transitioned",
@@ -281,8 +280,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								fromState: "ready",
 								action: "ready.letsDoThis",
 								toState: "notQuiteDone",
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "handled",
@@ -290,8 +289,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "handled",
@@ -299,28 +298,28 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "start",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
-						} ] );
+								namespace: fsm.namespace,
+							},
+						}, ] );
 				} );
 				it( "should handle deferred-until-transition input properly (with NO target state)", function() {
-					var fsm = fsmFactory.instanceWithOptions( {
+					const fsm = fsmFactory.instanceWithOptions( {
 						states: {
 							uninitialized: {
-								letsDoThis: function( client ) {
+								letsDoThis( client ) {
 									this.deferUntilTransition( client );
-								}
+								},
 							},
 							done: {
-								letsDoThis: function() {
+								letsDoThis() {
 									this.emit( "weAlreadyDidThat" );
-								}
-							}
-						}
+								},
+							},
+						},
 					} );
-					var events = [];
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
 					fsm.handle( "letsDoThis" );
 					fsm.transition( "done" );
@@ -331,8 +330,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "deferred",
@@ -345,12 +344,12 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 										{
 											inputType: "letsDoThis",
 											delegated: false,
-											ticket: undefined
-										}
-									]
+											ticket: undefined,
+										},
+									],
 								},
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "handled",
@@ -358,8 +357,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "transition",
@@ -367,21 +366,21 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								fromState: "uninitialized",
 								action: "",
 								toState: "done",
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "done-OnEnterFiring",
-							data: undefined
+							data: undefined,
 						},
 						{
 							data: {
 								action: "",
 								fromState: "uninitialized",
 								namespace: "specialSauceNamespace",
-								toState: "done"
+								toState: "done",
 							},
-							eventName: "transitioned"
+							eventName: "transitioned",
 						},
 						{
 							eventName: "handling",
@@ -389,12 +388,12 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "weAlreadyDidThat",
-							data: undefined
+							data: undefined,
 						},
 						{
 							eventName: "handled",
@@ -402,24 +401,24 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
-						}
+								namespace: fsm.namespace,
+							},
+						},
 					] );
 				} );
 				it( "should handle deferAndTransition properly", function() {
-					var fsm = fsmFactory.instanceWithOptions( {
+					const fsm = fsmFactory.instanceWithOptions( {
 						states: {
 							uninitialized: {
-								letsDoThis: function() {
+								letsDoThis() {
 									this.deferAndTransition( "ready" );
-								}
-							}
-						}
+								},
+							},
+						},
 					} );
-					var events = [];
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
 					fsm.handle( "letsDoThis" );
 					fsm.handle( "start" );
@@ -430,8 +429,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: "specialSauceNamespace"
-							}
+								namespace: "specialSauceNamespace",
+							},
 						},
 						{
 							eventName: "deferred",
@@ -439,17 +438,17 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								state: "uninitialized",
 								queuedArgs: {
 									type: "transition",
-									untilState: [ "ready" ],
+									untilState: [ "ready", ],
 									args: [
 										{
 											inputType: "letsDoThis",
 											delegated: false,
-											ticket: undefined
-										}
-									]
+											ticket: undefined,
+										},
+									],
 								},
-								namespace: "specialSauceNamespace"
-							}
+								namespace: "specialSauceNamespace",
+							},
 						},
 						{
 							eventName: "transition",
@@ -457,21 +456,21 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								fromState: "uninitialized",
 								action: "uninitialized.letsDoThis",
 								toState: "ready",
-								namespace: "specialSauceNamespace"
-							}
+								namespace: "specialSauceNamespace",
+							},
 						},
 						{
 							eventName: "ready-OnEnterFiring",
-							data: undefined
+							data: undefined,
 						},
 						{
 							data: {
 								action: "uninitialized.letsDoThis",
 								fromState: "uninitialized",
 								namespace: "specialSauceNamespace",
-								toState: "ready"
+								toState: "ready",
 							},
-							eventName: "transitioned"
+							eventName: "transitioned",
 						},
 						{
 							eventName: "handling",
@@ -479,18 +478,18 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: "specialSauceNamespace"
-							}
+								namespace: "specialSauceNamespace",
+							},
 						},
 						{
 							eventName: "WeAreDoingThis",
 							data: {
-								someprop: "someval"
-							}
+								someprop: "someval",
+							},
 						},
 						{
 							eventName: "ready-OnExitFiring",
-							data: undefined
+							data: undefined,
 						},
 						{
 							eventName: "transition",
@@ -498,8 +497,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								fromState: "ready",
 								action: "ready.letsDoThis",
 								toState: "notQuiteDone",
-								namespace: "specialSauceNamespace"
-							}
+								namespace: "specialSauceNamespace",
+							},
 						},
 						{
 							eventName: "transitioned",
@@ -507,8 +506,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								fromState: "ready",
 								action: "ready.letsDoThis",
 								toState: "notQuiteDone",
-								namespace: "specialSauceNamespace"
-							}
+								namespace: "specialSauceNamespace",
+							},
 						},
 						{
 							eventName: "handled",
@@ -516,8 +515,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: "specialSauceNamespace"
-							}
+								namespace: "specialSauceNamespace",
+							},
 						},
 						{
 							eventName: "handled",
@@ -525,8 +524,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: "specialSauceNamespace"
-							}
+								namespace: "specialSauceNamespace",
+							},
 						},
 						{
 							eventName: "nohandler",
@@ -536,44 +535,44 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 									{
 										inputType: "start",
 										delegated: false,
-										ticket: undefined
-									}
+										ticket: undefined,
+									},
 								],
 								inputType: "start",
 								delegated: false,
 								namespace: "specialSauceNamespace",
-								ticket: undefined
-							}
-						}
+								ticket: undefined,
+							},
+						},
 					] );
 				} );
 				it( "should clear queued input when calling clearQueue", function() {
-					var fsm = fsmFactory.instanceWithOptions( {
+					const fsm = fsmFactory.instanceWithOptions( {
 						states: {
 							uninitialized: {
-								anotherInputHandler: function() {
+								anotherInputHandler() {
 									this.clearQueue();
-								}
-							}
-						}
+								},
+							},
+						},
 					} );
-					var events = [];
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
 					fsm.handle( "letsDoThis" );
 					fsm.inputQueue.should.eql( [
 						{
 							type: "transition",
-							untilState: [ "ready" ],
+							untilState: [ "ready", ],
 							args: [
 								{
 									inputType: "letsDoThis",
 									delegated: false,
-									ticket: undefined
-								}
-							]
-						}
+									ticket: undefined,
+								},
+							],
+						},
 					] );
 					fsm.handle( "anotherInputHandler" );
 					fsm.handle( "start" );
@@ -584,8 +583,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "deferred",
@@ -593,17 +592,17 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								state: "uninitialized",
 								queuedArgs: {
 									type: "transition",
-									untilState: [ "ready" ],
+									untilState: [ "ready", ],
 									args: [
 										{
 											inputType: "letsDoThis",
 											delegated: false,
-											ticket: undefined
-										}
-									]
+											ticket: undefined,
+										},
+									],
 								},
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "handled",
@@ -611,8 +610,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "letsDoThis",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "handling",
@@ -620,8 +619,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "anotherInputHandler",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "handled",
@@ -629,8 +628,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "anotherInputHandler",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "handling",
@@ -638,8 +637,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "start",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "transition",
@@ -648,21 +647,21 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								fromState: "uninitialized",
 								action: "uninitialized.start",
 								toState: "ready",
-								namespace: fsm.namespace
-							}
+								namespace: fsm.namespace,
+							},
 						},
 						{
 							eventName: "ready-OnEnterFiring",
-							data: undefined
+							data: undefined,
 						},
 						{
 							data: {
 								action: "uninitialized.start",
 								fromState: "uninitialized",
 								namespace: "specialSauceNamespace",
-								toState: "ready"
+								toState: "ready",
 							},
-							eventName: "transitioned"
+							eventName: "transitioned",
 						},
 						{
 							eventName: "handled",
@@ -670,75 +669,75 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								inputType: "start",
 								delegated: false,
 								ticket: undefined,
-								namespace: fsm.namespace
-							}
-						}
+								namespace: fsm.namespace,
+							},
+						},
 					] );
 					fsm.inputQueue.should.eql( [] );
 				} );
 				it( "should clear relevant queued input when calling clearQueue & passing the target state", function() {
-					var fsm = fsmFactory.instanceWithOptions( {
+					const fsm = fsmFactory.instanceWithOptions( {
 						states: {
 							uninitialized: {
-								deferMeUntilDone: function() {
+								deferMeUntilDone() {
 									this.deferUntilTransition( "done" );
 								},
-								deferMeUntilNotQuiteDone: function() {
+								deferMeUntilNotQuiteDone() {
 									this.deferUntilTransition( "notQuiteDone" );
-								}
-							}
-						}
+								},
+							},
+						},
 					} );
-					var events = [];
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
 					fsm.handle( "deferMeUntilDone" );
 					fsm.handle( "deferMeUntilNotQuiteDone" );
 					fsm.inputQueue.should.eql( [
 						{
 							type: "transition",
-							untilState: [ "done" ],
+							untilState: [ "done", ],
 							args: [
 								{
 									inputType: "deferMeUntilDone",
 									delegated: false,
-									ticket: undefined
-								}
-							]
+									ticket: undefined,
+								},
+							],
 						},
 						{
 							type: "transition",
-							untilState: [ "notQuiteDone" ],
+							untilState: [ "notQuiteDone", ],
 							args: [
 								{
 									inputType: "deferMeUntilNotQuiteDone",
 									delegated: false,
-									ticket: undefined
-								}
-							]
-						}
+									ticket: undefined,
+								},
+							],
+						},
 					] );
 					fsm.clearQueue( "done" );
 					fsm.inputQueue.should.eql( [
 						{
 							type: "transition",
-							untilState: [ "notQuiteDone" ],
+							untilState: [ "notQuiteDone", ],
 							args: [
 								{
 									inputType: "deferMeUntilNotQuiteDone",
 									delegated: false,
-									ticket: undefined
-								}
-							]
-						}
+									ticket: undefined,
+								},
+							],
+						},
 					] );
 				} );
 				it( "should emit a nohandler event if an invalid input name is used", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var events = [];
+					const fsm = fsmFactory.instanceWithOptions();
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
 					fsm.handle( "nope" );
 					events[ 0 ].eventName.should.equal( "nohandler" );
@@ -746,28 +745,28 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 			} );
 			describe( "When emitting events", function() {
 				it( "should allow wildcard subscribers", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var events = [];
+					const fsm = fsmFactory.instanceWithOptions();
+					const events = [];
 					fsm.on( "*", function( evnt, data ) {
-						events.push( { eventName: evnt, data: data } );
+						events.push( { eventName: evnt, data, } );
 					} );
 					fsm.handle( "start" );
 					events.map( function( evnt ) {
 						return evnt.eventName;
-					} ).should.eql( [ "handling", "transition", "ready-OnEnterFiring", "transitioned", "handled" ] );
+					} ).should.eql( [ "handling", "transition", "ready-OnEnterFiring", "transitioned", "handled", ] );
 				} );
 				it( "should allow specific events to be subscribed to", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var eventsA = [];
-					var eventsB = [];
+					const fsm = fsmFactory.instanceWithOptions();
+					const eventsA = [];
+					const eventsB = [];
 					fsm.on( "ready-OnEnterFiring", function( data ) {
-						eventsA.push( { eventName: "ready-OnEnterFiring", data: data } );
+						eventsA.push( { eventName: "ready-OnEnterFiring", data, } );
 					} );
 					fsm.on( "transition", function( data ) {
-						eventsB.push( { eventName: "transition", data: data } );
+						eventsB.push( { eventName: "transition", data, } );
 					} );
 					fsm.handle( "start" );
-					eventsA.should.eql( [ { eventName: "ready-OnEnterFiring", data: undefined } ] );
+					eventsA.should.eql( [ { eventName: "ready-OnEnterFiring", data: undefined, }, ] );
 					eventsB.should.eql( [
 						{
 							eventName: "transition",
@@ -775,20 +774,20 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 								fromState: "uninitialized",
 								action: "uninitialized.start",
 								toState: "ready",
-								namespace: fsm.namespace
-							}
-						}
+								namespace: fsm.namespace,
+							},
+						},
 					] );
 				} );
 				it( "should clear all subscribers when off() is called without arguments", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var eventsA = [];
-					var eventsB = [];
+					const fsm = fsmFactory.instanceWithOptions();
+					const eventsA = [];
+					const eventsB = [];
 					fsm.on( "ready-OnEnterFiring", function( evnt, data ) {
-						eventsA.push( { eventName: evnt, data: data } );
+						eventsA.push( { eventName: evnt, data, } );
 					} );
 					fsm.on( "transition", function( evnt, data ) {
-						eventsB.push( { eventName: evnt, data: data } );
+						eventsB.push( { eventName: evnt, data, } );
 					} );
 					fsm.off();
 					fsm.handle( "start" );
@@ -796,44 +795,44 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					eventsB.should.eql( [] );
 				} );
 				it( "should clear the correct subscriber when off() is called with event name & callback", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var eventsA = [];
-					var eventsB = [];
-					var callback = function( data ) {
-						eventsA.push( { eventName: "ready-OnEnterFiring", data: data } );
+					const fsm = fsmFactory.instanceWithOptions();
+					const eventsA = [];
+					const eventsB = [];
+					const callback = function( data ) {
+						eventsA.push( { eventName: "ready-OnEnterFiring", data, } );
 					};
 					fsm.on( "ready-OnEnterFiring", callback );
 					fsm.on( "ready-OnEnterFiring", function( data ) {
-						eventsB.push( { eventName: "ready-OnEnterFiring", data: data } );
+						eventsB.push( { eventName: "ready-OnEnterFiring", data, } );
 					} );
 					fsm.off( "ready-OnEnterFiring", callback );
 					fsm.handle( "start" );
 					eventsA.should.eql( [] );
-					eventsB.should.eql( [ { eventName: "ready-OnEnterFiring", data: undefined } ] );
+					eventsB.should.eql( [ { eventName: "ready-OnEnterFiring", data: undefined, }, ] );
 				} );
 				it( "should clear the correct subscriber when using the on() return value", function() {
-					var fsm = fsmFactory.instanceWithOptions();
-					var eventsA = [];
-					var eventsB = [];
-					var sub = fsm.on( "ready-OnEnterFiring", function( data ) {
-						eventsA.push( { eventName: "ready-OnEnterFiring", data: data } );
+					const fsm = fsmFactory.instanceWithOptions();
+					const eventsA = [];
+					const eventsB = [];
+					const sub = fsm.on( "ready-OnEnterFiring", function( data ) {
+						eventsA.push( { eventName: "ready-OnEnterFiring", data, } );
 					} );
 					fsm.on( "ready-OnEnterFiring", function( data ) {
-						eventsB.push( { eventName: "ready-OnEnterFiring", data: data } );
+						eventsB.push( { eventName: "ready-OnEnterFiring", data, } );
 					} );
 					sub.off();
 					fsm.handle( "start" );
 					eventsA.should.eql( [] );
-					eventsB.should.eql( [ { eventName: "ready-OnEnterFiring", data: undefined } ] );
+					eventsB.should.eql( [ { eventName: "ready-OnEnterFiring", data: undefined, }, ] );
 				} );
 				it( "should only log an exception if subscriber throws and useSafeEmit is set to true", function() {
-					var fsm = fsmFactory.instanceWithOptions( { useSafeEmit: true } );
-					var log = console.log;
-					var res;
+					const fsm = fsmFactory.instanceWithOptions( { useSafeEmit: true, } );
+					const log = console.log;
+					let res;
 					console.log = function( msg ) {
 						res = msg;
 					};
-					fsm.on( "ready-OnEnterFiring", function( evnt, data ) {
+					fsm.on( "ready-OnEnterFiring", function() {
 						throw new Error( "OH SNAP!" );
 					} );
 					fsm.handle( "start" );
@@ -841,8 +840,8 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 					console.log = log;
 				} );
 				it( "should throw an exception if subscriber throws and useSafeEmit is set to false", function() {
-					var fsm = fsmFactory.instanceWithOptions( { useSafeEmit: false } );
-					fsm.on( "ready-OnEnterFiring", function( evnt, data ) {
+					const fsm = fsmFactory.instanceWithOptions( { useSafeEmit: false, } );
+					fsm.on( "ready-OnEnterFiring", function() {
 						throw new Error( "OH SNAP!" );
 					} );
 					( function() {
@@ -852,15 +851,15 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 			} );
 			describe( "When creating two instances from the same extended constructor function", function() {
 				it( "should not share instance state", function() {
-					var eventA = [];
-					var eventB = [];
-					var fsmA = fsmFactory.instanceWithOptions();
-					var fsmB = fsmFactory.instanceWithOptions( { initialState: "done" } );
+					const eventA = [];
+					const eventB = [];
+					const fsmA = fsmFactory.instanceWithOptions();
+					const fsmB = fsmFactory.instanceWithOptions( { initialState: "done", } );
 					fsmA.on( "*", function( eventName, data ) {
-						eventA.push( { eventName: eventName, data: data } );
+						eventA.push( { eventName, data, } );
 					} );
 					fsmB.on( "*", function( eventName, data ) {
-						eventB.push( { eventName: eventName, data: data } );
+						eventB.push( { eventName, data, } );
 					} );
 
 					fsmA.initialState.should.equal( "uninitialized" );
@@ -883,20 +882,20 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 			} );
 			describe( "When passing arguments to transition", function() {
 				it( "should pass the arguments to the _onEnter handler", function() {
-					var custom;
-					var fsm = fsmFactory.instanceWithOptions( {
+					let custom;
+					const fsm = fsmFactory.instanceWithOptions( {
 						states: {
 							uninitialized: {
-								start: function() {
+								start() {
 									this.transition( "ready", "Custom args!" );
-								}
+								},
 							},
 							ready: {
-								_onEnter: function( customArgs ) {
+								_onEnter( customArgs ) {
 									custom = customArgs;
-								}
-							}
-						}
+								},
+							},
+						},
 					} );
 					fsm.handle( "start" );
 					custom.should.equal( "Custom args!" );
@@ -905,7 +904,7 @@ function runMachinaFsmSpec( description, fsmFactory ) {
 			if ( fsmFactory.extendingWithStaticProps ) {
 				describe( "When adding static props", function() {
 					it( "should inherit static (constructor-level) members", function() {
-						var ctor = fsmFactory.extendingWithStaticProps();
+						const ctor = fsmFactory.extendingWithStaticProps();
 						ctor.should.have.property( "someStaticMethod" );
 					} );
 				} );

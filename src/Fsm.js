@@ -1,14 +1,14 @@
-var BehavioralFsm = require( "./BehavioralFsm" );
-var utils = require( "./utils" );
-var _ = require( "lodash" );
+const BehavioralFsm = require( "./BehavioralFsm" );
+const utils = require( "./utils" );
+const _ = require( "lodash" );
 
-var Fsm = {
-	constructor: function() {
-		BehavioralFsm.apply( this, arguments );
+let Fsm = {
+	constructor() {
+		BehavioralFsm.apply( this, arguments ); // eslint-disable-line prefer-rest-params
 		this.ensureClientMeta();
 	},
 	initClient: function initClient() {
-		var initialState = this.initialState;
+		const initialState = this.initialState;
 		if ( !initialState ) {
 			throw new Error( "You must specify an initial state for this FSM" );
 		}
@@ -26,8 +26,8 @@ var Fsm = {
 		return this;
 	},
 
-	ensureClientArg: function( args ) {
-		var _args = args;
+	ensureClientArg( args ) {
+		const _args = args;
 		// we need to test the args and verify that if a client arg has
 		// been passed, it must be this FSM instance (this isn't a behavioral FSM)
 		if ( typeof _args[ 0 ] === "object" && !( "inputType" in _args[ 0 ] ) && _args[ 0 ] !== this ) {
@@ -38,12 +38,12 @@ var Fsm = {
 		return _args;
 	},
 
-	getHandlerArgs: function( args, isCatchAll ) {
+	getHandlerArgs( args, isCatchAll ) {
 		// index 0 is the client, index 1 is inputType
 		// if we're in a catch-all handler, input type needs to be included in the args
 		// inputType might be an object, so we need to just get the inputType string if so
-		var _args = args;
-		var input = _args[ 1 ];
+		const _args = args;
+		const input = _args[ 1 ];
 		if ( typeof inputType === "object" ) {
 			_args.splice( 1, 1, input.inputType );
 		}
@@ -52,20 +52,19 @@ var Fsm = {
 			_args.slice( 2 );
 	},
 
-	getSystemHandlerArgs: function( args, client ) {
+	getSystemHandlerArgs( args /* client */ ) {
 		return args;
 	},
 
 	// "classic" machina FSM do not emit the client property on events (which would be the FSM itself)
-	buildEventPayload: function() {
-		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
-		var data = args[ 1 ];
+	buildEventPayload() {
+		const args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) ); // eslint-disable-line prefer-rest-params
+		const data = args[ 1 ];
 		if ( _.isPlainObject( data ) ) {
-			return _.extend( data, { namespace: this.namespace } );
-		} else {
-			return { data: data || null, namespace: this.namespace };
+			return _.extend( data, { namespace: this.namespace, } );
 		}
-	}
+		return { data: data || null, namespace: this.namespace, };
+	},
 };
 
 _.each( [
@@ -73,10 +72,10 @@ _.each( [
 	"transition",
 	"deferUntilTransition",
 	"processQueue",
-	"clearQueue"
+	"clearQueue",
 ], function( methodWithClientInjected ) {
 	Fsm[ methodWithClientInjected ] = function() {
-		var args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) );
+		const args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) ); // eslint-disable-line prefer-rest-params
 		return BehavioralFsm.prototype[ methodWithClientInjected ].apply( this, args );
 	};
 } );

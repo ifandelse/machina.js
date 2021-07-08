@@ -1,241 +1,243 @@
-var _ = require( "lodash" );
+/* eslint-disable no-magic-numbers */
+const _ = require( "lodash" );
 
 module.exports = function( machina ) {
-	var DO_NOT_WALK = "Do Not Walk";
-	var WALK = "Walk";
-	var RED = "red";
-	var YELLOW = "yellow";
-	var GREEN = "green";
+	const DO_NOT_WALK = "Do Not Walk";
+	const WALK = "Walk";
+	const RED = "red";
+	const YELLOW = "yellow";
+	const GREEN = "green";
 
 	return {
-		crosswalkFactory: function( options ) {
+		crosswalkFactory( options ) {
 			// Child FSM
-			var vehicleSignal = new machina.Fsm( {
+			const vehicleSignal = new machina.Fsm( {
 				namespace: "vehicle-signal",
 				initialState: "uninitialized",
-				reset: function() {
+				reset() {
 					this.transition( "green" );
 				},
 				states: {
 					uninitialized: {
-						"*": function() {
+						"*"() {
 							this.deferUntilTransition();
 							this.transition( "green" );
-						}
+						},
 					},
 					green: {
-						_onEnter: function() {
+						_onEnter() {
 							this.timer = setTimeout( function() {
 								this.handle( "timeout" );
 							}.bind( this ), 30000 );
-							this.emit( "vehicles", { status: GREEN } );
+							this.emit( "vehicles", { status: GREEN, } );
 						},
 						timeout: "green-interruptible",
-						pedestrianWaiting: function() {
+						pedestrianWaiting() {
 							this.deferUntilTransition( "green-interruptible" );
 						},
-						_onExit: function() {
+						_onExit() {
 							clearTimeout( this.timer );
-						}
+						},
 					},
 					"green-interruptible": {
-						pedestrianWaiting: "yellow"
+						pedestrianWaiting: "yellow",
 					},
 					yellow: {
-						_onEnter: function() {
+						_onEnter() {
 							this.timer = setTimeout( function() {
 								this.handle( "timeout" );
 							}.bind( this ), 5000 );
-							this.emit( "vehicles", { status: YELLOW } );
+							this.emit( "vehicles", { status: YELLOW, } );
 						},
 						_reset: "green",
-						_onExit: function() {
+						_onExit() {
 							clearTimeout( this.timer );
-						}
-					}
-				}
+						},
+					},
+				},
 			} );
 
 			// Child FSM
-			var pedestrianSignal = new machina.Fsm( {
+			const pedestrianSignal = new machina.Fsm( {
 				namespace: "pedestrian-signal",
 				initialState: "uninitialized",
-				reset: function() {
+				reset() {
 					this.transition( "walking" );
 				},
 				states: {
 					uninitialized: {
-						"*": function() {
+						"*"() {
 							this.deferUntilTransition();
 							this.transition( "walking" );
-						}
+						},
 					},
 					walking: {
-						_onEnter: function() {
+						_onEnter() {
 							this.timer = setTimeout( function() {
 								this.handle( "timeout" );
 							}.bind( this ), 30000 );
-							this.emit( "pedestrians", { status: WALK } );
+							this.emit( "pedestrians", { status: WALK, } );
 						},
 						timeout: "flashing",
-						_onExit: function() {
+						_onExit() {
 							clearTimeout( this.timer );
-						}
+						},
 					},
 					flashing: {
-						_onEnter: function() {
+						_onEnter() {
 							this.timer = setTimeout( function() {
 								this.handle( "timeout" );
 							}.bind( this ), 5000 );
-							this.emit( "pedestrians", { status: DO_NOT_WALK, flashing: true } );
+							this.emit( "pedestrians", { status: DO_NOT_WALK, flashing: true, } );
 						},
 						_reset: "walking",
-						_onExit: function() {
+						_onExit() {
 							clearTimeout( this.timer );
-						}
-					}
-				}
+						},
+					},
+				},
 			} );
 
 			// Parent FSM
-			var crosswalk = new machina.Fsm( _.merge( {
+			const crosswalk = new machina.Fsm( _.merge( {
 				namespace: "crosswalk",
 				initialState: "vehiclesEnabled",
 				states: {
 					vehiclesEnabled: {
 						// after _onEnter execs, send "reset" input down the hierarchy
-						_onEnter: function() {
-							this.emit( "pedestrians", { status: DO_NOT_WALK } );
+						_onEnter() {
+							this.emit( "pedestrians", { status: DO_NOT_WALK, } );
 						},
 						timeout: "pedestriansEnabled",
-						_child: vehicleSignal
+						_child: vehicleSignal,
 					},
 					pedestriansEnabled: {
-						_onEnter: function() {
-							this.emit( "vehicles", { status: RED } );
+						_onEnter() {
+							this.emit( "vehicles", { status: RED, } );
 						},
 						timeout: "vehiclesEnabled",
-						_child: function() {
+						_child() {
 							return pedestrianSignal;
-						}
-					}
-				}
+						},
+					},
+				},
 			}, options || {} ) );
 			return crosswalk;
 		},
-		behavioralCrosswalkFactory: function( options ) {
+		behavioralCrosswalkFactory( options ) {
 			// Child FSM
-			var vehicleSignal = new machina.BehavioralFsm( {
+			const vehicleSignal = new machina.BehavioralFsm( {
 				namespace: "vehicle-signal",
 				initialState: "uninitialized",
-				reset: function( client ) {
+				reset( client ) {
 					this.transition( client, "green" );
 				},
 				states: {
 					uninitialized: {
-						"*": function( client ) {
+						"*"( client ) {
 							this.deferUntilTransition( client );
 							this.transition( client, "green" );
-						}
+						},
 					},
 					green: {
-						_onEnter: function( client ) {
+						_onEnter( client ) {
 							client.timer = setTimeout( function() {
 								this.handle( client, "timeout" );
 							}.bind( this ), 30000 );
-							this.emit( "vehicles", { status: GREEN, client: client } );
+							this.emit( "vehicles", { status: GREEN, client, } );
 						},
 						timeout: "green-interruptible",
-						pedestrianWaiting: function( client ) {
+						pedestrianWaiting( client ) {
 							this.deferUntilTransition( client, "green-interruptible" );
 						},
-						_onExit: function( client ) {
+						_onExit( client ) {
 							clearTimeout( client.timer );
-						}
+						},
 					},
 					"green-interruptible": {
-						pedestrianWaiting: "yellow"
+						pedestrianWaiting: "yellow",
 					},
 					yellow: {
-						_onEnter: function( client ) {
+						_onEnter( client ) {
 							client.timer = setTimeout( function() {
 								this.handle( client, "timeout" );
 							}.bind( this ), 5000 );
-							this.emit( "vehicles", { status: YELLOW, client: client } );
+							this.emit( "vehicles", { status: YELLOW, client, } );
 						},
 						_reset: "green",
-						_onExit: function( client ) {
+						_onExit( client ) {
 							clearTimeout( client.timer );
-						}
-					}
-				}
+						},
+					},
+				},
 			} );
 
 			// Child FSM
-			var pedestrianSignal = new machina.BehavioralFsm( {
+			const pedestrianSignal = new machina.BehavioralFsm( {
 				namespace: "pedestrian-signal",
 				initialState: "uninitialized",
-				reset: function( client ) {
+				reset( client ) {
 					this.transition( client, "walking" );
 				},
 				states: {
 					uninitialized: {
-						"*": function( client ) {
+						"*"( client ) {
 							this.deferUntilTransition( client );
 							this.transition( client, "walking" );
-						}
+						},
 					},
 					walking: {
-						_onEnter: function( client ) {
+						_onEnter( client ) {
 							client.timer = setTimeout( function() {
 								this.handle( client, "timeout" );
 							}.bind( this ), 30000 );
-							this.emit( "pedestrians", { status: WALK, client: client } );
+							this.emit( "pedestrians", { status: WALK, client, } );
 						},
 						timeout: "flashing",
-						_onExit: function( client ) {
+						_onExit( client ) {
 							clearTimeout( client.timer );
-						}
+						},
 					},
 					flashing: {
-						_onEnter: function( client ) {
+						_onEnter( client ) {
 							client.timer = setTimeout( function() {
 								this.handle( client, "timeout" );
 							}.bind( this ), 5000 );
-							this.emit( "pedestrians", { status: DO_NOT_WALK, flashing: true, client: client } );
+							this.emit( "pedestrians", { status: DO_NOT_WALK, flashing: true, client, } );
 						},
 						_reset: "walking",
-						_onExit: function( client ) {
+						_onExit( client ) {
 							clearTimeout( client.timer );
-						}
-					}
-				}
+						},
+					},
+				},
 			} );
 
 			// Parent FSM
 			return new machina.BehavioralFsm( _.merge( {}, {
-					namespace: "crosswalk",
-					initialState: "uninitialized",
-					states: {
-						uninitialized: {
-							start: "vehiclesEnabled"
+				namespace: "crosswalk",
+				initialState: "uninitialized",
+				states: {
+					uninitialized: {
+						start: "vehiclesEnabled",
+					},
+					vehiclesEnabled: {
+						_onEnter( client ) {
+							this.emit( "pedestrians", { status: DO_NOT_WALK, client, } );
 						},
-						vehiclesEnabled: {
-							_onEnter: function( client ) {
-								this.emit( "pedestrians", { status: DO_NOT_WALK, client: client } );
-							},
-							timeout: "pedestriansEnabled",
-							_child: vehicleSignal
+						timeout: "pedestriansEnabled",
+						_child: vehicleSignal,
+					},
+					pedestriansEnabled: {
+						_onEnter( client ) {
+							this.emit( "vehicles", { status: RED, client, } );
 						},
-						pedestriansEnabled: {
-							_onEnter: function( client ) {
-								this.emit( "vehicles", { status: RED, client: client } );
-							},
-							timeout: "vehiclesEnabled",
-							_child: pedestrianSignal
-						}
-					}
-				}, options || {} ) );
-		}
+						timeout: "vehiclesEnabled",
+						_child: pedestrianSignal,
+					},
+				},
+			}, options || {} ) );
+		},
 	};
 };
+/* eslint-enable no-magic-numbers */

@@ -1,0 +1,10 @@
+node_modules/
+.idea/
+.DS_Store
+*npm-debug.log
+log/
+coverage/
+*config.json
+.nyc_output
+.serverless
+.webpack

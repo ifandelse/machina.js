@@ -3,50 +3,50 @@ module.exports = {
 		states: {
 			uninitialized: {
 				start: "ready",
-				letsDoThis: function() {
+				letsDoThis() {
 					this.deferUntilTransition( "ready" );
-				}
+				},
 			},
 			ready: {
-				_onEnter: function() {
+				_onEnter() {
 					this.emit( "ready-OnEnterFiring" );
 				},
-				letsDoThis: function() {
-					this.emit( "WeAreDoingThis", { someprop: "someval" } );
+				letsDoThis() {
+					this.emit( "WeAreDoingThis", { someprop: "someval", } );
 				},
-				_onExit: function() {
+				_onExit() {
 					this.emit( "ready-OnExitFiring" );
-				}
-			}
-		}
+				},
+			},
+		},
 	},
 	parent: {
 		states: {
 			notQuiteDone: {
-				doMoar: function() {
+				doMoar() {
 					this.emit( "doingMoar" );
 					this.transition( "done" );
-				}
-			}
-		}
+				},
+			},
+		},
 	},
 	child: {
 		namespace: "specialSauceNamespace",
 		states: {
 			ready: {
-				letsDoThis: function() {
-					this.emit( "WeAreDoingThis", { someprop: "someval" } );
+				letsDoThis() {
+					this.emit( "WeAreDoingThis", { someprop: "someval", } );
 					this.transition( "notQuiteDone" );
 				},
-				canWeDoThis: function( name ) {
-					return "yep, " + name + " can do it.";
-				}
+				canWeDoThis( name ) {
+					return `yep, ${ name } can do it.`;
+				},
 			},
 			done: {
-				_onEnter: function() {
+				_onEnter() {
 					this.emit( "done-OnEnterFiring" );
-				}
-			}
-		}
-	}
+				},
+			},
+		},
+	},
 };

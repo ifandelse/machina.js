@@ -3,50 +3,50 @@ module.exports = {
 		states: {
 			uninitialized: {
 				start: "ready",
-				letsDoThis: function( client ) {
+				letsDoThis( client ) {
 					this.deferUntilTransition( client, "ready" );
-				}
+				},
 			},
 			ready: {
-				_onEnter: function() {
+				_onEnter() {
 					this.emit( "ready-OnEnterFiring" );
 				},
-				letsDoThis: function() {
-					this.emit( "WeAreDoingThis", { someprop: "someval" } );
+				letsDoThis() {
+					this.emit( "WeAreDoingThis", { someprop: "someval", } );
 				},
-				_onExit: function() {
+				_onExit() {
 					this.emit( "ready-OnExitFiring" );
-				}
-			}
-		}
+				},
+			},
+		},
 	},
 	parent: {
 		states: {
 			notQuiteDone: {
-				doMoar: function( client ) {
+				doMoar( client ) {
 					this.emit( "doingMoar" );
 					this.transition( client, "done" );
-				}
-			}
-		}
+				},
+			},
+		},
 	},
 	child: {
 		namespace: "specialSauceNamespace",
 		states: {
 			ready: {
-				letsDoThis: function( client ) {
-					this.emit( "WeAreDoingThis", { someprop: "someval" } );
+				letsDoThis( client ) {
+					this.emit( "WeAreDoingThis", { someprop: "someval", } );
 					this.transition( client, "notQuiteDone" );
 				},
-				canWeDoThis: function( client, name ) {
-					return "yep, " + name + " can do it.";
-				}
+				canWeDoThis( client, name ) {
+					return `yep, ${ name } can do it.`;
+				},
 			},
 			done: {
-				_onEnter: function() {
+				_onEnter() {
 					this.emit( "done-OnEnterFiring" );
-				}
-			}
-		}
-	}
+				},
+			},
+		},
+	},
 };

@@ -1,10 +1,10 @@
-var utils = require( "./utils" );
-var _ = require( "lodash" );
+const utils = require( "./utils" );
+const _ = require( "lodash" );
 
 function getInstance() {
 	return {
-		emit: function( eventName ) {
-			var args = utils.getLeaklessArgs( arguments );
+		emit( eventName ) {
+			const args = utils.getLeaklessArgs( arguments ); // eslint-disable-line prefer-rest-params
 			if ( this.eventListeners[ "*" ] ) {
 				_.each( this.eventListeners[ "*" ], function( callback ) {
 					if ( !this.useSafeEmit ) {
@@ -14,8 +14,8 @@ function getInstance() {
 							callback.apply( this, args );
 						} catch ( exception ) {
 							/* istanbul ignore else  */
-							if ( console && typeof console.log !== "undefined" ) {
-								console.log( exception.stack );
+							if ( console && typeof console.log !== "undefined" ) { // eslint-disable-line no-console
+								console.log( exception.stack ); // eslint-disable-line no-console
 							}
 						}
 					}
@@ -30,8 +30,8 @@ function getInstance() {
 							callback.apply( this, args.slice( 1 ) );
 						} catch ( exception ) {
 							/* istanbul ignore else  */
-							if ( console && typeof console.log !== "undefined" ) {
-								console.log( exception.stack );
+							if ( console && typeof console.log !== "undefined" ) { // eslint-disable-line no-console
+								console.log( exception.stack ); // eslint-disable-line no-console
 							}
 						}
 					}
@@ -39,38 +39,36 @@ function getInstance() {
 			}
 		},
 
-		on: function( eventName, callback ) {
-			var self = this;
-			self.eventListeners = self.eventListeners || { "*": [] };
+		on( eventName, callback ) {
+			const self = this;
+			self.eventListeners = self.eventListeners || { "*": [], };
 			if ( !self.eventListeners[ eventName ] ) {
 				self.eventListeners[ eventName ] = [];
 			}
 			self.eventListeners[ eventName ].push( callback );
 			return {
-				eventName: eventName,
-				callback: callback,
-				off: function() {
+				eventName,
+				callback,
+				off() {
 					self.off( eventName, callback );
-				}
+				},
 			};
 		},
 
-		off: function( eventName, callback ) {
-			this.eventListeners = this.eventListeners || { "*": [] };
+		off( eventName, callback ) {
+			this.eventListeners = this.eventListeners || { "*": [], };
 			if ( !eventName ) {
 				this.eventListeners = {};
+			} else if ( callback ) {
+				this.eventListeners[ eventName ] = _.without( this.eventListeners[ eventName ], callback );
 			} else {
-				if ( callback ) {
-					this.eventListeners[ eventName ] = _.without( this.eventListeners[ eventName ], callback );
-				} else {
-					this.eventListeners[ eventName ] = [];
-				}
+				this.eventListeners[ eventName ] = [];
 			}
-		}
+		},
 	};
 }
 
 module.exports = {
-	getInstance: getInstance,
-	instance: getInstance()
+	getInstance,
+	instance: getInstance(),
 };

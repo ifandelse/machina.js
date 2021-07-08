@@ -1,25 +1,24 @@
-var slice = [].slice;
-var events = require( "./events.js" );
-var _ = require( "lodash" );
+const events = require( "./events.js" );
+const _ = require( "lodash" );
 
-var makeFsmNamespace = ( function() {
-	var machinaCount = 0;
+const makeFsmNamespace = ( function() {
+	let machinaCount = 0;
 	return function() {
-		return "fsm." + machinaCount++;
+		return `fsm.${ machinaCount++ }`;
 	};
-} )();
+}() );
 
 function getDefaultBehavioralOptions() {
 	return {
 		initialState: "uninitialized",
 		eventListeners: {
-			"*": []
+			"*": [],
 		},
 		states: {},
 		namespace: makeFsmNamespace(),
 		useSafeEmit: false,
 		hierarchy: {},
-		pendingDelegations: {}
+		pendingDelegations: {},
 	};
 }
 
@@ -32,13 +31,13 @@ function getDefaultClientMeta() {
 		priorAction: "",
 		currentAction: "",
 		currentActionArgs: undefined,
-		inExitHandler: false
+		inExitHandler: false,
 	};
 }
 
 function getLeaklessArgs( args, startIdx ) {
-	var result = [];
-	for ( var i = ( startIdx || 0 ); i < args.length; i++ ) {
+	const result = [];
+	for ( let i = ( startIdx || 0 ); i < args.length; i++ ) {
 		result[ i ] = args[ i ];
 	}
 	return result;
@@ -55,7 +54,7 @@ function getChildFsmInstance( config ) {
 	if ( !config ) {
 		return;
 	}
-	var childFsmDefinition = {};
+	let childFsmDefinition = {};
 	if ( typeof config === "object" ) {
 		// is this a config object with a factory?
 		if ( config.factory ) {
@@ -78,27 +77,28 @@ function listenToChild( fsm, child ) {
 	// Need to investigate potential for discarded event
 	// listener memory leak in long-running, deeply-nested hierarchies.
 	return child.on( "*", function( eventName, data ) {
+		let ticket;
 		switch ( eventName ) {
-			case events.NO_HANDLER:
-				if ( !data.ticket && !data.delegated && data.namespace !== fsm.namespace ) {
-					// Ok - we're dealing w/ a child handling input that should bubble up
-					data.args[ 1 ].bubbling = true;
-				}
-				// we do NOT bubble _reset inputs up to the parent
-				if ( data.inputType !== "_reset" ) {
-					fsm.handle.apply( fsm, data.args );
-				}
-				break;
-			case events.HANDLING :
-				var ticket = data.ticket;
-				if ( ticket && fsm.pendingDelegations[ ticket ] ) {
-					delete fsm.pendingDelegations[ ticket ];
-				}
-				fsm.emit( eventName, data ); // possibly transform payload?
-				break;
-			default:
-				fsm.emit( eventName, data ); // possibly transform payload?
-				break;
+		case events.NO_HANDLER:
+			if ( !data.ticket && !data.delegated && data.namespace !== fsm.namespace ) {
+				// Ok - we're dealing w/ a child handling input that should bubble up
+				data.args[ 1 ].bubbling = true;
+			}
+			// we do NOT bubble _reset inputs up to the parent
+			if ( data.inputType !== "_reset" ) {
+				fsm.handle.apply( fsm, data.args ); // eslint-disable-line prefer-spread
+			}
+			break;
+		case events.HANDLING :
+			ticket = data.ticket;
+			if ( ticket && fsm.pendingDelegations[ ticket ] ) {
+				delete fsm.pendingDelegations[ ticket ];
+			}
+			fsm.emit( eventName, data ); // possibly transform payload?
+			break;
+		default:
+			fsm.emit( eventName, data ); // possibly transform payload?
+			break;
 		}
 	} );
 }
@@ -106,12 +106,12 @@ function listenToChild( fsm, child ) {
 // _machKeys are members we want to track across the prototype chain of an extended FSM constructor
 // Since we want to eventually merge the aggregate of those values onto the instance so that FSMs
 // that share the same extended prototype won't share state *on* those prototypes.
-var _machKeys = [ "states", "initialState" ];
-var extend = function( protoProps, staticProps ) {
-	var parent = this;
-	var fsm; // placeholder for instance constructor
-	var machObj = {}; // object used to hold initialState & states from prototype for instance-level merging
-	var Ctor = function() {}; // placeholder ctor function used to insert level in prototype chain
+const _machKeys = [ "states", "initialState", ];
+const extend = function( protoProps, staticProps ) {
+	const parent = this; // eslint-disable-line no-invalid-this, consistent-this
+	let fsm; // placeholder for instance constructor
+	const machObj = {}; // object used to hold initialState & states from prototype for instance-level merging
+	const Ctor = function() {}; // placeholder ctor function used to insert level in prototype chain
 
 	// The constructor function for the new subclass is either defined by you
 	// (the "constructor" property in your `extend` definition), or defaulted
@@ -124,15 +124,13 @@ var extend = function( protoProps, staticProps ) {
 		// extends them over the instance so that they'll be instance-level.
 		// If an options arg (args[0]) is passed in, a states or intialState
 		// value will be preferred over any data pulled up from the prototype.
-		fsm = function() {
-			var args = slice.call( arguments, 0 );
+		fsm = function( ...args ) {
 			args[ 0 ] = args[ 0 ] || {};
-			var blendedState;
-			var instanceStates = args[ 0 ].states || {};
-			blendedState = _.merge( _.cloneDeep( machObj ), { states: instanceStates } );
-			blendedState.initialState = args[ 0 ].initialState || this.initialState;
+			const instanceStates = args[ 0 ].states || {};
+			const blendedState = _.merge( _.cloneDeep( machObj ), { states: instanceStates, } );
+			blendedState.initialState = args[ 0 ].initialState || this.initialState; // eslint-disable-line no-invalid-this
 			_.extend( args[ 0 ], blendedState );
-			parent.apply( this, args );
+			parent.apply( this, args ); // eslint-disable-line no-invalid-this
 		};
 	}
 
@@ -168,10 +166,11 @@ var extend = function( protoProps, staticProps ) {
 	return fsm;
 };
 
+/* eslint-disable no-magic-numbers */
 function createUUID() {
-	var s = [];
-	var hexDigits = "0123456789abcdef";
-	for ( var i = 0; i < 36; i++ ) {
+	const s = [];
+	const hexDigits = "0123456789abcdef";
+	for ( let i = 0; i < 36; i++ ) {
 		s[ i ] = hexDigits.substr( Math.floor( Math.random() * 0x10 ), 1 );
 	}
 	s[ 14 ] = "4"; // bits 12-15 of the time_hi_and_version field to 0010
@@ -181,15 +180,16 @@ function createUUID() {
 	s[ 8 ] = s[ 13 ] = s[ 18 ] = s[ 23 ] = "-";
 	return s.join( "" );
 }
+/* eslint-enable no-magic-numbers */
 
 module.exports = {
-	createUUID: createUUID,
-	extend: extend,
-	getDefaultBehavioralOptions: getDefaultBehavioralOptions,
+	createUUID,
+	extend,
+	getDefaultBehavioralOptions,
 	getDefaultOptions: getDefaultBehavioralOptions,
-	getDefaultClientMeta: getDefaultClientMeta,
-	getChildFsmInstance: getChildFsmInstance,
-	getLeaklessArgs: getLeaklessArgs,
-	listenToChild: listenToChild,
-	makeFsmNamespace: makeFsmNamespace
+	getDefaultClientMeta,
+	getChildFsmInstance,
+	getLeaklessArgs,
+	listenToChild,
+	makeFsmNamespace,
 };

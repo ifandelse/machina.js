@@ -1,0 +1,7 @@
+{
+	"compact": false,
+	"presets": [ "@babel/preset-env" ],
+	"plugins": [
+		"babel-plugin-add-module-exports"
+	]
+}

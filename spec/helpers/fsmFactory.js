@@ -1,148 +1,148 @@
-var _ = require( "lodash" );
+const _ = require( "lodash" );
 
 module.exports = function( machina ) {
-	var BehavioralFsm = machina.BehavioralFsm;
-	var Fsm = machina.Fsm;
-	var behavioralFsmOptions = require( "./behavioralFsmOptions.js" );
-	var classicFsmOptions = require( "./classicFsmOptions.js" );
+	const BehavioralFsm = machina.BehavioralFsm;
+	const Fsm = machina.Fsm;
+	const behavioralFsmOptions = require( "./behavioralFsmOptions.js" );
+	const classicFsmOptions = require( "./classicFsmOptions.js" );
 	return {
 		behavioral: {
 			"With No Inheritance": {
-				instanceWithDefaults: function() {
-					return new machina.BehavioralFsm( { states: { uninitialized: {} } } );
+				instanceWithDefaults() {
+					return new machina.BehavioralFsm( { states: { uninitialized: {}, }, } );
 				},
-				instanceWithOptions: function( opt ) {
+				instanceWithOptions( opt ) {
 					return new machina.BehavioralFsm( _.merge( {}, this.options, ( opt || {} ) ) );
 				},
-				options: _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child )
+				options: _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child ),
 			},
 			"With Some Inheritance": {
-				instanceWithDefaults: function() {
-					var ParentFsm = BehavioralFsm.extend( { states: { uninitialized: {} } } );
+				instanceWithDefaults() {
+					const ParentFsm = BehavioralFsm.extend( { states: { uninitialized: {}, }, } );
 					return new ParentFsm();
 				},
-				instanceWithOptions: function( opt ) {
-					var options = _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child, ( opt || {} ) );
-					var ParentFsm = BehavioralFsm.extend( options );
+				instanceWithOptions( opt ) {
+					const options = _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child, ( opt || {} ) );
+					const ParentFsm = BehavioralFsm.extend( options );
 					return new ParentFsm();
 				},
-				extendingWithStaticProps: function() {
-					var options = _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child );
-					var ParentFsm = BehavioralFsm.extend( options, { someStaticMethod: function() {} } );
+				extendingWithStaticProps() {
+					const options = _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child );
+					const ParentFsm = BehavioralFsm.extend( options, { someStaticMethod() {}, } );
 					return ParentFsm;
 				},
-				options: _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child )
+				options: _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child ),
 			},
 			"With More Inheritance": {
-				instanceWithDefaults: function() {
-					var ParentFsm = BehavioralFsm.extend( { states: { uninitialized: {} } } );
-					var ChildFsm = ParentFsm.extend( {} );
+				instanceWithDefaults() {
+					const ParentFsm = BehavioralFsm.extend( { states: { uninitialized: {}, }, } );
+					const ChildFsm = ParentFsm.extend( {} );
 					return new ChildFsm();
 				},
-				instanceWithOptions: function( opt ) {
-					var options = _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent );
-					var ParentFsm = BehavioralFsm.extend( options );
-					var ChildFsm = ParentFsm.extend( _.merge( {}, behavioralFsmOptions.child, ( opt || {} ) ) );
+				instanceWithOptions( opt ) {
+					const options = _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent );
+					const ParentFsm = BehavioralFsm.extend( options );
+					const ChildFsm = ParentFsm.extend( _.merge( {}, behavioralFsmOptions.child, ( opt || {} ) ) );
 					return new ChildFsm();
 				},
-				extendingWithStaticProps: function() {
-					var options = _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent );
-					var ParentFsm = BehavioralFsm.extend( options, { someStaticMethod: function() {} } );
-					var ChildFsm = ParentFsm.extend( _.merge( {}, behavioralFsmOptions.child ) );
+				extendingWithStaticProps() {
+					const options = _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent );
+					const ParentFsm = BehavioralFsm.extend( options, { someStaticMethod() {}, } );
+					const ChildFsm = ParentFsm.extend( _.merge( {}, behavioralFsmOptions.child ) );
 					return ChildFsm;
 				},
-				options: _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child )
+				options: _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child ),
 			},
 			"With Too Much Inheritance": {
-				instanceWithDefaults: function() {
-					var GrandparentFsm = BehavioralFsm.extend( { states: { uninitialized: {} } } );
-					var ParentFsm = GrandparentFsm.extend( {} );
-					var ChildFsm = ParentFsm.extend( {} );
+				instanceWithDefaults() {
+					const GrandparentFsm = BehavioralFsm.extend( { states: { uninitialized: {}, }, } );
+					const ParentFsm = GrandparentFsm.extend( {} );
+					const ChildFsm = ParentFsm.extend( {} );
 					return new ChildFsm();
 				},
-				instanceWithOptions: function( opt ) {
-					var GrandparentFsm = BehavioralFsm.extend( behavioralFsmOptions.grandparent );
-					var ParentFsm = GrandparentFsm.extend( behavioralFsmOptions.parent );
-					var ChildFsm = ParentFsm.extend( _.merge( {}, behavioralFsmOptions.child, ( opt || {} ) ) );
+				instanceWithOptions( opt ) {
+					const GrandparentFsm = BehavioralFsm.extend( behavioralFsmOptions.grandparent );
+					const ParentFsm = GrandparentFsm.extend( behavioralFsmOptions.parent );
+					const ChildFsm = ParentFsm.extend( _.merge( {}, behavioralFsmOptions.child, ( opt || {} ) ) );
 					return new ChildFsm();
 				},
-				extendingWithStaticProps: function() {
-					var GrandparentFsm = BehavioralFsm.extend( behavioralFsmOptions.grandparent, { someStaticMethod: function() {} } );
-					var ParentFsm = GrandparentFsm.extend( behavioralFsmOptions.parent );
-					var ChildFsm = ParentFsm.extend( _.merge( {}, behavioralFsmOptions.child ) );
+				extendingWithStaticProps() {
+					const GrandparentFsm = BehavioralFsm.extend( behavioralFsmOptions.grandparent, { someStaticMethod() {}, } );
+					const ParentFsm = GrandparentFsm.extend( behavioralFsmOptions.parent );
+					const ChildFsm = ParentFsm.extend( _.merge( {}, behavioralFsmOptions.child ) );
 					return ChildFsm;
 				},
-				options: _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child )
-			}
+				options: _.merge( {}, behavioralFsmOptions.grandparent, behavioralFsmOptions.parent, behavioralFsmOptions.child ),
+			},
 		},
 		machinaFsm: {
 			"With No Inheritance": {
-				instanceWithDefaults: function() {
-					return new machina.Fsm( { states: { uninitialized: {} } } );
+				instanceWithDefaults() {
+					return new machina.Fsm( { states: { uninitialized: {}, }, } );
 				},
-				instanceWithOptions: function( opt ) {
+				instanceWithOptions( opt ) {
 					return new machina.Fsm( _.merge( {}, this.options, ( opt || {} ) ) );
 				},
-				options: _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child )
+				options: _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child ),
 			},
 			"With Some Inheritance": {
-				instanceWithDefaults: function() {
-					var ParentFsm = Fsm.extend( { states: { uninitialized: {} } } );
+				instanceWithDefaults() {
+					const ParentFsm = Fsm.extend( { states: { uninitialized: {}, }, } );
 					return new ParentFsm();
 				},
-				instanceWithOptions: function( opt ) {
-					var options = _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child );
-					var ParentFsm = Fsm.extend( _.merge( {}, options, opt ) );
+				instanceWithOptions( opt ) {
+					const options = _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child );
+					const ParentFsm = Fsm.extend( _.merge( {}, options, opt ) );
 					return new ParentFsm();
 				},
-				extendingWithStaticProps: function() {
-					var options = _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child );
-					var ParentFsm = Fsm.extend( options, { someStaticMethod: function() {} } );
+				extendingWithStaticProps() {
+					const options = _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child );
+					const ParentFsm = Fsm.extend( options, { someStaticMethod() {}, } );
 					return ParentFsm;
 				},
-				options: _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child )
+				options: _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child ),
 			},
 			"With More Inheritance": {
-				instanceWithDefaults: function() {
-					var ParentFsm = Fsm.extend( { states: { uninitialized: {} } } );
-					var ChildFsm = ParentFsm.extend( {} );
+				instanceWithDefaults() {
+					const ParentFsm = Fsm.extend( { states: { uninitialized: {}, }, } );
+					const ChildFsm = ParentFsm.extend( {} );
 					return new ChildFsm();
 				},
-				instanceWithOptions: function( opt ) {
-					var options = _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent );
-					var ParentFsm = Fsm.extend( options );
-					var ChildFsm = ParentFsm.extend( _.merge( {}, classicFsmOptions.child, opt ) );
+				instanceWithOptions( opt ) {
+					const options = _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent );
+					const ParentFsm = Fsm.extend( options );
+					const ChildFsm = ParentFsm.extend( _.merge( {}, classicFsmOptions.child, opt ) );
 					return new ChildFsm();
 				},
-				extendingWithStaticProps: function() {
-					var options = _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent );
-					var ParentFsm = Fsm.extend( options, { someStaticMethod: function() {} } );
-					var ChildFsm = ParentFsm.extend( _.merge( {}, classicFsmOptions.child ) );
+				extendingWithStaticProps() {
+					const options = _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent );
+					const ParentFsm = Fsm.extend( options, { someStaticMethod() {}, } );
+					const ChildFsm = ParentFsm.extend( _.merge( {}, classicFsmOptions.child ) );
 					return ChildFsm;
 				},
-				options: _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child )
+				options: _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child ),
 			},
 			"With Too Much Inheritance": {
-				instanceWithDefaults: function() {
-					var GrandparentFsm = Fsm.extend( { states: { uninitialized: {} } } );
-					var ParentFsm = GrandparentFsm.extend( {} );
-					var ChildFsm = ParentFsm.extend( {} );
+				instanceWithDefaults() {
+					const GrandparentFsm = Fsm.extend( { states: { uninitialized: {}, }, } );
+					const ParentFsm = GrandparentFsm.extend( {} );
+					const ChildFsm = ParentFsm.extend( {} );
 					return new ChildFsm();
 				},
-				instanceWithOptions: function( opt ) {
-					var GrandparentFsm = Fsm.extend( classicFsmOptions.grandparent );
-					var ParentFsm = GrandparentFsm.extend( classicFsmOptions.parent );
-					var ChildFsm = ParentFsm.extend( _.merge( {}, classicFsmOptions.child, opt ) );
+				instanceWithOptions( opt ) {
+					const GrandparentFsm = Fsm.extend( classicFsmOptions.grandparent );
+					const ParentFsm = GrandparentFsm.extend( classicFsmOptions.parent );
+					const ChildFsm = ParentFsm.extend( _.merge( {}, classicFsmOptions.child, opt ) );
 					return new ChildFsm();
 				},
-				extendingWithStaticProps: function() {
-					var GrandparentFsm = Fsm.extend( classicFsmOptions.grandparent, { someStaticMethod: function() {} } );
-					var ParentFsm = GrandparentFsm.extend( classicFsmOptions.parent );
-					var ChildFsm = ParentFsm.extend( _.merge( {}, classicFsmOptions.child ) );
+				extendingWithStaticProps() {
+					const GrandparentFsm = Fsm.extend( classicFsmOptions.grandparent, { someStaticMethod() {}, } );
+					const ParentFsm = GrandparentFsm.extend( classicFsmOptions.parent );
+					const ChildFsm = ParentFsm.extend( _.merge( {}, classicFsmOptions.child ) );
 					return ChildFsm;
 				},
-				options: _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child )
-			}
-		}
+				options: _.merge( {}, classicFsmOptions.grandparent, classicFsmOptions.parent, classicFsmOptions.child ),
+			},
+		},
 	};
 };
