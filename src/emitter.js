@@ -1,10 +1,9 @@
-const utils = require( "./utils" );
-const _ = require( "lodash" );
+import _ from "lodash";
 
-function getInstance() {
+export function getInstance() {
 	return {
-		emit( eventName ) {
-			const args = utils.getLeaklessArgs( arguments ); // eslint-disable-line prefer-rest-params
+		emit( ...args ) {
+			const [ eventName, ] = args;
 			if ( this.eventListeners[ "*" ] ) {
 				_.each( this.eventListeners[ "*" ], function( callback ) {
 					if ( !this.useSafeEmit ) {
@@ -68,7 +67,6 @@ function getInstance() {
 	};
 }
 
-module.exports = {
-	getInstance,
-	instance: getInstance(),
-};
+const _instance = getInstance();
+
+export { _instance as instance };

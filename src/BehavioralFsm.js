@@ -1,22 +1,23 @@
-const _ = require( "lodash" );
-const utils = require( "./utils" );
-const emitter = require( "./emitter" );
-const topLevelEmitter = emitter.instance;
-const events = require( "./events" );
+import _ from "lodash";
+import { utils } from "./utils";
+import { instance as emitterInstance, getInstance } from "./emitter";
+import events from "./events";
+const topLevelEmitter = emitterInstance;
 
 const MACHINA_PROP = "__machina__";
 
-function BehavioralFsm( options ) {
+function BehavioralFsm( ...args ) {
+	const [ options, ] = args;
 	_.extend( this, options );
 	_.defaults( this, utils.getDefaultBehavioralOptions() );
-	this.initialize.apply( this, arguments ); // eslint-disable-line prefer-spread, prefer-rest-params
+	this.initialize( ...args );
 	topLevelEmitter.emit( events.NEW_FSM, this );
 }
 
 _.extend( BehavioralFsm.prototype, {
 	initialize() {},
 
-	initClient: function initClient( client ) {
+	initClient( client ) {
 		const initialState = this.initialState;
 		if ( !initialState ) {
 			throw new Error( "You must specify an initial state for this FSM" );
@@ -83,7 +84,8 @@ _.extend( BehavioralFsm.prototype, {
 	},
 
 	// eslint-disable-next-line max-statements
-	handle( client, input ) {
+	handle( ...args ) {
+		const [ client, input, ] = args;
 		let inputDef = input;
 		if ( typeof input === "undefined" ) {
 			throw new Error( "The input argument passed to the FSM's handle method is undefined. Did you forget to pass the input name?" );
@@ -92,7 +94,6 @@ _.extend( BehavioralFsm.prototype, {
 			inputDef = { inputType: input, delegated: false, ticket: undefined, };
 		}
 		const clientMeta = this.ensureClientMeta( client );
-		const args = utils.getLeaklessArgs( arguments ); // eslint-disable-line prefer-rest-params
 		if ( typeof input !== "object" ) {
 			args.splice( 1, 1, inputDef );
 		}
@@ -113,7 +114,7 @@ _.extend( BehavioralFsm.prototype, {
 				this.pendingDelegations[ inputDef.ticket ] = { delegatedTo: child.namespace, };
 				// WARNING - returning a value from `handle` on child FSMs is not really supported.
 				// If you need to return values from child FSM input handlers, use events instead.
-				result = child.handle.apply( child, args ); // eslint-disable-line prefer-spread
+				result = child.handle( ...args );
 			} else {
 				if ( inputDef.ticket && this.pendingDelegations[ inputDef.ticket ] ) {
 					delete this.pendingDelegations[ inputDef.ticket ];
@@ -148,13 +149,12 @@ _.extend( BehavioralFsm.prototype, {
 	},
 
 	// eslint-disable-next-line max-statements
-	transition( client, newState ) {
+	transition( client, newState, ...args ) {
 		const clientMeta = this.ensureClientMeta( client );
 		const curState = clientMeta.state;
 		const curStateObj = this.states[ curState ];
 		const newStateObj = this.states[ newState ];
 		let child;
-		const args = utils.getLeaklessArgs( arguments ).slice( 2 ); // eslint-disable-line prefer-rest-params
 		if ( !clientMeta.inExitHandler && newState !== curState ) {
 			if ( newStateObj ) {
 				child = this.configForState( newState );
@@ -223,7 +223,7 @@ _.extend( BehavioralFsm.prototype, {
 		const toProcess = _.filter( clientMeta.inputQueue, filterFn );
 		clientMeta.inputQueue = _.difference( clientMeta.inputQueue, toProcess );
 		_.each( toProcess, function( item ) {
-			this.handle.apply( this, [ client, ].concat( item.args ) ); // eslint-disable-line prefer-spread
+			this.handle( ...[ client, ].concat( item.args ) );
 		}.bind( this ) );
 	},
 
@@ -253,8 +253,8 @@ _.extend( BehavioralFsm.prototype, {
 		}
 		return state;
 	},
-}, emitter.getInstance() );
+}, getInstance() );
 
 BehavioralFsm.extend = utils.extend;
 
-module.exports = BehavioralFsm;
+export { BehavioralFsm };

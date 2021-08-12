@@ -18,3 +18,5 @@ desktop.ini
 report/
 coverage/
 bower/
+.nyc_output/
+spec-deprecated/

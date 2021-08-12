@@ -1,5 +1,5 @@
-const events = require( "./events.js" );
-const _ = require( "lodash" );
+import events from "./events.js";
+import _ from "lodash";
 
 const makeFsmNamespace = ( function() {
 	let machinaCount = 0;
@@ -35,13 +35,6 @@ function getDefaultClientMeta() {
 	};
 }
 
-function getLeaklessArgs( args, startIdx ) {
-	const result = [];
-	for ( let i = ( startIdx || 0 ); i < args.length; i++ ) {
-		result[ i ] = args[ i ];
-	}
-	return result;
-}
 /*
 	handle ->
 		child = stateObj._child && stateObj._child.instance;
@@ -86,7 +79,7 @@ function listenToChild( fsm, child ) {
 			}
 			// we do NOT bubble _reset inputs up to the parent
 			if ( data.inputType !== "_reset" ) {
-				fsm.handle.apply( fsm, data.args ); // eslint-disable-line prefer-spread
+				fsm.handle( fsm, data.args ); // eslint-disable-line prefer-spread
 			}
 			break;
 		case events.HANDLING :
@@ -174,22 +167,20 @@ function createUUID() {
 		s[ i ] = hexDigits.substr( Math.floor( Math.random() * 0x10 ), 1 );
 	}
 	s[ 14 ] = "4"; // bits 12-15 of the time_hi_and_version field to 0010
-	/* jshint ignore:start */
 	s[ 19 ] = hexDigits.substr( ( s[ 19 ] & 0x3 ) | 0x8, 1 ); // bits 6-7 of the clock_seq_hi_and_reserved to 01
-	/* jshint ignore:end */
 	s[ 8 ] = s[ 13 ] = s[ 18 ] = s[ 23 ] = "-";
 	return s.join( "" );
 }
 /* eslint-enable no-magic-numbers */
 
-module.exports = {
+const utils = {
 	createUUID,
 	extend,
 	getDefaultBehavioralOptions,
-	getDefaultOptions: getDefaultBehavioralOptions,
 	getDefaultClientMeta,
 	getChildFsmInstance,
-	getLeaklessArgs,
 	listenToChild,
 	makeFsmNamespace,
 };
+
+export { utils };

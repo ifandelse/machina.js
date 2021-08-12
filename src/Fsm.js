@@ -1,6 +1,6 @@
-const BehavioralFsm = require( "./BehavioralFsm" );
-const utils = require( "./utils" );
-const _ = require( "lodash" );
+import { BehavioralFsm } from "./BehavioralFsm";
+import { utils } from "./utils";
+import _ from "lodash";
 
 let Fsm = {
 	constructor() {
@@ -57,8 +57,8 @@ let Fsm = {
 	},
 
 	// "classic" machina FSM do not emit the client property on events (which would be the FSM itself)
-	buildEventPayload() {
-		const args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) ); // eslint-disable-line prefer-rest-params
+	buildEventPayload( ..._args ) {
+		const args = this.ensureClientArg( _args );
 		const data = args[ 1 ];
 		if ( _.isPlainObject( data ) ) {
 			return _.extend( data, { namespace: this.namespace, } );
@@ -74,12 +74,12 @@ _.each( [
 	"processQueue",
 	"clearQueue",
 ], function( methodWithClientInjected ) {
-	Fsm[ methodWithClientInjected ] = function() {
-		const args = this.ensureClientArg( utils.getLeaklessArgs( arguments ) ); // eslint-disable-line prefer-rest-params
+	Fsm[ methodWithClientInjected ] = function( ..._args ) {
+		const args = this.ensureClientArg( _args );
 		return BehavioralFsm.prototype[ methodWithClientInjected ].apply( this, args );
 	};
 } );
 
 Fsm = BehavioralFsm.extend( Fsm );
 
-module.exports = Fsm;
+export { Fsm };
