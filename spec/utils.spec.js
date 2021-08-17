@@ -30,7 +30,110 @@ describe( "utils", () => {
 	} );
 
 	describe( "extend", () => {
+		let result,
+			parent,
+			instance,
+			ctor;
 
+		describe( "when a constructor is provided", () => {
+			beforeEach( () => {
+				parent = {
+					totallyParentProp: true,
+				};
+				parent.prototype = {
+					totallyParentProto: true,
+				};
+				ctor = function() {};
+				result = utils.extend.call(
+					parent,
+					{
+						constructor: ctor,
+					},
+					{
+						totallyStaticProp: true,
+					}
+				);
+			} );
+
+			it( "should make the custom constructor the fsm", () => {
+				result.should.equal( ctor );
+			} );
+
+			it( "should inherit class props from parent", () => {
+				result.totallyParentProp.should.be.true();
+			} );
+
+			it( "should set the prototype chain", () => {
+				result.prototype.totallyParentProto.should.be.true();
+			} );
+
+			it( "should apply static props", () => {
+				result.totallyStaticProp.should.be.true();
+			} );
+
+			it( "should set the constructor property", () => {
+				result.prototype.constructor.should.equal( result );
+			} );
+
+			it( "should set the __super__ property", () => {
+				result.__super__.should.equal( parent.prototype );
+			} );
+		} );
+
+		describe( "when no constructor is provided", () => {
+			beforeEach( () => {
+				parent = function parentFn() {};
+				parent.someClassProp = "calzone";
+				parent.prototype = {
+					totallyParentProto: true,
+				};
+				ctor = function() {};
+				result = utils.extend.call(
+					parent,
+					{
+						initialState: "ready",
+						states: {
+							ready: {},
+							doingTheThing: {},
+							completed: {},
+						},
+					},
+					{
+						totallyStaticProp: true,
+					}
+				);
+				instance = new result(); // eslint-disable-line new-cap
+			} );
+
+			it( "apply states to the instance", () => {
+				instance.states.should.eql( {
+					ready: {},
+					doingTheThing: {},
+					completed: {},
+				} );
+				instance.initialState.should.equal( "ready" );
+			} );
+
+			it( "should inherit class props from parent", () => {
+				result.someClassProp.should.equal( "calzone" );
+			} );
+
+			it( "should set the prototype chain", () => {
+				result.prototype.totallyParentProto.should.be.true();
+			} );
+
+			it( "should apply static props", () => {
+				result.totallyStaticProp.should.be.true();
+			} );
+
+			it( "should set the constructor property", () => {
+				result.prototype.constructor.should.equal( result );
+			} );
+
+			it( "should set the __super__ property", () => {
+				result.__super__.should.equal( parent.prototype );
+			} );
+		} );
 	} );
 
 	const { sinon, } = global;
