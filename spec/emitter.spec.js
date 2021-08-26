@@ -125,32 +125,94 @@ describe( "emitter", () => {
 	} );
 
 	describe( "on", () => {
+		let sub;
+
 		describe( "when it's the first subscription for that event", () => {
-			it( "should init the eventListeners prop" );
-			it( "should init the listeners array for the event" );
-			it( "should add the callback as a listener" );
-			it( "should return the expected object" );
-			it( "should remove the listener if off() is called" );
+			beforeEach( () => {
+				sub = instance.on( "calzone", listenerStub );
+			} );
+
+			it( "should init the eventListeners prop", () => {
+				instance.eventListeners.should.containSubset( {
+					"*": [],
+				} );
+			} );
+
+			it( "should init the listeners array for the event", () => {
+				instance.eventListeners.should.containSubset( {
+					calzone: [ listenerStub, ],
+				} );
+			} );
+
+			it( "should return the expected object", () => {
+				sub.eventName.should.equal( "calzone" );
+				sub.callback.should.equal( listenerStub );
+				sub.off.should.be.a( "function" );
+			} );
+
+			it( "should remove the listener if off() is called", () => {
+				sub.off();
+				instance.eventListeners.calzone.length.should.equal( 0 );
+			} );
 		} );
 
 		describe( "when it's not the first subscription for that event", () => {
-			it( "should add the callback as a listener" );
-			it( "should return the expected object" );
-			it( "should remove the listener if off() is called" );
+			beforeEach( () => {
+				instance.on( "calzone", () => {} );
+				sub = instance.on( "calzone", listenerStub );
+			} );
+
+			it( "should add the callback as a listener", () => {
+				instance.eventListeners.calzone[ 1 ].should.equal( listenerStub );
+			} );
+
+			it( "should return the expected object", () => {
+				sub.eventName.should.equal( "calzone" );
+				sub.callback.should.equal( listenerStub );
+				sub.off.should.be.a( "function" );
+			} );
+
+			it( "should remove the listener if off() is called", () => {
+				sub.off();
+				instance.eventListeners.calzone.length.should.equal( 1 );
+			} );
 		} );
 	} );
 
 	describe( "off", () => {
+		beforeEach( () => {
+			instance.on( "calzone", () => {} );
+			instance.on( "calzone", listenerStub );
+		} );
+
 		describe( "when not passing an event name", () => {
-			it( "should clear all listeners" );
+			beforeEach( () => {
+				instance.off();
+			} );
+
+			it( "should clear all listeners", () => {
+				instance.eventListeners.should.eql( {} );
+			} );
 		} );
 
 		describe( "when passing an event name with a callback", () => {
-			it( "should remove that specific callback for that event name" );
+			beforeEach( () => {
+				instance.off( "calzone", listenerStub );
+			} );
+
+			it( "should remove that specific callback for that event name", () => {
+				instance.eventListeners.calzone.should.not.contain( listenerStub );
+			} );
 		} );
 
 		describe( "when passing an event name with no callback", () => {
-			it( "should clear all subscriptions for that event name" );
+			beforeEach( () => {
+				instance.off( "calzone" );
+			} );
+
+			it( "should clear all subscriptions for that event name", () => {
+				instance.eventListeners.calzone.length.should.equal( 0 );
+			} );
 		} );
 	} );
 } );
