@@ -44,7 +44,7 @@ let Fsm = {
 		// inputType might be an object, so we need to just get the inputType string if so
 		const _args = args;
 		const input = _args[ 1 ];
-		if ( typeof inputType === "object" ) {
+		if ( typeof input === "object" ) {
 			_args.splice( 1, 1, input.inputType );
 		}
 		return isCatchAll ?

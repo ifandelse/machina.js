@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 describe( "utils", () => {
 	let events,
 		utils;
@@ -81,37 +83,205 @@ describe( "utils", () => {
 		} );
 
 		describe( "when no constructor is provided", () => {
+			describe( "when not passing args to the default constructor", () => {
+				beforeEach( () => {
+					parent = function parentFn() {};
+					parent.someClassProp = "calzone";
+					parent.prototype = {
+						totallyParentProto: true,
+					};
+					result = utils.extend.call(
+						parent,
+						{
+							initialState: "ready",
+							states: {
+								ready: {},
+								doingTheThing: {},
+								completed: {},
+							},
+						},
+						{
+							totallyStaticProp: true,
+						}
+					);
+					instance = new result(); // eslint-disable-line new-cap
+				} );
+
+				it( "apply states to the instance", () => {
+					instance.states.should.eql( {
+						ready: {},
+						doingTheThing: {},
+						completed: {},
+					} );
+					instance.initialState.should.equal( "ready" );
+				} );
+
+				it( "should inherit class props from parent", () => {
+					result.someClassProp.should.equal( "calzone" );
+				} );
+
+				it( "should set the prototype chain", () => {
+					result.prototype.totallyParentProto.should.be.true();
+				} );
+
+				it( "should apply static props", () => {
+					result.totallyStaticProp.should.be.true();
+				} );
+
+				it( "should set the constructor property", () => {
+					result.prototype.constructor.should.equal( result );
+				} );
+
+				it( "should set the __super__ property", () => {
+					result.__super__.should.equal( parent.prototype );
+				} );
+			} );
+
+			describe( "when passing args to the default constructor", () => {
+				describe( "when using the default initialState", () => {
+					beforeEach( () => {
+						parent = function parentFn( ...args ) {
+							const [ options, ] = args;
+							_.extend( this, options ); // eslint-disable-line no-invalid-this
+						};
+						parent.someClassProp = "calzone";
+						parent.prototype = {
+							totallyParentProto: true,
+						};
+						result = utils.extend.call(
+							parent,
+							{
+								initialState: "ready",
+								states: {
+									ready: {},
+									doingTheThing: {},
+									completed: {},
+								},
+							},
+							{
+								totallyStaticProp: true,
+							}
+						);
+						// eslint-disable-next-line
+						instance = new result( {
+							states: {
+								afterActionReview: {},
+							},
+						} ); // eslint-disable-line new-cap
+					} );
+
+					it( "apply states to the instance", () => {
+						instance.states.should.eql( {
+							ready: {},
+							doingTheThing: {},
+							completed: {},
+							afterActionReview: {},
+						} );
+						instance.initialState.should.equal( "ready" );
+					} );
+
+					it( "should inherit class props from parent", () => {
+						result.someClassProp.should.equal( "calzone" );
+					} );
+
+					it( "should set the prototype chain", () => {
+						result.prototype.totallyParentProto.should.be.true();
+					} );
+
+					it( "should apply static props", () => {
+						result.totallyStaticProp.should.be.true();
+					} );
+
+					it( "should set the constructor property", () => {
+						result.prototype.constructor.should.equal( result );
+					} );
+
+					it( "should set the __super__ property", () => {
+						result.__super__.should.equal( parent.prototype );
+					} );
+				} );
+
+				describe( "when overriding initialState", () => {
+					beforeEach( () => {
+						parent = function parentFn( ...args ) {
+							const [ options, ] = args;
+							_.extend( this, options ); // eslint-disable-line no-invalid-this
+						};
+						parent.someClassProp = "calzone";
+						parent.prototype = {
+							totallyParentProto: true,
+						};
+						result = utils.extend.call(
+							parent,
+							{
+								initialState: "ready",
+								states: {
+									ready: {},
+									doingTheThing: {},
+									completed: {},
+								},
+							},
+							{
+								totallyStaticProp: true,
+							}
+						);
+						// eslint-disable-next-line
+						instance = new result( {
+							initialState: "afterActionReview",
+							states: {
+								afterActionReview: {},
+							},
+						} ); // eslint-disable-line new-cap
+					} );
+
+					it( "apply states to the instance", () => {
+						instance.states.should.eql( {
+							ready: {},
+							doingTheThing: {},
+							completed: {},
+							afterActionReview: {},
+						} );
+						instance.initialState.should.equal( "afterActionReview" );
+					} );
+
+					it( "should inherit class props from parent", () => {
+						result.someClassProp.should.equal( "calzone" );
+					} );
+
+					it( "should set the prototype chain", () => {
+						result.prototype.totallyParentProto.should.be.true();
+					} );
+
+					it( "should apply static props", () => {
+						result.totallyStaticProp.should.be.true();
+					} );
+
+					it( "should set the constructor property", () => {
+						result.prototype.constructor.should.equal( result );
+					} );
+
+					it( "should set the __super__ property", () => {
+						result.__super__.should.equal( parent.prototype );
+					} );
+				} );
+			} );
+		} );
+
+		describe( "when no protoProps are provided", () => {
 			beforeEach( () => {
 				parent = function parentFn() {};
 				parent.someClassProp = "calzone";
 				parent.prototype = {
 					totallyParentProto: true,
 				};
-				ctor = function() {};
 				result = utils.extend.call(
 					parent,
-					{
-						initialState: "ready",
-						states: {
-							ready: {},
-							doingTheThing: {},
-							completed: {},
-						},
-					},
+					null,
 					{
 						totallyStaticProp: true,
 					}
 				);
 				instance = new result(); // eslint-disable-line new-cap
-			} );
-
-			it( "apply states to the instance", () => {
-				instance.states.should.eql( {
-					ready: {},
-					doingTheThing: {},
-					completed: {},
-				} );
-				instance.initialState.should.equal( "ready" );
 			} );
 
 			it( "should inherit class props from parent", () => {
@@ -222,6 +392,15 @@ describe( "utils", () => {
 
 			it( "should set the instance value to result of factory invocation", () => {
 				result.instance.should.equal( "INSTANCE" );
+			} );
+		} );
+
+		describe( "when config is neither object nor function", () => {
+			// NOTE - this is a TypeError, but we should really be more explicit here...
+			it( "should throw an error", () => {
+				( function() {
+					result = utils.getChildFsmInstance( "calzone" );
+				} ).should.throw();
 			} );
 		} );
 	} );

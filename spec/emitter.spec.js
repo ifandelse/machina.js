@@ -94,33 +94,165 @@ describe( "emitter", () => {
 					} );
 				} );
 			} );
-		} );
 
-		describe( "when the event name has listeners", () => {
-			describe( "with useSafeEmit=true", () => {
+			describe( "with useSafeEmit=false", () => {
+				beforeEach( () => {
+					instance.useSafeEmit = false;
+				} );
+
 				describe( "when the callback does not throw", () => {
-					it( "should execute the callback" );
-					it( "should not log an exception" );
+					beforeEach( () => {
+						instance.emit( "so", "many", "args" );
+					} );
+
+					it( "should execute the callback", () => {
+						listenerStub.should.be.calledWithExactly( "so", "many", "args" );
+					} );
+
+					it( "should not log an exception", () => {
+						console.log.should.not.be.called();
+					} );
 				} );
 
 				describe( "when the callback throws", () => {
-					describe( "when console is falsy", () => {
-						it( "should do nothing" );
+					let origConsole;
+
+					beforeEach( () => {
+						origConsole = global.console;
+						global.console = null;
+						listenerStub.throws( new Error( "E_NO_CALZONE" ) );
 					} );
 
-					describe( "when console is truthy, but log is not", () => {
-						it( "should do nothing" );
+					afterEach( () => {
+						global.console = origConsole;
 					} );
 
-					describe( "when console.log is truthy", () => {
-						it( "should log the error" );
+					it( "should execute throw", () => {
+						( function() {
+							instance.emit( "so", "many", "args" );
+						} ).should.throw( "E_NO_CALZONE" );
 					} );
 				} );
 			} );
 		} );
 
-		describe( "when the event name has no listeners", () => {
-			it( "should do nothing" );
+		describe( "when the event name has listeners", () => {
+			beforeEach( () => {
+				instance.eventListeners = {
+					newCalzone: [ listenerStub, ],
+				};
+			} );
+
+			describe( "with useSafeEmit=true", () => {
+				beforeEach( () => {
+					instance.useSafeEmit = true;
+				} );
+
+				describe( "when the callback does not throw", () => {
+					beforeEach( () => {
+						instance.emit( "newCalzone", "so", "many", "args" );
+					} );
+
+					it( "should execute the callback", () => {
+						listenerStub.should.be.calledWithExactly( "so", "many", "args" );
+					} );
+
+					it( "should not log an exception", () => {
+						console.log.should.not.be.called();
+					} );
+				} );
+
+				describe( "when the callback throws", () => {
+					describe( "when console is falsy", () => {
+						let origConsole;
+
+						beforeEach( () => {
+							origConsole = global.console;
+							global.console = null;
+							listenerStub.throws( new Error( "E_NO_CALZONE" ) );
+							instance.emit( "newCalzone", "so", "many", "args" );
+						} );
+
+						afterEach( () => {
+							global.console = origConsole;
+						} );
+
+						it( "should execute the callback", () => {
+							listenerStub.should.be.calledWithExactly( "so", "many", "args" );
+						} );
+					} );
+
+					describe( "when console is truthy, but log is not", () => {
+						beforeEach( () => {
+							global.console.log = undefined;
+							listenerStub.throws( new Error( "E_NO_CALZONE" ) );
+							instance.emit( "newCalzone", "so", "many", "args" );
+						} );
+
+						afterEach( () => {
+							global.console.log = origLog;
+						} );
+
+						it( "should execute the callback", () => {
+							listenerStub.should.be.calledWithExactly( "so", "many", "args" );
+						} );
+					} );
+
+					describe( "when console.log is truthy", () => {
+						let err;
+
+						beforeEach( () => {
+							err = new Error( "E_NO_CALZONE" );
+							listenerStub.throws( err );
+							instance.emit( "newCalzone", "so", "many", "args" );
+						} );
+
+						it( "should log the error", () => {
+							console.log.should.be.calledWithExactly( err.stack );
+						} );
+					} );
+				} );
+			} );
+
+			describe( "with useSafeEmit=false", () => {
+				beforeEach( () => {
+					instance.useSafeEmit = false;
+				} );
+
+				describe( "when the callback does not throw", () => {
+					beforeEach( () => {
+						instance.emit( "newCalzone", "so", "many", "args" );
+					} );
+
+					it( "should execute the callback", () => {
+						listenerStub.should.be.calledWithExactly( "so", "many", "args" );
+					} );
+
+					it( "should not log an exception", () => {
+						console.log.should.not.be.called();
+					} );
+				} );
+
+				describe( "when the callback throws", () => {
+					let origConsole;
+
+					beforeEach( () => {
+						origConsole = global.console;
+						global.console = null;
+						listenerStub.throws( new Error( "E_NO_CALZONE" ) );
+					} );
+
+					afterEach( () => {
+						global.console = origConsole;
+					} );
+
+					it( "should execute throw", () => {
+						( function() {
+							instance.emit( "newCalzone", "so", "many", "args" );
+						} ).should.throw( "E_NO_CALZONE" );
+					} );
+				} );
+			} );
 		} );
 	} );
 
@@ -212,6 +344,20 @@ describe( "emitter", () => {
 
 			it( "should clear all subscriptions for that event name", () => {
 				instance.eventListeners.calzone.length.should.equal( 0 );
+			} );
+		} );
+
+		describe( "when eventListeners was never init'd properly (defensive much, Jimbo? Sigh)", () => {
+			beforeEach( () => {
+				instance.eventListeners = undefined;
+				instance.off( "calzone" );
+			} );
+
+			it( "should add the event name with an empty listener array", () => {
+				instance.eventListeners.should.eql( {
+					"*": [],
+					calzone: [],
+				} );
 			} );
 		} );
 	} );

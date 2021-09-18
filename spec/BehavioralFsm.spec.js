@@ -1,6 +1,6 @@
 const { sinon, } = global;
 
-describe( "emitter", () => {
+describe( "BehavioralFsm", () => {
 	let	instance,
 		emitter,
 		emitterInstance,
@@ -15,15 +15,17 @@ describe( "emitter", () => {
 			instance: { namespace: "child.fsm", },
 		};
 		utils = {
-			getDefaultBehavioralOptions: sinon.stub().returns(),
+			getDefaultBehavioralOptions: sinon.stub().returns( { defaultBehavioralOptions: true, } ),
 			getChildFsmInstance: sinon.stub().returns( childInstanceStub ),
 			listenToChild: sinon.stub().returns( "LISTENING" ),
 			getDefaultClientMeta: sinon.stub().returns( { defaultMeta: true, } ),
-			createUUID: sinon.stub().returns(),
-			extend: sinon.stub().returns(),
+			createUUID: sinon.stub().returns( "UUID" ),
+			extend: sinon.stub().returns( "EXTEND_FUNCTION" ),
 		};
 
-		emitterInstance = {};
+		emitterInstance = {
+			emit: sinon.stub(),
+		};
 
 		emitter = {
 			getInstance: sinon.stub().returns( emitterInstance ),
@@ -37,11 +39,40 @@ describe( "emitter", () => {
 	} );
 
 	describe( "when creating an instance", () => {
-		it( "should extend options over the instance" );
-		it( "should set default values" );
-		it( "should call initialize" );
-		it( "should emit a NEW_FSM event" );
-		it( "should set the extend static prop" );
+		let newInstance;
+
+		beforeEach( () => {
+			emitterInstance.emit = sinon.stub();
+			instance.BehavioralFsm.prototype.initialize = sinon.stub();
+			newInstance = new instance.BehavioralFsm( { optionsObject: true, }, "arg1", "arg2" );
+		} );
+
+		it( "should extend options over the instance", () => {
+			newInstance.should.containSubset( { optionsObject: true, } );
+		} );
+
+		it( "should set default values", () => {
+			newInstance.should.containSubset( { defaultBehavioralOptions: true, } );
+		} );
+
+		it( "should call initialize", () => {
+			instance.BehavioralFsm.prototype.initialize.should.be.calledOnceWithExactly(
+				{ optionsObject: true, },
+				"arg1",
+				"arg2"
+			);
+		} );
+
+		it( "should emit a NEW_FSM event", () => {
+			emitterInstance.emit.should.be.calledOnceWithExactly(
+				"newfsm",
+				newInstance
+			);
+		} );
+
+		it( "should set the extend static prop", () => {
+			instance.BehavioralFsm.extend.should.eql( utils.extend );
+		} );
 	} );
 
 	describe( "initClient", () => {
@@ -346,102 +377,725 @@ describe( "emitter", () => {
 	} );
 
 	describe( "handle", () => {
+		let mockClient,
+			mockChild;
+
 		describe( "when the input is undefined", () => {
-			it( "should throw an error" );
+			it( "should throw an error", () => {
+				mockClient = {};
+				( function() {
+					instance.BehavioralFsm.prototype.handle.call( mockInstance, mockClient );
+				} ).should.throw( "The input argument passed to the FSM's handle method is undefined. Did you forget to pass the input name?" );
+			} );
 		} );
 
 		describe( "when input is a string", () => {
 			describe( "when inExitHandler is false", () => {
 				describe( "with a child, no pending delegations and not bubbling", () => {
-					it( "should use an existing ticket number if present" );
-					it( "should update the pendingDelegations prop" );
-					it( "should call handle on the child" );
-					it( "should return the result" );
-				} );
+					beforeEach( () => {
+						mockClient = {};
+						clientMeta = {
+							state: "ready",
+						};
+						mockChild = {
+							handle: sinon.stub().returns( "YOUR CALZONE, SIR" ),
+							namespace: "mock.child",
+						};
+						mockInstance = {
+							ensureClientMeta: sinon.stub().returns( clientMeta ),
+							configForState: sinon.stub().returns( mockChild ),
+							buildEventPayload: sinon.stub(),
+							emit: sinon.stub(),
+							getHandlerArgs: sinon.stub(),
+							states: {
+								ready: {
+									calzone: sinon.stub(),
+								},
+							},
+							pendingDelegations: {},
+						};
+						result = instance.BehavioralFsm.prototype.handle.call( mockInstance, mockClient, "calzone", "arg1", "arg2" );
+					} );
 
-				describe( "with a child, no pending delegations & bubbling", () => {
-					it( "should remove any pending delegations" );
-					it( "should emit a HANDLING event" );
-					it( "should call the handler if a function is provided" );
-					it( "should emit a HANDLED event" );
-					it( "should update clientMeta props" );
-				} );
+					it( "should call handle on child (and use an existing ticket number if present)", () => {
+						mockChild.handle.should.be.calledOnceWithExactly(
+							{},
+							{ inputType: "calzone", delegated: true, ticket: "UUID", },
+							"arg1",
+							"arg2"
+						);
+					} );
 
-				describe( "with a child, pending delegations and not bubbling", () => {
-					it( "should emit a NO_HANDLER event if not handler is found" );
+					it( "should update the pendingDelegations prop", () => {
+						mockInstance.pendingDelegations.should.eql( {
+							UUID: { delegatedTo: "mock.child", },
+						} );
+					} );
+
+					it( "should return the result", () => {
+						result.should.eql( "YOUR CALZONE, SIR" );
+					} );
 				} );
 			} );
 
 			describe( "when inExitHandler is true", () => {
-				it( "should return undefined" );
+				beforeEach( () => {
+					mockClient = {};
+					clientMeta = {
+						state: "ready",
+						inExitHandler: true,
+					};
+					mockChild = {
+						handle: sinon.stub().returns( "YOUR CALZONE, SIR" ),
+						namespace: "mock.child",
+					};
+					mockInstance = {
+						ensureClientMeta: sinon.stub().returns( clientMeta ),
+						emit: sinon.stub(),
+						states: {
+							ready: {
+								calzone: sinon.stub(),
+							},
+						},
+						pendingDelegations: {},
+					};
+					result = instance.BehavioralFsm.prototype.handle.call(
+						mockInstance,
+						mockClient,
+						"calzone",
+						"arg1",
+						"arg2"
+					);
+				} );
+
+				it( "should return undefined", () => {
+					( result === undefined ).should.be.true();
+				} );
+
+				it( "should not execute any handlers", () => {
+					mockInstance.states.ready.calzone.should.not.be.called();
+					mockChild.handle.should.not.be.called();
+				} );
 			} );
 		} );
 
 		describe( "when input is an object", () => {
 			describe( "when inExitHandler is false", () => {
 				describe( "with a child, no pending delegations and not bubbling", () => {
-					it( "should create a ticket number if one is not present" );
-					it( "should update the pendingDelegations prop" );
-					it( "should call handle on the child" );
-					it( "should return the result" );
+					beforeEach( () => {
+						mockClient = {};
+						clientMeta = {
+							state: "ready",
+						};
+						mockChild = {
+							handle: sinon.stub().returns( "YOUR CALZONE, SIR" ),
+							namespace: "mock.child",
+						};
+						mockInstance = {
+							ensureClientMeta: sinon.stub().returns( clientMeta ),
+							configForState: sinon.stub().returns( mockChild ),
+							buildEventPayload: sinon.stub(),
+							emit: sinon.stub(),
+							getHandlerArgs: sinon.stub(),
+							states: {
+								ready: {
+									calzone: sinon.stub(),
+								},
+							},
+							pendingDelegations: {},
+						};
+						result = instance.BehavioralFsm.prototype.handle.call(
+							mockInstance,
+							mockClient,
+							{
+								inputType: "calzone",
+								delegated: false,
+								ticket: undefined,
+								bubbling: false,
+							},
+							"arg1",
+							"arg2"
+						);
+					} );
+
+					it( "should create a ticket number if one is not present", () => {
+						utils.createUUID.should.be.calledOnce();
+					} );
+
+					it( "should update the pendingDelegations prop", () => {
+						mockInstance.pendingDelegations.should.eql( {
+							UUID: { delegatedTo: "mock.child", },
+						} );
+					} );
+
+					it( "should call handle on the child", () => {
+						mockChild.handle.should.be.calledOnceWithExactly(
+							mockClient,
+							{
+								inputType: "calzone",
+								delegated: true,
+								ticket: "UUID",
+								bubbling: false,
+							},
+							"arg1",
+							"arg2"
+						);
+					} );
+
+					it( "should return the result", () => {
+						result.should.eql( "YOUR CALZONE, SIR" );
+					} );
 				} );
 
-				describe( "when a child, no pending delegations & bubbling", () => {
-					it( "should emit a HANDLING event" );
-					it( "should call transition if a string state name is provided for the handler" );
-					it( "should emit a HANDLED event" );
-					it( "should update clientMeta props" );
+				describe( "with a child, no pending delegations & bubbling", () => {
+					beforeEach( () => {
+						mockClient = {};
+						clientMeta = {
+							state: "ready",
+						};
+						mockChild = {
+							handle: sinon.stub().returns( "YOUR CALZONE, SIR" ),
+							namespace: "mock.child",
+						};
+						mockInstance = {
+							ensureClientMeta: sinon.stub().returns( clientMeta ),
+							configForState: sinon.stub().returns( mockChild ),
+							buildEventPayload: sinon.stub().returns( "EVENT_PAYLOAD" ),
+							emit: sinon.stub(),
+							getHandlerArgs: sinon.stub().returns( [ mockClient, "arg1", "arg2", ] ),
+							states: {
+								ready: {
+									calzone: sinon.stub(),
+								},
+							},
+							pendingDelegations: {
+								8675309: { delegatedTo: "mock.child", },
+							},
+						};
+						result = instance.BehavioralFsm.prototype.handle.call(
+							mockInstance,
+							mockClient,
+							{
+								inputType: "calzone",
+								delegated: false,
+								ticket: "8675309",
+								bubbling: true,
+							},
+							"arg1",
+							"arg2"
+						);
+					} );
+
+					it( "should remove any pending delegations", () => {
+						mockInstance.pendingDelegations.should.eql( {} );
+					} );
+
+					it( "should call buildEventPayload with expected args", () => {
+						mockInstance.buildEventPayload.should.be.calledOnceWithExactly(
+							mockClient,
+							{
+								inputType: "calzone",
+								delegated: false,
+								ticket: "8675309",
+							}
+						);
+					} );
+
+					it( "should emit a HANDLING event", () => {
+						mockInstance.emit.should.be.calledTwice();
+						mockInstance.emit.getCall( 0 ).should.be.calledWithExactly(
+							"handling",
+							"EVENT_PAYLOAD"
+						);
+					} );
+
+					it( "should get the handler args", () => {
+						mockInstance.getHandlerArgs.should.be.calledOnceWithExactly( [
+							{},
+							{
+								inputType: "calzone",
+								delegated: false,
+								ticket: "8675309",
+								bubbling: true,
+							},
+							"arg1",
+							"arg2",
+
+						], false );
+					} );
+
+					it( "should call the handler if a function is provided", () => {
+						mockInstance.states.ready.calzone.should.be.calledOnceWithExactly( mockClient, "arg1", "arg2" );
+					} );
+
+					it( "should emit a HANDLED event", () => {
+						mockInstance.emit.getCall( 1 ).should.be.calledWithExactly(
+							"handled",
+							"EVENT_PAYLOAD"
+						);
+					} );
+
+					it( "should update clientMeta props", () => {
+						clientMeta.should.eql( {
+							currentAction: "",
+							currentActionArgs: undefined,
+							priorAction: "ready.calzone",
+							state: "ready",
+						} );
+					} );
 				} );
 
-				describe( "with a child, pending delegations and not bubbling", () => {
-					it( "should emit a HANDLING event" );
-					it( "should call transition if a string state name is provided for the handler" );
-					it( "should emit a HANDLED event" );
-					it( "should update clientMeta props" );
+				describe( "with a child, pending delegations, not bubbling, and no matching handler", () => {
+					beforeEach( () => {
+						mockClient = {};
+						clientMeta = {
+							state: "ready",
+						};
+						mockChild = {
+							handle: sinon.stub().returns( "YOUR CALZONE, SIR" ),
+							namespace: "mock.child",
+						};
+						mockInstance = {
+							ensureClientMeta: sinon.stub().returns( clientMeta ),
+							configForState: sinon.stub().returns( mockChild ),
+							buildEventPayload: sinon.stub().returns( { paylod: "EVENT_PAYLOAD", } ),
+							emit: sinon.stub(),
+							getHandlerArgs: sinon.stub().returns( [ mockClient, "arg1", "arg2", ] ),
+							states: {
+								ready: {
+									otherHandlersButNotCalzoneInThisState: sinon.stub(),
+								},
+							},
+							pendingDelegations: {
+								8675309: { delegatedTo: "mock.child", },
+							},
+						};
+						result = instance.BehavioralFsm.prototype.handle.call(
+							mockInstance,
+							mockClient,
+							{
+								inputType: "calzone",
+								delegated: false,
+								ticket: "8675309",
+								bubbling: false,
+							},
+							"arg1",
+							"arg2"
+						);
+					} );
+
+					it( "should emit a NO_HANDLER event if not handler is found", () => {
+						mockInstance.emit.should.be.calledOnceWithExactly(
+							"nohandler",
+							{
+								args: [
+									{},
+									{
+										inputType: "calzone",
+										delegated: false,
+										ticket: "8675309",
+										bubbling: false,
+									},
+									"arg1",
+									"arg2",
+								],
+								paylod: "EVENT_PAYLOAD",
+							}
+						);
+					} );
 				} );
 			} );
 
 			describe( "when inExitHandler is true", () => {
-				it( "should return undefined" );
+				beforeEach( () => {
+					mockClient = {};
+					clientMeta = {
+						state: "ready",
+						inExitHandler: true,
+					};
+					mockChild = {
+						handle: sinon.stub().returns( "YOUR CALZONE, SIR" ),
+						namespace: "mock.child",
+					};
+					mockInstance = {
+						ensureClientMeta: sinon.stub().returns( clientMeta ),
+						emit: sinon.stub(),
+						states: {
+							ready: {
+								calzone: sinon.stub(),
+							},
+						},
+						pendingDelegations: {},
+					};
+					result = instance.BehavioralFsm.prototype.handle.call(
+						mockInstance,
+						mockClient,
+						{
+							inputType: "calzone",
+							delegated: false,
+							ticket: "8675309",
+							bubbling: false,
+						},
+						"arg1",
+						"arg2"
+					);
+				} );
+
+				it( "should return undefined", () => {
+					( result === undefined ).should.be.true();
+				} );
+
+				it( "should not execute any handlers", () => {
+					mockInstance.states.ready.calzone.should.not.be.called();
+					mockChild.handle.should.not.be.called();
+				} );
 			} );
 		} );
 	} );
 
 	describe( "transition", () => {
+		let mockClient,
+			mockChild;
+
 		describe( "when we're in an exit handler", () => {
-			it( "should not transition" );
+			beforeEach( () => {
+				mockClient = {};
+				clientMeta = {
+					state: "readyForCalzone",
+					inExitHandler: true,
+				};
+				mockChild = {
+					namespace: "mock.child",
+				};
+				mockInstance = {
+					ensureClientMeta: sinon.stub().returns( clientMeta ),
+					configForState: sinon.stub().returns( mockChild ),
+					buildEventPayload: sinon.stub(),
+					emit: sinon.stub(),
+					getSystemHandlerArgs: sinon.stub(),
+					states: {
+						readyForCalzone: {},
+						nomNomCalzone: {},
+					},
+				};
+				result = instance.BehavioralFsm.prototype.transition.call(
+					mockInstance,
+					mockClient,
+					"nomNomCalzone"
+				);
+			} );
+
+			it( "should not transition", () => {
+				clientMeta.state.should.eql( "readyForCalzone" );
+			} );
 		} );
 
 		describe( "when the new state is the same as the current state", () => {
-			it( "should not transition" );
+			beforeEach( () => {
+				mockClient = {};
+				clientMeta = {
+					state: "readyForCalzone",
+					inExitHandler: false,
+				};
+				mockChild = {
+					namespace: "mock.child",
+				};
+				mockInstance = {
+					ensureClientMeta: sinon.stub().returns( clientMeta ),
+					configForState: sinon.stub().returns( mockChild ),
+					buildEventPayload: sinon.stub(),
+					emit: sinon.stub(),
+					getSystemHandlerArgs: sinon.stub(),
+					states: {
+						readyForCalzone: {},
+						nomNomCalzone: {},
+					},
+				};
+				result = instance.BehavioralFsm.prototype.transition.call(
+					mockInstance,
+					mockClient,
+					"readyForCalzone"
+				);
+			} );
+
+			it( "should not transition", () => {
+				clientMeta.state.should.eql( "readyForCalzone" );
+			} );
 		} );
 
 		describe( "when an invalid state is passed", () => {
-			it( "should not transition" );
-			it( "should emit an invalid state event" );
+			beforeEach( () => {
+				mockClient = {};
+				clientMeta = {
+					state: "readyForCalzone",
+					inExitHandler: false,
+				};
+				mockChild = {
+					namespace: "mock.child",
+				};
+				mockInstance = {
+					ensureClientMeta: sinon.stub().returns( clientMeta ),
+					configForState: sinon.stub().returns( mockChild ),
+					buildEventPayload: sinon.stub().returns( "EVENT_PAYLOAD" ),
+					emit: sinon.stub(),
+					getSystemHandlerArgs: sinon.stub(),
+					states: {
+						readyForCalzone: {},
+						nomNomCalzone: {},
+					},
+				};
+				result = instance.BehavioralFsm.prototype.transition.call(
+					mockInstance,
+					mockClient,
+					"dasEssenIstSehrGut"
+				);
+			} );
+
+			it( "should not transition", () => {
+				clientMeta.state.should.eql( "readyForCalzone" );
+			} );
+
+			it( "should build the event payload for the invalid state event", () => {
+				mockInstance.buildEventPayload.should.be.calledOnceWithExactly(
+					mockClient,
+					{
+						state: "readyForCalzone",
+						attemptedState: "dasEssenIstSehrGut",
+					}
+				);
+			} );
+
+			it( "should emit an invalid state event", () => {
+				mockInstance.emit.should.be.calledOnceWithExactly(
+					"invalidstate",
+					"EVENT_PAYLOAD"
+				);
+			} );
 		} );
 
 		describe( "when the new state is one we can transition into", () => {
 			describe( "when the state we're exiting has an onExit handler", () => {
-				it( "should invoke the exit handler" );
-				it( "should set the new and prior state properties" );
-				it( "should emit a transition event" );
-				it( "should emit a transitioned event" );
+				beforeEach( () => {
+					mockClient = {};
+					clientMeta = {
+						state: "readyForCalzone",
+						inExitHandler: false,
+						currentAction: "gimmehCalzone",
+					};
+					mockChild = {
+						namespace: "mock.child",
+					};
+					mockInstance = {
+						ensureClientMeta: sinon.stub().returns( clientMeta ),
+						configForState: sinon.stub().returns(),
+						buildEventPayload: sinon.stub().returns( "EVENT_PAYLOAD" ),
+						emit: sinon.stub(),
+						getSystemHandlerArgs: sinon.stub(),
+						processQueue: sinon.stub(),
+						states: {
+							readyForCalzone: {
+								gimmehCalzone: sinon.stub(),
+								_onExit: sinon.stub(),
+							},
+							nomNomCalzone: {},
+						},
+					};
+					result = instance.BehavioralFsm.prototype.transition.call(
+						mockInstance,
+						mockClient,
+						"nomNomCalzone"
+					);
+				} );
+
+				it( "should invoke the exit handler", () => {
+					mockInstance.states.readyForCalzone._onExit.should.be.calledOnceWithExactly( mockClient );
+				} );
+
+				it( "should set the new and prior state properties", () => {
+					clientMeta.targetReplayState.should.eql( "nomNomCalzone" );
+					clientMeta.priorState = "readyForCalzone";
+					clientMeta.state = "nomNomCalzone";
+				} );
+
+				it( "should build the event payload for transition/transitioned events", () => {
+					mockInstance.buildEventPayload.should.be.calledOnceWithExactly(
+						mockClient,
+						{
+							fromState: "readyForCalzone",
+							action: "gimmehCalzone",
+							toState: "nomNomCalzone",
+						}
+					);
+				} );
+
+				it( "should emit a transition event", () => {
+					mockInstance.emit.should.be.calledTwice();
+					mockInstance.emit.getCall( 0 ).should.be.calledWithExactly(
+						"transition",
+						"EVENT_PAYLOAD"
+					);
+				} );
+
+				it( "should emit a transitioned event", () => {
+					mockInstance.emit.getCall( 1 ).should.be.calledWithExactly(
+						"transitioned",
+						"EVENT_PAYLOAD"
+					);
+				} );
 			} );
 
-			describe( "when the state we're entering as an onEnter handler", () => {
-				it( "should set the new and prior state properties" );
-				it( "should emit a transition event" );
-				it( "should invoke the onEnter handler" );
-				it( "should emit a transitioned event" );
+			describe( "when the state we're entering has an onEnter handler", () => {
+				beforeEach( () => {
+					mockClient = {};
+					clientMeta = {
+						state: "readyForCalzone",
+						inExitHandler: false,
+						currentAction: "gimmehCalzone",
+					};
+					mockChild = {
+						namespace: "mock.child",
+					};
+					mockInstance = {
+						ensureClientMeta: sinon.stub().returns( clientMeta ),
+						configForState: sinon.stub().returns(),
+						buildEventPayload: sinon.stub().returns( "EVENT_PAYLOAD" ),
+						emit: sinon.stub(),
+						getSystemHandlerArgs: sinon.stub().returns( [ "SYSTEM_HANDLER_ARGS", ] ),
+						processQueue: sinon.stub(),
+						states: {
+							readyForCalzone: {
+								gimmehCalzone: sinon.stub(),
+							},
+							nomNomCalzone: {
+								_onEnter: sinon.stub(),
+							},
+						},
+					};
+					result = instance.BehavioralFsm.prototype.transition.call(
+						mockInstance,
+						mockClient,
+						"nomNomCalzone",
+						"arg1",
+						"arg2"
+					);
+				} );
+
+				it( "should set the new and prior state properties", () => {
+					clientMeta.targetReplayState.should.eql( "nomNomCalzone" );
+					clientMeta.priorState = "readyForCalzone";
+					clientMeta.state = "nomNomCalzone";
+				} );
+
+				it( "should emit a transition event", () => {
+					mockInstance.emit.should.be.calledTwice();
+					mockInstance.emit.getCall( 0 ).should.be.calledWithExactly(
+						"transition",
+						"EVENT_PAYLOAD"
+					);
+				} );
+
+				it( "should invoke the onEnter handler", () => {
+					mockInstance.getSystemHandlerArgs.should.be.calledOnceWithExactly(
+						[ "arg1", "arg2", ],
+						mockClient
+					);
+					mockInstance.states.nomNomCalzone._onEnter.should.be.calledOnceWithExactly(
+						"SYSTEM_HANDLER_ARGS"
+					);
+				} );
+
+				it( "should emit a transitioned event", () => {
+					mockInstance.emit.getCall( 1 ).should.be.calledWithExactly(
+						"transitioned",
+						"EVENT_PAYLOAD"
+					);
+				} );
+
+				it( "should call processQueue", () => {
+					mockInstance.processQueue.should.be.calledOnceWithExactly( mockClient, "transition" );
+				} );
 			} );
 
 			describe( "when the FSM is hierarchical", () => {
-				it( "should handle _reset on the child" );
+				beforeEach( () => {
+					mockClient = {};
+					clientMeta = {
+						state: "readyForCalzone",
+						inExitHandler: false,
+						currentAction: "gimmehCalzone",
+					};
+					mockChild = {
+						namespace: "mock.child",
+						handle: sinon.stub(),
+					};
+					mockInstance = {
+						ensureClientMeta: sinon.stub().returns( clientMeta ),
+						configForState: sinon.stub().returns( mockChild ),
+						buildEventPayload: sinon.stub().returns( "EVENT_PAYLOAD" ),
+						emit: sinon.stub(),
+						getSystemHandlerArgs: sinon.stub().returns( [ "SYSTEM_HANDLER_ARGS", ] ),
+						processQueue: sinon.stub(),
+						states: {
+							readyForCalzone: {
+								gimmehCalzone: sinon.stub(),
+							},
+							nomNomCalzone: {},
+						},
+					};
+					result = instance.BehavioralFsm.prototype.transition.call(
+						mockInstance,
+						mockClient,
+						"nomNomCalzone",
+						"arg1",
+						"arg2"
+					);
+				} );
+
+				it( "should handle _reset on the child", () => {
+					mockChild.handle.should.be.calledOnceWithExactly( mockClient, "_reset" );
+				} );
 			} );
 
-			describe( "when the FSM has inputs queued to replay", () => {
-				it( "should call processQueue" );
+			describe( "when the client's new state doesn't match the replay state", () => {
+				beforeEach( () => {
+					mockClient = {};
+					clientMeta = {
+						state: "readyForCalzone",
+						inExitHandler: false,
+						currentAction: "gimmehCalzone",
+					};
+					mockInstance = {
+						ensureClientMeta: sinon.stub().returns( clientMeta ),
+						configForState: sinon.stub().returns(),
+						buildEventPayload: sinon.stub().returns( "EVENT_PAYLOAD" ),
+						emit: sinon.stub(),
+						getSystemHandlerArgs: sinon.stub().returns( [ "SYSTEM_HANDLER_ARGS", ] ),
+						processQueue: sinon.stub(),
+						states: {
+							readyForCalzone: {
+								gimmehCalzone: sinon.stub(),
+							},
+							nomNomCalzone: {
+								_onEnter() {
+									// simulating another transition while transitioning to the new state
+									clientMeta.targetReplayState = "waitingForMoreCalzone";
+								},
+							},
+							waitingForMoreCalzone: {},
+						},
+					};
+					result = instance.BehavioralFsm.prototype.transition.call(
+						mockInstance,
+						mockClient,
+						"nomNomCalzone",
+						"arg1",
+						"arg2"
+					);
+				} );
+
+				it( "should not call processQueue", () => {
+					mockInstance.processQueue.should.not.be.called();
+				} );
 			} );
 		} );
 	} );
@@ -472,6 +1126,40 @@ describe( "emitter", () => {
 						{
 							type: "transition",
 							untilState: [ "calzone", ],
+							args: [ "ARG1", "ARG2", ],
+						},
+					] );
+				} );
+
+				it( "should emit a deferred event", () => {
+					mockInstance.emit.should.be.calledOnceWithExactly( "deferred", "EVENT_PAYLOAD" );
+				} );
+			} );
+
+			describe( "when the stateName arg is undefined", () => {
+				beforeEach( () => {
+					clientMeta = {
+						currentActionArgs: [ "ARG1", "ARG2", ],
+						inputQueue: [],
+					};
+
+					mockInstance = {
+						ensureClientMeta: sinon.stub().returns( clientMeta ),
+						buildEventPayload: sinon.stub().returns( "EVENT_PAYLOAD" ),
+						emit: sinon.stub(),
+					};
+					result = instance.BehavioralFsm.prototype.deferUntilTransition.call( mockInstance, "CLIENT" );
+				} );
+
+				it( "should call ensureClientMeta", () => {
+					mockInstance.ensureClientMeta.should.be.calledOnceWithExactly( "CLIENT" );
+				} );
+
+				it( "should add the input to the client's queue", () => {
+					clientMeta.inputQueue.should.eql( [
+						{
+							type: "transition",
+							untilState: undefined,
 							args: [ "ARG1", "ARG2", ],
 						},
 					] );
