@@ -159,5 +159,8 @@
     "lint": "gulp lint",
     "format": "gulp format",
     "watch": "gulp watch"
+  },
+  "overrides": {
+    "colors@>1.4.0": "1.4.0"
   }
 }
