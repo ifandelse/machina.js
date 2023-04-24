@@ -1,36 +1,54 @@
-var pkg = require( "./package.json" );
-var _ = require( "lodash" );
-var webpack = require( "webpack" );
-var banner = [
-	" * <%= pkg.name %> - <%= pkg.description %>",
-	" * Author: <%= pkg.author %>",
-	" * Version: v<%= pkg.version %>",
-	" * Url: <%= pkg.homepage %>",
-	" * License(s): <%= pkg.license %>"
-].join( "\n" );
-var header = _.template( banner )( { pkg: pkg } );
+const path = require( "path" );
+const pkg = require( "./package.json" );
+const webpack = require( "webpack" );
+const UnminifiedWebpackPlugin = require( "unminified-webpack-plugin" );
+
+const banner = `${ pkg.name } - ${ pkg.description }
+Author: ${ pkg.author }
+Version: v${ pkg.version }
+Url: ${ pkg.homepage }
+License(s): ${ pkg.license }`;
 
 module.exports = {
+	mode: "production",
+	entry: "./src/index.js",
 	output: {
-		library: "machina",
-		libraryTarget: "umd",
-		filename: "machina.js"
+		path: path.resolve( __dirname, "lib" ),
+		filename: "machina.min.js",
+		library: 'machina',
+   		libraryTarget: 'umd',
+  		umdNamedDefine: true,
+		// library: {
+		// 	name: "machina",
+		// 	type: "umd",
+		// 	export: "default"
+		// },
+		globalObject: "this",
+		clean: true
 	},
-	devtool: "#inline-source-map",
-	externals: [
-		{
-			postal: true,
-			machina: true,
-			lodash: {
-				root: "_",
-				commonjs: "lodash",
-				commonjs2: "lodash",
-				amd: "lodash"
-			}
+	externals: {
+		lodash: {
+			root: "_",
+			commonjs: "lodash",
+			commonjs2: "lodash",
+			amd: "lodash"
 		}
-	],
-	module: {},
+	},
+	optimization: {
+		minimize: true
+	},
+	devtool: "source-map",
 	plugins: [
-		new webpack.BannerPlugin( header )
-	]
+		new webpack.BannerPlugin( banner ),
+		new UnminifiedWebpackPlugin( { postfix: "" } )
+	],
+	module: {
+		rules: [
+			{
+				test: /\.js?$/,
+				exclude: /(node_modules)/,
+				loader: "babel-loader"
+			}
+		]
+	}
 };

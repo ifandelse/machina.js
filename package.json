@@ -1,7 +1,7 @@
 {
   "name": "machina",
   "description": "A library for creating powerful and flexible finite state machines. Loosely inspired by Erlang/OTP's gen_fsm behavior.",
-  "version": "4.0.2",
+  "version": "5.0.0-pre.1",
   "homepage": "http://machina-js.org/",
   "repository": {
     "type": "git",
@@ -103,7 +103,14 @@
     "lodash": "^4.17.5"
   },
   "devDependencies": {
-    "bower": "1.x",
+    "@babel/core": "^7.14.6",
+    "@babel/eslint-parser": "^7.14.7",
+    "@babel/polyfill": "^7.12.1",
+    "@babel/preset-env": "^7.14.7",
+    "@babel/register": "^7.14.5",
+    "babel-loader": "^8.2.2",
+    "babel-plugin-add-module-exports": "^1.0.4",
+    "bower": "^1.8.14",
     "express": "^3.11.0",
     "gulp": "~3.9.0",
     "gulp-changed": "^1.2.1",
@@ -137,7 +144,11 @@
     "open": "~0.0.4",
     "should": "^6.0.3",
     "sinon": "~1.11.0",
-    "source-map-loader": "^0.1.5"
+    "source-map-loader": "^0.1.5",
+    "typescript": "^5.0.4",
+    "unminified-webpack-plugin": "^3.0.0",
+    "webpack": "^5.41.1",
+    "webpack-cli": "^4.7.2"
   },
   "licenses": [
     {
@@ -150,14 +161,12 @@
     }
   ],
   "scripts": {
-    "build": "gulp",
-    "start": "gulp server",
+    "build": "npx webpack --config webpack.config.js; npx tsc",
+    "start": "npm run build; gulp server",
     "test": "./node_modules/mocha/bin/mocha -r spec/helpers/node-setup.js spec",
-    "mocha": "gulp mocha",
     "coverage": "./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -x 'spec/**/*'  -- -r spec/helpers/node-setup.js spec spec/*.spec.js",
     "show-coverage": "open ./coverage/lcov-report/index.html",
     "lint": "gulp lint",
-    "format": "gulp format",
-    "watch": "gulp watch"
+    "format": "gulp format"
   }
 }

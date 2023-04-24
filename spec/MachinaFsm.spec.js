@@ -1,5 +1,5 @@
 var _ = require( "lodash" );
-var machina = require( "../lib/machina.js" );
+var machina = require( "../lib/machina" );
 var specFactory = require( "./helpers/fsmFactory.js" )( machina );
 
 /*

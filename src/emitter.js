@@ -3,7 +3,7 @@ var _ = require( "lodash" );
 
 function getInstance() {
 	return {
-		emit: function( eventName ) {
+		emit( eventName ) {
 			var args = utils.getLeaklessArgs( arguments );
 			if ( this.eventListeners[ "*" ] ) {
 				_.each( this.eventListeners[ "*" ], function( callback ) {
@@ -39,7 +39,7 @@ function getInstance() {
 			}
 		},
 
-		on: function( eventName, callback ) {
+		on( eventName, callback ) {
 			var self = this;
 			self.eventListeners = self.eventListeners || { "*": [] };
 			if ( !self.eventListeners[ eventName ] ) {
@@ -55,7 +55,7 @@ function getInstance() {
 			};
 		},
 
-		off: function( eventName, callback ) {
+		off( eventName, callback ) {
 			this.eventListeners = this.eventListeners || { "*": [] };
 			if ( !eventName ) {
 				this.eventListeners = {};

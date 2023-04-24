@@ -1,4 +1,7 @@
-# machina v4.0.2
+# machina v5.0.0-pre.1
+
+## Renewed Activity
+A quick note here to say two things: First, a _heartfelt thank you_ to everyone that has used machina over the years, and for the many who I've had the honor of collaborating & conversing with to improve it over time. Second, while the commit log here on the repo has been very quiet, things won't stay that way for long! As many fellow OSS authors know (and like the old Nationwide commercials would say): "Life comes at you fast". In the last decade my family has grown, I've moved, I've consulted, lead product teams, co-founded a startup, volunteered in a state agency (related to service during natural disasters) and so much more. I've focused on my family, and then the product teams I've had the honor to be a part of. Finally, though, I have the bandwidth I've wanted to focus on continuing the goals I have for machina. I plan to keep a running list of what's ahead at the bottom of this README.
 
 ## What is it?
 Machina.js is a JavaScript framework for highly customizable finite state machines (FSMs).  Many of the ideas for machina have been *loosely* inspired by the Erlang/OTP FSM behaviors.
@@ -491,3 +494,15 @@ Go [here](https://github.com/ifandelse/machina.js/blob/master/changelog.md) to s
 ## Have More Questions?
 
 Read the [wiki](https://github.com/ifandelse/machina.js/wiki) and the source – you might find your answer and more! Check out the [issue](https://github.com/ifandelse/machina.js/issues/4) opened by @burin - a *great* example of how to use github issues to ask questions, provide sample code, etc. I only ask that if you open an issue, that it be *focused on a specific problem or bug* (not wide-open ambiguity, please).
+
+## What's Ahead?
+Wow, a _lot_ has changed in the JavaScript world since machina was first written in 2012. I plan to bring some of the amazing tools that have arisen to bear on machina, first to update the dev dependencies and then to improve the code base. In no particular order of intent:
+
+- [x] Add initial typescript definitions based on the latest version 4 (likely to ship as v5)
+- [ ] A ground-up rewrite in Typescript (in progress - this is slated for v6, and will likely involve breaking changes)
+- [ ] Convert tests to Jest
+- [ ] Convert build to use Typescript compiler
+- [ ] Retire the ancient examples (along with usage of bower & component, etc.)
+- [ ] Add a React and Vue example (likely based on the hierarchical FSM concepts)
+- [ ] Improve/Simplify Hierarchical FSM usage
+- [ ] Add a couple of additional formal FSM instance types

@@ -7,7 +7,7 @@ var Fsm = {
 		BehavioralFsm.apply( this, arguments );
 		this.ensureClientMeta();
 	},
-	initClient: function initClient() {
+	initClient() {
 		var initialState = this.initialState;
 		if ( !initialState ) {
 			throw new Error( "You must specify an initial state for this FSM" );
@@ -17,7 +17,7 @@ var Fsm = {
 		}
 		this.transition( initialState );
 	},
-	ensureClientMeta: function ensureClientMeta() {
+	ensureClientMeta() {
 		if ( !this._stamped ) {
 			this._stamped = true;
 			_.defaults( this, _.cloneDeep( utils.getDefaultClientMeta() ) );

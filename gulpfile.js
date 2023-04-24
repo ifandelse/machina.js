@@ -15,10 +15,10 @@ var express = require( "express" );
 var open = require( "open" );
 var port = 3080;
 
-gulp.task( "default", [ "build" ] );
+gulp.task( "default", [ "lint" ] );
 
 gulp.task( "build", [ "format" ], function() {
-	return gulp.src( "src/machina.js" )
+	return gulp.src( "src/index.js" )
 		.pipe( webpack( require( "./webpack.config.js" ) ) )
 		.pipe( gulp.dest( "lib/" ) )
 		.pipe( sourcemaps.init( { loadMaps: true } ) )
@@ -46,7 +46,7 @@ function runTests( options, done ) {
 	server.start();
 }
 
-gulp.task( "test", [ "build" ], function( done ) {
+gulp.task( "test", [], function( done ) {
 	runTests( { reporters: [ "spec" ] }, function( err ) {
 		if ( err !== 0 ) {
 			// Exit with the error code
@@ -57,7 +57,7 @@ gulp.task( "test", [ "build" ], function( done ) {
 	} );
 } );
 
-gulp.task( "coverage", [ "build" ], function( done ) {
+gulp.task( "coverage", [], function( done ) {
 	runTests( {}, function( err ) {
 		if ( err !== 0 ) {
 			// Exit with the error code
@@ -68,7 +68,7 @@ gulp.task( "coverage", [ "build" ], function( done ) {
 	} );
 } );
 
-gulp.task( "mocha", [ "build" ], function() {
+gulp.task( "mocha", [], function() {
 	return gulp.src( [ "spec/**/*.spec.js" ], { read: false } )
 		.pipe( mocha( {
 			require: [ "spec/helpers/node-setup.js" ],
@@ -121,7 +121,7 @@ var createServers = function( port ) {
 
 var servers;
 
-gulp.task( "server", [ "build" ], function() {
+gulp.task( "server", [], function() {
 	if ( !servers ) {
 		servers = createServers( port );
 	}

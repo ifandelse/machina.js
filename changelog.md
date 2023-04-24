@@ -1,3 +1,7 @@
+### v5.0.0-pre.1
+* Add typescript definitions to build
+* Change build to webpack without gulp
+* Brought the previously-removed bower.json file back only to enable the examples to work (until new examples are created to replace these relics)
 ### v4.0.2
 * Updated lodash to ^4.17.5
 
