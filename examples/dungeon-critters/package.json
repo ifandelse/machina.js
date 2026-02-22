@@ -1,0 +1,19 @@
+{
+    "name": "@machina-examples/dungeon-critters",
+    "version": "0.0.1",
+    "private": true,
+    "description": "Dungeon Critters — machina.js v6 createBehavioralFsm example",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "test": "jest --config jest.config.js"
+    },
+    "dependencies": {
+        "machina": "workspace:*"
+    },
+    "devDependencies": {
+        "typescript": "^5.9.3",
+        "vite": "^6.3.5"
+    }
+}

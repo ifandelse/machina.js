@@ -1,0 +1,27 @@
+{
+    "name": "@machina-examples/with-react",
+    "version": "0.0.1",
+    "private": true,
+    "description": "Checkout Flow — machina.js v6 createFsm + React integration example",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "test": "jest --config jest.config.js"
+    },
+    "dependencies": {
+        "machina": "workspace:*",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0"
+    },
+    "devDependencies": {
+        "@types/jest": "^30.0.0",
+        "@types/react": "^19.1.0",
+        "@types/react-dom": "^19.1.0",
+        "@vitejs/plugin-react": "^4.5.2",
+        "jest": "^30.2.0",
+        "ts-jest": "^29.4.6",
+        "typescript": "^5.9.3",
+        "vite": "^6.3.5"
+    }
+}

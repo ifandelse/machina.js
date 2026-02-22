@@ -1,0 +1,512 @@
+/* Minimal reset */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family:
+        system-ui,
+        -apple-system,
+        sans-serif;
+    font-size: 16px;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+}
+
+/* ============================================================
+   App shell
+   ============================================================ */
+
+.app {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+}
+
+.app-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.app-title {
+    margin: 0 0 4px;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #e6edf3;
+}
+
+.app-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #8b949e;
+}
+
+.app-subtitle code {
+    font-family: "Menlo", "Consolas", monospace;
+    background: #161b22;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #79c0ff;
+}
+
+/* ============================================================
+   Step indicator
+   ============================================================ */
+
+.step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 32px;
+    gap: 0;
+}
+
+.step-indicator__step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 80px;
+    text-align: center;
+}
+
+.step-indicator__dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition:
+        background 0.2s,
+        border-color 0.2s;
+    border: 2px solid transparent;
+}
+
+.step-indicator__label {
+    font-size: 0.7rem;
+    color: #8b949e;
+    white-space: nowrap;
+    transition: color 0.2s;
+}
+
+.step-indicator__connector {
+    flex: 1;
+    height: 2px;
+    background: #21262d;
+    margin-bottom: 22px;
+    transition: background 0.2s;
+}
+
+/* upcoming */
+.step--upcoming .step-indicator__dot {
+    background: #21262d;
+    border-color: #30363d;
+    color: #484f58;
+}
+
+.step--upcoming .step-indicator__label {
+    color: #484f58;
+}
+
+/* completed */
+.step--completed .step-indicator__dot {
+    background: #238636;
+    border-color: #238636;
+    color: #fff;
+}
+
+.step--completed .step-indicator__label {
+    color: #3fb950;
+}
+
+.step-indicator__connector--completed {
+    background: #238636;
+}
+
+/* active */
+.step--active .step-indicator__dot {
+    background: #1f6feb;
+    border-color: #1f6feb;
+    color: #fff;
+}
+
+.step--active .step-indicator__label {
+    color: #58a6ff;
+    font-weight: 600;
+}
+
+/* ============================================================
+   Step content card
+   ============================================================ */
+
+.step-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 24px;
+}
+
+.step-card__title {
+    margin: 0 0 20px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #e6edf3;
+}
+
+/* ============================================================
+   Forms
+   ============================================================ */
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.875rem;
+    color: #8b949e;
+}
+
+.form-input {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #e6edf3;
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #1f6feb;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* ============================================================
+   Radio groups
+   ============================================================ */
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.radio-group--horizontal {
+    flex-direction: row;
+    gap: 16px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    font-size: 0.9rem;
+    color: #e6edf3;
+}
+
+.radio-option:hover {
+    border-color: #58a6ff;
+}
+
+.radio-option input[type="radio"] {
+    accent-color: #1f6feb;
+}
+
+.radio-option--selected {
+    border-color: #1f6feb;
+    background: #0d1f38;
+}
+
+.radio-group-label {
+    font-size: 0.75rem;
+    color: #8b949e;
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+
+.btn-row {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.btn {
+    padding: 8px 18px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-size: 0.9rem;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        opacity 0.15s,
+        background 0.15s;
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn--primary {
+    background: #238636;
+    border-color: #2ea043;
+    color: #fff;
+}
+
+.btn--primary:not(:disabled):hover {
+    background: #2ea043;
+}
+
+.btn--secondary {
+    background: #21262d;
+    border-color: #30363d;
+    color: #e6edf3;
+}
+
+.btn--secondary:not(:disabled):hover {
+    background: #30363d;
+}
+
+.btn--danger {
+    background: #da3633;
+    border-color: #f85149;
+    color: #fff;
+}
+
+.btn--danger:not(:disabled):hover {
+    background: #f85149;
+}
+
+/* ============================================================
+   Customer type selection
+   ============================================================ */
+
+.customer-type-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.customer-type-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 16px;
+    background: #0d1117;
+    border: 2px solid #30363d;
+    border-radius: 8px;
+    color: #e6edf3;
+    font-size: 0.9rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+        border-color 0.15s,
+        background 0.15s;
+}
+
+.customer-type-btn:not(:disabled):hover {
+    border-color: #58a6ff;
+    background: #0d1f38;
+}
+
+.customer-type-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.customer-type-btn__icon {
+    font-size: 1.8rem;
+}
+
+/* ============================================================
+   Payment processing (spinner)
+   ============================================================ */
+
+.processing-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 32px 0;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #30363d;
+    border-top-color: #1f6feb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.processing-label {
+    color: #8b949e;
+    font-size: 0.9rem;
+}
+
+/* ============================================================
+   Payment failed
+   ============================================================ */
+
+.error-icon {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.error-message {
+    color: #f85149;
+    margin: 0 0 12px;
+}
+
+/* ============================================================
+   3D Secure
+   ============================================================ */
+
+.verification-box {
+    background: #0d1f38;
+    border: 1px solid #1f6feb;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+    font-size: 0.875rem;
+    color: #8b949e;
+}
+
+.verification-box p {
+    margin: 0 0 8px;
+}
+
+.verification-box p:last-child {
+    margin: 0;
+}
+
+/* ============================================================
+   Review step
+   ============================================================ */
+
+.review-section {
+    margin-bottom: 20px;
+}
+
+.review-section__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #21262d;
+}
+
+.review-section__title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.review-section__edit {
+    background: none;
+    border: none;
+    color: #58a6ff;
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+.review-section__edit:not(:disabled):hover {
+    background: #0d1f38;
+}
+
+.review-section__edit:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.review-data-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 0.875rem;
+}
+
+.review-data-label {
+    color: #8b949e;
+    min-width: 90px;
+}
+
+.review-data-value {
+    color: #e6edf3;
+}
+
+/* ============================================================
+   Confirmation
+   ============================================================ */
+
+.confirmation-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px 0;
+    gap: 12px;
+}
+
+.confirmation-icon {
+    font-size: 3rem;
+}
+
+.confirmation-title {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #3fb950;
+}
+
+.confirmation-message {
+    margin: 0;
+    color: #8b949e;
+    font-size: 0.9rem;
+}

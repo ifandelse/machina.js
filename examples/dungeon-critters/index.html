@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Dungeon Critters — machina.js v6</title>
+    </head>
+    <body>
+        <!-- Full-viewport canvas — the dungeon floor where critters roam -->
+        <canvas id="dungeon-canvas"></canvas>
+
+        <!-- Controls panel — DOM overlay, positioned top-right via CSS -->
+        <div class="controls-panel" id="controls-panel">
+            <div class="panel-header">
+                <span class="panel-title">Dungeon Critters</span>
+                <span class="panel-subtitle">machina.js v6 — <code>createBehavioralFsm</code></span>
+            </div>
+
+            <div class="state-counts" id="state-counts">
+                <div class="count-row">
+                    <span class="count-label state-idle">Idle</span>
+                    <span class="count-value" id="count-idle">0</span>
+                </div>
+                <div class="count-row">
+                    <span class="count-label state-patrol">Patrol</span>
+                    <span class="count-value" id="count-patrol">0</span>
+                </div>
+                <div class="count-row">
+                    <span class="count-label state-alert">Alert</span>
+                    <span class="count-value" id="count-alert">0</span>
+                </div>
+                <div class="count-row">
+                    <span class="count-label state-chase">Chase</span>
+                    <span class="count-value" id="count-chase">0</span>
+                </div>
+                <div class="count-row">
+                    <span class="count-label state-flee">Flee</span>
+                    <span class="count-value" id="count-flee">0</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label" for="sensing-range">
+                    Sensing Range: <span id="sensing-range-value">120</span>px
+                </label>
+                <input
+                    class="range-input"
+                    id="sensing-range"
+                    type="range"
+                    min="40"
+                    max="250"
+                    value="120"
+                />
+            </div>
+
+            <div class="control-group">
+                <label class="control-label checkbox-label">
+                    <input class="checkbox-input" id="show-sensing" type="checkbox" />
+                    Show sensing radius
+                </label>
+            </div>
+
+            <button class="spawn-btn" id="spawn-btn" type="button">Spawn 10 More</button>
+
+            <div class="attack-hint">Click the dungeon to attack nearby critters</div>
+        </div>
+
+        <!-- Critter inspector — hidden until a critter is selected -->
+        <div class="critter-inspector" id="critter-inspector" hidden>
+            <div class="inspector-header">
+                <span class="inspector-title">Critter <span id="inspector-critter-id">?</span></span>
+                <button class="inspector-close" id="inspector-close" type="button" aria-label="Close inspector">
+                    ×
+                </button>
+            </div>
+
+            <div class="inspector-state">
+                <span class="inspector-state-badge" id="inspector-state-badge">idle</span>
+            </div>
+
+            <div class="inspector-history-section">
+                <span class="inspector-section-label">Recent Transitions</span>
+                <div class="inspector-history" id="inspector-history" aria-label="Recent state transitions"></div>
+            </div>
+
+            <div class="inspector-stats" id="inspector-stats">
+                <div class="stat-row">
+                    <span class="stat-label">Speed</span>
+                    <span class="stat-value" id="stat-speed">0.0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Dist. from home</span>
+                    <span class="stat-value" id="stat-distance">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Time in state</span>
+                    <span class="stat-value" id="stat-time">0.0s</span>
+                </div>
+            </div>
+        </div>
+
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

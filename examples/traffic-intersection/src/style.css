@@ -1,0 +1,354 @@
+/* =============================================================================
+   style.css — Traffic Intersection Example
+   Dark-themed layout: canvas on the left, state panel + log on the right.
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Design tokens
+   ----------------------------------------------------------------------------- */
+:root {
+    --color-bg: #0d1117;
+    --color-surface: #161b22;
+    --color-border: #30363d;
+    --color-text: #e6edf3;
+    --color-text-muted: #7d8590;
+    --color-code: #79c0ff;
+
+    /* Signal colors */
+    --color-green: #3fb950;
+    --color-yellow: #d29922;
+    --color-red: #f85149;
+    --color-walk: #3fb950;
+    --color-dont-walk: #f85149;
+
+    /* Composite state highlight */
+    --color-composite: #58a6ff;
+
+    /* Button */
+    --color-btn-bg: #238636;
+    --color-btn-hover: #2ea043;
+    --color-btn-active: #1a7f37;
+    --color-btn-text: #ffffff;
+
+    --font-mono: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+
+    --transition-speed: 0.2s;
+}
+
+/* -----------------------------------------------------------------------------
+   Reset and base
+   ----------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* -----------------------------------------------------------------------------
+   Layout — full-width with header, then canvas + side panel side-by-side
+   ----------------------------------------------------------------------------- */
+.app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 1.5rem;
+    gap: 1.5rem;
+}
+
+.app-header {
+    text-align: center;
+}
+
+.app-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.app-subtitle {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.app-subtitle code {
+    font-family: var(--font-mono);
+    color: var(--color-code);
+    font-size: 0.8125rem;
+}
+
+.app-main {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    flex: 1;
+}
+
+/* -----------------------------------------------------------------------------
+   Canvas panel
+   ----------------------------------------------------------------------------- */
+.canvas-panel {
+    flex-shrink: 0;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#intersection-canvas {
+    display: block;
+}
+
+/* -----------------------------------------------------------------------------
+   Side panel — state display + button + log
+   ----------------------------------------------------------------------------- */
+.side-panel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* State panel */
+.state-panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+}
+
+.panel-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.75rem;
+}
+
+/* The composite state string is the headline — make it prominent */
+.composite-state {
+    font-family: var(--font-mono);
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--color-composite);
+    margin-bottom: 0.875rem;
+    word-break: break-all;
+}
+
+.state-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.state-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.state-label {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.state-value {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-text);
+    text-align: right;
+}
+
+/* -----------------------------------------------------------------------------
+   Start / pedestrian buttons
+   ----------------------------------------------------------------------------- */
+.controls-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.start-btn {
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-btn-text);
+    background-color: var(--color-composite);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 0.625rem 1.25rem;
+    cursor: pointer;
+    transition:
+        background-color var(--transition-speed) ease,
+        opacity var(--transition-speed) ease;
+    width: 100%;
+}
+
+.start-btn:hover:not(:disabled) {
+    background-color: #79c0ff;
+}
+
+.start-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.pedestrian-btn {
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-btn-text);
+    background-color: var(--color-btn-bg);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 0.625rem 1.25rem;
+    cursor: pointer;
+    transition: background-color var(--transition-speed) ease;
+    width: 100%;
+}
+
+.pedestrian-btn:hover {
+    background-color: var(--color-btn-hover);
+}
+
+.pedestrian-btn:active {
+    background-color: var(--color-btn-active);
+}
+
+.pedestrian-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.pedestrian-btn.btn--pressed {
+    background-color: var(--color-btn-active);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.btn-hint {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+}
+
+/* -----------------------------------------------------------------------------
+   Event log
+   ----------------------------------------------------------------------------- */
+.log-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.log-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.625rem;
+}
+
+.log-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 20rem;
+    overflow-y: auto;
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        black 0%,
+        black calc(100% - 1.5rem),
+        transparent 100%
+    );
+    mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 1.5rem), transparent 100%);
+}
+
+.log-entry {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    animation: slide-in 0.2s ease-out both;
+}
+
+/* Color-code entries by event type */
+.log-entry--transitioned .log-entry-event {
+    color: var(--color-green);
+}
+
+.log-entry--deferred .log-entry-event {
+    color: var(--color-yellow);
+}
+
+.log-entry--nohandler .log-entry-event {
+    color: var(--color-text-muted);
+}
+
+.log-entry--handling .log-entry-event {
+    color: var(--color-code);
+}
+
+.log-entry-event {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.log-entry-detail {
+    color: var(--color-text-muted);
+    font-size: 0.6875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.log-entry-time {
+    color: var(--color-text-muted);
+    font-size: 0.625rem;
+    white-space: nowrap;
+}
+
+@keyframes slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.375rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .log-entry {
+        animation: none;
+    }
+}

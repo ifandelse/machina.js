@@ -1,0 +1,22 @@
+{
+    "name": "@machina-examples/shopping-cart",
+    "version": "0.0.1",
+    "private": true,
+    "description": "Shopping Cart — machina.js v6 defer() showcase",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "test": "jest --config jest.config.js"
+    },
+    "dependencies": {
+        "machina": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/jest": "^30.0.0",
+        "jest": "^30.2.0",
+        "ts-jest": "^29.4.6",
+        "typescript": "^5.9.3",
+        "vite": "^6.3.5"
+    }
+}

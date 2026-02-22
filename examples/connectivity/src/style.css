@@ -1,0 +1,409 @@
+/* =============================================================================
+   style.css — Network Connectivity Monitor
+   Dark-themed pulse dashboard. All visual state is driven by CSS classes —
+   the JS just swaps .status-online / .status-offline / .status-checking on
+   the status indicator. Animations live here, not in the script.
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Design tokens — custom properties for state colors, spacing, and timing.
+   Changing a color here changes it everywhere. No magic strings in the CSS.
+   ----------------------------------------------------------------------------- */
+:root {
+    --color-bg: #0d1117;
+    --color-surface: #161b22;
+    --color-border: #30363d;
+    --color-text: #e6edf3;
+    --color-text-muted: #7d8590;
+    --color-code: #79c0ff;
+
+    --color-online: #3fb950;
+    --color-online-glow: rgba(63, 185, 80, 0.4);
+    --color-online-ring: rgba(63, 185, 80, 0.2);
+
+    --color-offline: #f85149;
+    --color-offline-glow: rgba(248, 81, 73, 0.4);
+    --color-offline-ring: rgba(248, 81, 73, 0.2);
+
+    --color-checking: #d29922;
+    --color-checking-glow: rgba(210, 153, 34, 0.4);
+    --color-checking-ring: rgba(210, 153, 34, 0.2);
+
+    --color-btn: #21262d;
+    --color-btn-hover: #30363d;
+    --color-btn-active: #161b22;
+    --color-btn-border: #30363d;
+    --color-btn-text: #c9d1d9;
+
+    --indicator-size: 10rem;
+    --ring-size: 12rem;
+    --animation-duration: 2s;
+    --transition-speed: 0.4s;
+
+    --font-mono: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+/* -----------------------------------------------------------------------------
+   Reset and base
+   ----------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* -----------------------------------------------------------------------------
+   Layout
+   ----------------------------------------------------------------------------- */
+.app {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+}
+
+.app-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.app-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
+}
+
+.app-subtitle {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.app-subtitle code {
+    font-family: var(--font-mono);
+    color: var(--color-code);
+    font-size: 0.8125rem;
+}
+
+.app-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.5rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Status section
+   ----------------------------------------------------------------------------- */
+.status-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* The indicator is a stack of layers:
+   .status-ring — outer pulse ring (animates independently)
+   .status-core — solid inner circle (color-coded per state)
+   Stacked via position: absolute inside a relative container. */
+.status-indicator {
+    position: relative;
+    width: var(--ring-size);
+    height: var(--ring-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: 0;
+}
+
+.status-core {
+    width: var(--indicator-size);
+    height: var(--indicator-size);
+    border-radius: 50%;
+    background-color: currentColor;
+    transition:
+        color var(--transition-speed) ease,
+        box-shadow var(--transition-speed) ease;
+}
+
+/* State: online — breathing green glow */
+.status-indicator.status-online {
+    color: var(--color-online);
+}
+
+.status-indicator.status-online .status-core {
+    box-shadow:
+        0 0 1.5rem var(--color-online-glow),
+        0 0 3rem var(--color-online-ring);
+}
+
+.status-indicator.status-online .status-ring {
+    color: var(--color-online);
+    animation: breathe var(--animation-duration) ease-in-out infinite;
+}
+
+/* State: offline — pulsing red warning */
+.status-indicator.status-offline {
+    color: var(--color-offline);
+}
+
+.status-indicator.status-offline .status-core {
+    box-shadow:
+        0 0 1.5rem var(--color-offline-glow),
+        0 0 3rem var(--color-offline-ring);
+}
+
+.status-indicator.status-offline .status-ring {
+    color: var(--color-offline);
+    animation: pulse-alert var(--animation-duration) ease-in-out infinite;
+}
+
+/* State: checking — spinning scan ring */
+.status-indicator.status-checking {
+    color: var(--color-checking);
+}
+
+.status-indicator.status-checking .status-core {
+    box-shadow:
+        0 0 1.5rem var(--color-checking-glow),
+        0 0 3rem var(--color-checking-ring);
+}
+
+.status-indicator.status-checking .status-ring {
+    color: var(--color-checking);
+    opacity: 0.6;
+    border-style: dashed;
+    animation: spin 1.2s linear infinite;
+}
+
+/* State label */
+.status-label {
+    font-family: var(--font-mono);
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color var(--transition-speed) ease;
+}
+
+/* Check count — only visible when offline/checking and checks are in progress */
+.status-check {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    min-height: 1.25em;
+    text-align: center;
+}
+
+/* -----------------------------------------------------------------------------
+   Keyframe animations
+   ----------------------------------------------------------------------------- */
+
+/* Breathing glow for online state — expands and fades the ring */
+@keyframes breathe {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.2;
+    }
+    50% {
+        transform: scale(1.12);
+        opacity: 0.6;
+    }
+}
+
+/* Alert pulse for offline — snappier expansion with harder fade */
+@keyframes pulse-alert {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.15;
+    }
+    40% {
+        transform: scale(1.18);
+        opacity: 0.7;
+    }
+    60% {
+        transform: scale(1.18);
+        opacity: 0.7;
+    }
+}
+
+/* Spin for checking — full rotation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Accessibility: respect user motion preferences.
+   Animations can be disorienting. Replace with simple fade when reduced. */
+@media (prefers-reduced-motion: reduce) {
+    .status-ring {
+        animation: none !important;
+    }
+
+    .status-indicator.status-checking .status-ring {
+        opacity: 0.5;
+        /* A subtle fade to indicate "in progress" without spinning */
+        animation: reduced-checking 1.5s ease-in-out infinite !important;
+    }
+
+    @keyframes reduced-checking {
+        0%,
+        100% {
+            opacity: 0.2;
+        }
+        50% {
+            opacity: 0.7;
+        }
+    }
+
+    .status-core {
+        transition:
+            color 0.2s ease,
+            box-shadow 0.2s ease;
+    }
+}
+
+/* -----------------------------------------------------------------------------
+   Controls section — simulation toggle button
+   ----------------------------------------------------------------------------- */
+.controls-section {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.simulate-btn {
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--color-btn-text);
+    background-color: var(--color-btn);
+    border: 1px solid var(--color-btn-border);
+    border-radius: 6px;
+    padding: 0.6rem 1.25rem;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease;
+    white-space: nowrap;
+}
+
+.simulate-btn:hover {
+    background-color: var(--color-btn-hover);
+    border-color: #8b949e;
+}
+
+.simulate-btn:active {
+    background-color: var(--color-btn-active);
+}
+
+.simulate-btn.simulate-btn--restoring {
+    color: var(--color-online);
+    border-color: var(--color-online);
+}
+
+/* -----------------------------------------------------------------------------
+   Event log section
+   ----------------------------------------------------------------------------- */
+.log-section {
+    width: 100%;
+}
+
+.log-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.75rem;
+}
+
+.log-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    max-height: 24rem;
+    overflow-y: auto;
+    /* Subtle inset shadow so you can see there's more content above */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 2rem, black 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 2rem, black 100%);
+}
+
+/* Each log entry — slides in from the bottom */
+.log-entry {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    animation: slide-in 0.25s ease-out both;
+}
+
+.log-entry-input {
+    color: var(--color-code);
+    font-weight: 600;
+}
+
+.log-entry-transition {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+}
+
+.log-entry-time {
+    color: var(--color-text-muted);
+    font-size: 0.6875rem;
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* Slide in from the bottom on entry */
+@keyframes slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .log-entry {
+        animation: none;
+    }
+}
