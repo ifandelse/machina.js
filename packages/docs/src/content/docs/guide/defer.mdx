@@ -1,0 +1,106 @@
+---
+title: Deferred Input
+description: Queue inputs for automatic replay after a future transition.
+---
+
+Sometimes an input arrives when the FSM isn't ready to handle it. Rather than dropping it or making the caller retry, call `defer()` inside a handler to queue the input for automatic replay after a future transition. The caller gets a clean return; the FSM sorts it out when it's in the right state.
+
+## Targeted defer
+
+Pass `{ until: "stateName" }` to specify which state should replay the input. The input stays queued until the FSM enters that state, then replays automatically — regardless of how many intermediate transitions occur in between.
+
+```ts
+const fsm = createFsm({
+    id: "loader",
+    initialState: "loading",
+    context: {},
+    states: {
+        loading: {
+            save({ defer }) {
+                defer({ until: "ready" });
+            },
+            loaded: "ready",
+        },
+        ready: {
+            save() {
+                console.log("saving");
+            },
+        },
+    },
+});
+
+fsm.handle("save"); // deferred — FSM is in "loading"
+fsm.handle("loaded"); // transitions to "ready", then "save" replays automatically
+```
+
+The deferred input survives any number of intermediate transitions — it only replays when the target state is entered.
+
+## Untargeted defer
+
+Call `defer()` with no arguments to replay the input on the very next transition to any state. This is useful in error or recovery states where you don't know the destination ahead of time.
+
+```ts
+const fsm = createFsm({
+    id: "resilient",
+    initialState: "idle",
+    context: {},
+    states: {
+        idle: {
+            doWork: "working",
+        },
+        working: {
+            failed: "error",
+            done: "idle",
+        },
+        error: {
+            // park everything — replay on the next transition, wherever it goes
+            "*"({ defer }) {
+                defer();
+            },
+            retry: "idle",
+        },
+    },
+});
+```
+
+When the FSM is in `error`, any unrecognized input hits the `"*"` catch-all and gets queued. When `retry` fires and the FSM transitions to `idle`, all queued inputs replay there.
+
+## Replay mechanics
+
+A few things worth knowing before you rely on this in production code:
+
+- **FIFO order.** Deferred inputs replay in the order they were queued.
+- **Replay happens after `_onEnter` completes** on the target state. The state is fully initialized before any queued input lands.
+- **Re-deferring is allowed.** If a replayed input calls `defer()` again, it goes back in the queue. No infinite loops — it just waits for the next appropriate state.
+- **Cascading transitions.** If a replayed input triggers a transition, the remaining deferred inputs pause and wait for the next appropriate state entry before continuing to replay.
+
+## With BehavioralFsm
+
+Deferred inputs are tracked per-client, not globally. Calling `defer()` inside a `BehavioralFsm` handler queues the input for that specific client only — other clients are unaffected.
+
+```ts
+const fsm = createBehavioralFsm<MyClient>({
+    id: "my-fsm",
+    initialState: "loading",
+    states: {
+        loading: {
+            save({ defer }) {
+                defer({ until: "ready" }); // queued for this client only
+            },
+        },
+        ready: {
+            save() {
+                console.log("saving");
+            },
+        },
+    },
+});
+
+fsm.handle(clientA, "save"); // deferred for clientA
+fsm.handle(clientB, "save"); // deferred for clientB, independent queue
+```
+
+## Real-world examples
+
+- [Shopping Cart](/machina.js/examples/shopping-cart/) — targeted defer across multiple transitions (`recordPurchaseAnalytics` queued from `browsing` through `validating` and `applyingDiscount` all the way to `checkout`), plus untargeted defer in the `error` state's `"*"` catch-all.
+- [Traffic Intersection](/machina.js/examples/traffic-intersection/) — pedestrian button press deferred from `green` to `interruptibleGreen`; if the button is pressed too early in the green phase, it queues and automatically shortens the interruptible portion when that window opens.

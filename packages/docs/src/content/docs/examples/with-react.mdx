@@ -1,0 +1,90 @@
+---
+title: React Integration
+description: Using createFsm with React for a checkout flow UI.
+---
+
+import { LinkCard } from "@astrojs/starlight/components";
+
+This example demonstrates integrating machina with React using `useSyncExternalStore` for a multi-step checkout flow. The FSM lives entirely outside the React component tree — zero React imports in `fsm.ts` — and components subscribe to state changes through React's built-in subscription API. No wrapper library required.
+
+<LinkCard title="Run the React Example" href="/machina.js/demos/with-react/" target="_blank" />
+
+## What It Demonstrates
+
+- `createFsm` used outside the React component tree — `fsm.ts` has no React imports
+- `useSyncExternalStore` for subscribing to FSM state transitions
+- Clean separation: the FSM owns state logic, React owns rendering
+- No wrapper libraries — machina's `on()`/`off()` API maps directly to the subscribe/unsubscribe contract that `useSyncExternalStore` expects
+- `canHandle()` for driving button disabled state rather than catching silent no-ops
+- Passing form data through `handle("next", formData)` — components own ephemeral form state and submit it at transition time
+- `_onEnter` lifecycle hooks for async side effects (payment simulation, flag management)
+
+## The Hook
+
+The full React integration layer is about 40 lines. The key pieces:
+
+```typescript
+// useSyncExternalStore bridges the FSM's event-based API to React's render cycle.
+//
+// subscribe — listens for "transitioned" events and calls React's invalidation signal.
+//   Returns the cleanup function so React can unsubscribe on unmount.
+//
+// getSnapshot — returns the current state name as a string primitive.
+//   Object.is("foo", "foo") === true, so no spurious re-renders.
+
+const subscribe = useCallback((onStoreChange: () => void) => {
+    const sub = fsmRef.current!.on("transitioned", () => {
+        onStoreChange();
+    });
+    return () => {
+        sub.off();
+    };
+}, []);
+
+const state = useSyncExternalStore(
+    subscribe,
+    () => fsmRef.current!.currentState() as CheckoutState,
+    () => "start" as CheckoutState
+);
+```
+
+The context object is shared by reference — `createCheckoutFsm()` returns both `{ fsm, context }`, and the hook holds the same object the FSM mutates internally. Re-renders are triggered by state transitions, at which point the context is already up to date. Don't clone or spread it.
+
+```typescript
+// createCheckoutFsm() returns the FSM and the context object it was given.
+// Holding a ref to both means FSM mutations are visible immediately after
+// any transition fires the useSyncExternalStore snapshot read.
+if (!fsmRef.current) {
+    const { fsm, context } = createCheckoutFsm();
+    fsmRef.current = fsm;
+    contextRef.current = context;
+}
+```
+
+The API object is memoized on `state`, so consumers only re-render on FSM transitions — not on every parent render:
+
+```typescript
+const api = useMemo<CheckoutApi>(
+    () => ({
+        state,
+        context: contextRef.current!,
+        handle: (input: string, ...args: unknown[]) => {
+            fsmRef.current?.handle(input, ...args);
+        },
+        canHandle: (input: string) => {
+            return fsmRef.current?.canHandle(input) ?? false;
+        },
+    }),
+    [state]
+);
+```
+
+## Design Notes
+
+**Why no `useEffect` cleanup for the FSM.** React 18 StrictMode simulates unmount/remount for effects but does not re-run the component body. Disposing the FSM in a cleanup effect would leave `useSyncExternalStore` trying to re-subscribe to a dead FSM before the lazy ref init could recreate it. The FSM holds no external resources — when the Provider truly unmounts, the refs are GC'd.
+
+**Why the context is mutated in place, not replaced.** The hook holds a ref to the original context object. If `confirmation.startOver` replaced context with a fresh object, all components would keep reading from the old reference. Mutating the fields in place is the simpler contract.
+
+## Source
+
+[examples/with-react/](https://github.com/ifandelse/machina.js/tree/machina-v6/examples/with-react)

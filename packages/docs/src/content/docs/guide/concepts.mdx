@@ -1,0 +1,215 @@
+---
+title: Concepts
+description: "The mental model behind machina: states, inputs, handlers, transitions, and context."
+---
+
+A finite state machine is a model that is always in exactly one state, transitions between states in response to inputs, and can run logic on entry and exit. That's the whole idea. Everything in machina is an expression of that model.
+
+---
+
+## Synchronous by Design
+
+machina's methods — `handle()`, `transition()`, `canHandle()`, `currentState()` — are all synchronous. When you call `handle("timeout")`, the entire transition sequence (exit → state change → enter → deferred replay) completes before `handle()` returns.
+
+This doesn't mean you can't use machina in async workflows — you absolutely can. The pattern is: a handler kicks off async work (a fetch, a timer, a promise), and when that work resolves, it feeds a new input back into the FSM. The FSM stays synchronous; the async world calls back in.
+
+```ts
+checking: {
+  _onEnter({ ctx }) {
+    // Async work happens outside the FSM's synchronous boundary
+    fetch("/health")
+      .then(res => fsm.handle(res.ok ? "passed" : "failed"))
+      .catch(() => fsm.handle("failed"));
+  },
+  passed: "online",
+  failed: "offline",
+}
+```
+
+The FSM doesn't await anything. It enters `checking`, the `_onEnter` fires the fetch, and `handle()` returns. Later, when the promise settles, a new `handle()` call drives the next transition. This keeps state transitions predictable and eliminates an entire class of race conditions.
+
+---
+
+## States
+
+An FSM is always in exactly one state. States are defined as keys of the `states` object in your config. TypeScript infers state names as string literals from those keys — no separate type declaration needed.
+
+```ts
+const light = createFsm({
+    id: "traffic-light",
+    initialState: "green",
+    context: { tickCount: 0 },
+    states: {
+        green: {
+            /* ... */
+        },
+        yellow: {
+            /* ... */
+        },
+        red: {
+            /* ... */
+        },
+    },
+});
+```
+
+`"green"`, `"yellow"`, and `"red"` are your state names. TypeScript knows them at compile time.
+
+---
+
+## Inputs
+
+An input is a named signal dispatched to the FSM via `handle(inputName, ...args)`. The FSM looks up the current state's handler for that input name and runs it.
+
+```ts
+light.handle("timeout");
+light.handle("tick", { source: "timer" });
+```
+
+If the current state has no handler for that input name and no wildcard handler, machina fires a `nohandler` event and moves on.
+
+---
+
+## Handlers
+
+A handler is a property on a state object. There are two forms:
+
+**Function handler** — receives a `HandlerArgs` object plus any extra args passed to `handle()`. Return a state name to transition; return nothing to stay put.
+
+```ts
+green: {
+  timeout({ ctx }) {
+    if (ctx.tickCount >= 3) {
+      return "yellow"; // transition
+    }
+    // return nothing → stay in green
+  },
+  tick({ ctx }) {
+    ctx.tickCount++; // side effect, no transition
+  },
+}
+```
+
+The `HandlerArgs` object contains:
+
+| Property    | What it is                                                |
+| ----------- | --------------------------------------------------------- |
+| `ctx`       | The mutable context object (or client, for BehavioralFsm) |
+| `inputName` | The name of the input being handled                       |
+| `defer`     | Function to defer this input for later replay             |
+| `emit`      | Function to emit a custom event                           |
+
+**String shorthand** — always transitions to the named state. `timeout: "yellow"` is exactly equivalent to `timeout() { return "yellow"; }`.
+
+```ts
+green: {
+  timeout: "yellow",  // unconditional transition to "yellow"
+}
+```
+
+**Wildcard handler** — `"*"` matches any input not handled by a named handler in that state. Use `inputName` to see what arrived.
+
+```ts
+green: {
+  timeout: "yellow",
+  "*"({ inputName }) {
+    console.log(`unhandled in green: ${inputName}`);
+  },
+}
+```
+
+---
+
+## Transitions
+
+When a handler returns a state name (or a string shorthand resolves), machina runs the transition sequence:
+
+1. Calls `_onExit` on the current state (if defined)
+2. Emits a `transitioning` event: `{ fromState, toState }`
+3. Updates the current state
+4. Calls `_onEnter` on the new state (if defined)
+5. Emits a `transitioned` event: `{ fromState, toState }`
+6. Replays any deferred inputs targeting the new state
+
+If `_onEnter` returns a state name, machina immediately begins another transition — a "bounce" to a third state. This is useful for conditional initialization logic.
+
+---
+
+## Context
+
+Context is the mutable data object available to all handlers as `ctx`. It's how handlers share and update state between inputs without reaching for external variables.
+
+For `createFsm`, you provide context in the config. TypeScript infers the type from the value:
+
+```ts
+createFsm({
+    context: { tickCount: 0, lastEvent: null as string | null },
+    // ...
+});
+// ctx is inferred as { tickCount: number; lastEvent: string | null }
+```
+
+For `createBehavioralFsm`, there is no separate context object — the **client object itself is the context**. Each call to `handle(client, inputName)` passes the client as `ctx`.
+
+See [createFsm](/machina.js/guide/fsm/) and [createBehavioralFsm](/machina.js/guide/behavioral-fsm/) for the full API.
+
+---
+
+## Lifecycle Hooks
+
+Two reserved keys on a state run automatically during transitions:
+
+**`_onEnter`** — called when the FSM enters that state. Receives the same `HandlerArgs` as regular handlers. Can return a state name to immediately transition again (a "bounce").
+
+**`_onExit`** — called when the FSM leaves that state. Receives the same `HandlerArgs`. Cannot trigger a transition — return values are ignored.
+
+```ts
+yellow: {
+  _onEnter({ ctx, emit }) {
+    emit("warning-started");
+    ctx.warningStartedAt = Date.now();
+    // return "red" here to bounce immediately to red
+  },
+  _onExit({ ctx }) {
+    ctx.warningDuration = Date.now() - ctx.warningStartedAt;
+    // returning a state name here has no effect
+  },
+  timeout: "red",
+}
+```
+
+---
+
+## Deferred Inputs
+
+Inside a handler, calling `defer()` queues the current input for replay after the next transition. This is useful when a signal arrives before the FSM is ready for it.
+
+```ts
+initializing: {
+  start({ defer }) {
+    defer({ until: "ready" }); // replay "start" when we enter "ready"
+  },
+}
+```
+
+Without `{ until }`, the input replays on the next transition to any state.
+
+---
+
+## Disposal
+
+`dispose()` permanently shuts down an FSM. All subsequent method calls become silent no-ops — no errors, no events, nothing.
+
+```ts
+light.dispose();
+light.handle("timeout"); // no-op
+light.currentState(); // no-op (returns last known state)
+```
+
+By default, disposal cascades to child FSMs declared via `_child`. Pass `{ preserveChildren: true }` to prevent this:
+
+```ts
+light.dispose({ preserveChildren: true });
+```
+
+Once disposed, an FSM cannot be restarted. Create a new one.
