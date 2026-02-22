@@ -1,0 +1,70 @@
+name: Deploy Docs
+
+on:
+    push:
+        branches: [machina-v6] # Change to master when v6 ships
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+concurrency:
+    group: pages
+    cancel-in-progress: false
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build machina library
+              run: pnpm --filter machina build
+
+            - name: Build examples with base paths
+              run: |
+                  for example in connectivity traffic-intersection dungeon-critters shopping-cart with-react; do
+                      echo "Building $example..."
+                      VITE_BASE_PATH="/machina.js/demos/$example/" pnpm --filter "@machina-examples/$example" build
+                  done
+
+            - name: Build docs
+              run: pnpm --filter @machina/docs build
+
+            - name: Copy examples into docs output
+              run: |
+                  for example in connectivity traffic-intersection dungeon-critters shopping-cart with-react; do
+                      mkdir -p packages/docs/dist/demos/$example
+                      cp -r examples/$example/dist/* packages/docs/dist/demos/$example/
+                  done
+
+            - name: Upload artifact
+              uses: actions/upload-pages-artifact@v3
+              with:
+                  path: packages/docs/dist
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@v4
