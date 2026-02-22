@@ -37,6 +37,12 @@ pnpm-debug.log*
 !.vscode/extensions.json
 !.vscode/settings.json
 
+# Astro generated
+packages/docs/.astro/
+
+# Generated API docs (typedoc)
+packages/docs/src/content/docs/api/
+
 # Claude AI
 .claude/settings.local.json
 
