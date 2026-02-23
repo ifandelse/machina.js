@@ -299,6 +299,10 @@ canvas.addEventListener("mouseleave", () => {
 canvas.addEventListener("mousemove", (event: MouseEvent) => {
     cursor.x = event.clientX;
     cursor.y = event.clientY;
+    // Also mark cursor as on-canvas here. If the canvas appears under an
+    // already-positioned cursor (e.g. loaded in an iframe), mouseenter never
+    // fires — but mousemove will, and that's just as authoritative.
+    cursorOnCanvas = true;
 });
 
 // -----------------------------------------------------------------------------
