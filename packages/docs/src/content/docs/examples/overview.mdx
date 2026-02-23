@@ -7,17 +7,17 @@ machina ships with five runnable example apps covering real-world patterns — f
 
 ## Examples
 
-| Example                                                            | What it demonstrates                                          | Key machina features                                                                    |
-| ------------------------------------------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Connectivity Monitor](/machina.js/examples/connectivity/)         | Network connectivity tracking with async health checks        | `createFsm`, async in `_onEnter`, `AbortController` cleanup in `_onExit`, custom events |
-| [Traffic Intersection](/machina.js/examples/traffic-intersection/) | Hierarchical traffic light controller with pedestrian signals | `_child` delegation, `compositeState()`, input bubbling, `defer()`, child auto-reset    |
-| [Dungeon Critters](/machina.js/examples/dungeon-critters/)         | Multiple critter instances sharing one FSM definition         | `createBehavioralFsm`, per-client state via `WeakMap`, shared behavior definition       |
-| [Shopping Cart](/machina.js/examples/shopping-cart/)               | Checkout flow with deferred operations                        | `createFsm`, `defer()`, `defer({ until })`, lifecycle hooks                             |
-| [With React](/machina.js/examples/with-react/)                     | React integration for a todo app                              | `createFsm`, `useSyncExternalStore`, framework integration                              |
+| Example                                                 | What it demonstrates                                          | Key machina features                                                                    |
+| ------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Connectivity Monitor](/examples/connectivity/)         | Network connectivity tracking with async health checks        | `createFsm`, async in `_onEnter`, `AbortController` cleanup in `_onExit`, custom events |
+| [Traffic Intersection](/examples/traffic-intersection/) | Hierarchical traffic light controller with pedestrian signals | `_child` delegation, `compositeState()`, input bubbling, `defer()`, child auto-reset    |
+| [Dungeon Critters](/examples/dungeon-critters/)         | Multiple critter instances sharing one FSM definition         | `createBehavioralFsm`, per-client state via `WeakMap`, shared behavior definition       |
+| [Shopping Cart](/examples/shopping-cart/)               | Checkout flow with deferred operations                        | `createFsm`, `defer()`, `defer({ until })`, lifecycle hooks                             |
+| [With React](/examples/with-react/)                     | React integration for a todo app                              | `createFsm`, `useSyncExternalStore`, framework integration                              |
 
 ## Try them live
 
-On the deployed docs site, each example is a working app at `/machina.js/demos/{name}/`. The doc pages above explain the patterns; the "Run" link at the top of each page opens the live app in a new tab.
+On the deployed docs site, each example is a working app at `/demos/{name}/`. The doc pages above explain the patterns; the "Run" link at the top of each page opens the live app in a new tab.
 
 During local development, examples run on their own Vite dev server — the docs site doesn't serve them. See below.
 

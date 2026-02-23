@@ -17,7 +17,7 @@ pnpm --filter machina build
 
 for example in "${EXAMPLES[@]}"; do
     echo "Building $example..."
-    VITE_BASE_PATH="/machina.js/demos/$example/" pnpm --filter "@machina-examples/$example" build
+    VITE_BASE_PATH="/demos/$example/" pnpm --filter "@machina-examples/$example" build
 
     mkdir -p "$DOCS_DIST/demos/$example"
     cp -r "$REPO_ROOT/examples/$example/dist/"* "$DOCS_DIST/demos/$example/"

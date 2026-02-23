@@ -4,8 +4,7 @@ import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
 import starlightThemeNova from "starlight-theme-nova";
 
 export default defineConfig({
-    site: "https://ifandelse.github.io",
-    base: "/machina.js",
+    site: "https://machina-js.org",
     vite: {
         ssr: {
             // Vite's SSR externals resolve nanoid and zod from the wrong
@@ -30,7 +29,7 @@ export default defineConfig({
                     tag: "link",
                     attrs: {
                         rel: "icon",
-                        href: "/machina.js/favicon.ico",
+                        href: "/favicon.ico",
                         sizes: "32x32",
                     },
                 },
@@ -38,14 +37,14 @@ export default defineConfig({
                     tag: "link",
                     attrs: {
                         rel: "apple-touch-icon",
-                        href: "/machina.js/apple-touch-icon.png",
+                        href: "/apple-touch-icon.png",
                     },
                 },
                 {
                     tag: "meta",
                     attrs: {
                         property: "og:image",
-                        content: "/machina.js/og-image.png",
+                        content: "/og-image.png",
                     },
                 },
             ],

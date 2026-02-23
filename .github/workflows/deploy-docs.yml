@@ -40,7 +40,7 @@ jobs:
         run: |
           for example in connectivity traffic-intersection dungeon-critters shopping-cart with-react; do
               echo "Building $example..."
-              VITE_BASE_PATH="/machina.js/demos/$example/" pnpm --filter "@machina-examples/$example" build
+              VITE_BASE_PATH="/demos/$example/" pnpm --filter "@machina-examples/$example" build
           done
 
       - name: Build docs
