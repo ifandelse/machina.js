@@ -2,7 +2,7 @@
 
 Focused finite state machines for JavaScript and TypeScript. States in, states out.
 
-**v6 is in active development (alpha).** The API has been substantially redesigned — cleaner handler signatures, TypeScript-first, and a BehavioralFsm that tracks state per-client instead of stamping properties on your objects.
+**v6 is active.** The API has been substantially redesigned — cleaner handler signatures, TypeScript-first, and a BehavioralFsm that tracks state per-client instead of stamping properties on your objects.
 
 - [Documentation](https://ifandelse.github.io/machina.js/)
 - [npm](https://www.npmjs.com/package/machina)

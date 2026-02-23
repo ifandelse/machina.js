@@ -2,7 +2,7 @@
     "name": "machina",
     "private": true,
     "description": "A library for creating powerful and flexible finite state machines. Loosely inspired by Erlang/OTP's gen_fsm behavior.",
-    "version": "5.0.0-pre.1",
+    "version": "0.1.0",
     "homepage": "http://machina-js.org/",
     "repository": {
         "type": "git",
