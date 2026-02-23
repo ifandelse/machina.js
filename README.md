@@ -191,7 +191,7 @@ To work on a specific package:
 
 ```sh
 cd packages/machina
-pnpm dev    # tsup in watch mode
+pnpm dev    # tsdown in watch mode
 pnpm test   # jest
 ```
 

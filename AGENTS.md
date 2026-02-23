@@ -38,11 +38,11 @@ pnpm run checks                       # lint + test + build (CI gate)
 
 # Package-level (from packages/machina/)
 pnpm --filter machina test             # Run core lib tests only
-pnpm --filter machina build            # Build core lib only (tsup)
+pnpm --filter machina build            # Build core lib only (tsdown)
 pnpm --filter machina test -- --watch  # Watch mode
 ```
 
-Build tooling: **tsup** (bundles to CJS + ESM + .d.ts), **Jest** with ts-jest, **ESLint 9**, **Prettier**, **Husky** pre-commit hooks with lint-staged.
+Build tooling: **tsdown** (bundles to CJS + ESM + .d.ts), **Jest** with ts-jest, **ESLint 9**, **Prettier**, **Husky** pre-commit hooks with lint-staged.
 
 TypeScript 5.9+, target ES2022, strict mode.
 
@@ -69,7 +69,7 @@ Two factory functions, one mental model:
 - Strict equality only (`===`, `!==`). No loose `==` / `!=`. Prefer falsy checks (`!handler`) over `== null`.
 - Arrow functions throughout. No `function` keyword in new code.
 - Comments explain _why_, not _what_.
-- ESM imports. The library ships CJS + ESM via tsup.
+- ESM imports. The library ships CJS + ESM via tsdown.
 
 ## Common Gotchas
 

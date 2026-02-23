@@ -7,14 +7,14 @@
     "publishConfig": {
         "access": "public"
     },
-    "main": "dist/index.js",
+    "main": "dist/index.cjs",
     "module": "dist/index.mjs",
-    "types": "dist/index.d.ts",
+    "types": "dist/index.d.mts",
     "exports": {
         ".": {
-            "types": "./dist/index.d.ts",
-            "require": "./dist/index.js",
-            "import": "./dist/index.mjs"
+            "types": "./dist/index.d.mts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.cjs"
         }
     },
     "files": [
@@ -26,8 +26,8 @@
     },
     "sideEffects": false,
     "scripts": {
-        "dev": "tsup --watch",
-        "build": "tsup",
+        "dev": "tsdown --watch",
+        "build": "tsdown",
         "test": "jest --passWithNoTests",
         "test:watch": "jest --watch",
         "lint": "ESLINT_USE_FLAT_CONFIG=false eslint --config ../../.eslintrc.js 'src/**/*.{ts,tsx}'"
@@ -36,7 +36,7 @@
         "eslint": "^9.39.2",
         "jest": "^30.2.0",
         "ts-jest": "^29.4.6",
-        "tsup": "^8.5.1",
+        "tsdown": "^0.20.3",
         "typescript": "^5.9.3"
     }
 }

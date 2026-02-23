@@ -8,7 +8,7 @@ module.exports = {
         "^.+\\.tsx?$": ["ts-jest", { tsconfig: path.resolve(__dirname, "tsconfig.test.json") }],
     },
     moduleNameMapper: {
-        "^machina$": path.resolve(__dirname, "node_modules/machina/dist/index.js"),
+        "^machina$": path.resolve(__dirname, "node_modules/machina/dist/index.cjs"),
     },
     transformIgnorePatterns: ["/node_modules/(?!machina)"],
 };
