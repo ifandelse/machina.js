@@ -1,0 +1,35 @@
+# machina
+
+> Focused finite state machine library for JavaScript and TypeScript. Two factory functions — `createFsm` for single-client FSMs and `createBehavioralFsm` for multi-client FSMs — with TypeScript-inferred state names, return-based transitions, and hierarchical child FSM delegation. States in, states out.
+
+machina v6 is a ground-up TypeScript rewrite. Handlers receive `{ ctx, inputName, defer, emit }` as a destructured args object (no `this` binding). Return a state name to transition; return nothing to stay put. String shorthand (`timeout: "yellow"`) handles unconditional transitions. State names and transition targets are validated at compile time.
+
+- [Source code](https://github.com/ifandelse/machina.js): GitHub repository
+- [npm package](https://www.npmjs.com/package/machina): Install with `npm install machina`
+
+## Guide
+
+- [Introduction](https://machina-js.org/guide/introduction/): What machina is, design philosophy, comparison with XState, what's new in v6
+- [Getting Started](https://machina-js.org/guide/getting-started/): Quick start with createFsm — install, configure, handle inputs
+- [Concepts](https://machina-js.org/guide/concepts/): Mental model — states, inputs, handlers, transitions, context, lifecycle hooks, deferred input, disposal
+- [createFsm](https://machina-js.org/guide/fsm/): Single-client FSM — config, handler signatures, full public API, TypeScript inference, complete example
+- [createBehavioralFsm](https://machina-js.org/guide/behavioral-fsm/): Multi-client FSM — one definition serving many independent clients, WeakMap-based state tracking, client-scoped events
+- [Hierarchical States](https://machina-js.org/guide/hierarchical/): Child FSMs via _child, input delegation and bubbling, compositeState(), auto-reset on parent re-entry
+- [Events](https://machina-js.org/guide/events/): Lifecycle events (transitioning, transitioned, handling, handled, nohandler, invalidstate, deferred), wildcard subscribers, custom events
+- [Deferred Input](https://machina-js.org/guide/defer/): Queueing inputs for replay — targeted defer, untargeted defer, replay mechanics, per-client queues in BehavioralFsm
+
+## Examples
+
+- [Connectivity](https://machina-js.org/examples/connectivity/): Single-client FSM with async health checks, timers, and AbortController cleanup
+- [Traffic Intersection](https://machina-js.org/examples/traffic-intersection/): Hierarchical FSMs — parent controlling phases, child sub-phases, deferred pedestrian requests
+- [Dungeon Critters](https://machina-js.org/examples/dungeon-critters/): BehavioralFsm with 100+ independent game entities sharing one FSM definition
+- [Shopping Cart](https://machina-js.org/examples/shopping-cart/): Deferred input patterns — targeted defer across multiple transitions, error recovery with catch-all defer
+- [React Integration](https://machina-js.org/examples/with-react/): useReducer pattern, event subscriptions in effects, per-component FSM instances
+
+## Migration
+
+- [v4 to v6 Migration](https://machina-js.org/migration/v5-to-v6/): Complete translation guide — handler signatures, config changes, method mapping, event changes, removed features
+
+## Optional
+
+- [API Reference](https://machina-js.org/api/): Auto-generated TypeDoc API documentation — classes, interfaces, type aliases

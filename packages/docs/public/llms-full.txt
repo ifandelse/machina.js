@@ -1,0 +1,757 @@
+# machina v6 — Complete Documentation
+
+> Focused finite state machine library for JavaScript and TypeScript. States in, states out.
+
+- **Repository**: https://github.com/ifandelse/machina.js
+- **npm**: `npm install machina`
+- **Version**: 6.0.0
+- **License**: MIT
+
+---
+
+## Introduction
+
+machina is a focused finite state machine library for JavaScript and TypeScript. You define states, the inputs each state responds to, and the handlers that decide what happens — including whether to transition. That's the whole model.
+
+The library provides two factory functions. `createFsm` produces a single-client FSM that owns its own context object — use it when you have one instance of a thing. `createBehavioralFsm` produces a multi-client FSM where state is tracked per-client in a `WeakMap` — one FSM definition, any number of independent clients, no properties stamped on your objects. Both produce FSMs with the same core API.
+
+Handlers are plain functions (or string shorthand for simple transitions) that receive a `{ ctx, inputName, defer, emit }` args object. Return a state name to transition; return nothing to stay put. Lifecycle hooks (`_onEnter`, `_onExit`) run on entry and exit of each state. Child FSMs can be attached to parent states via `_child` for hierarchical behavior, with unhandled inputs bubbling up. When a handler can't deal with an input yet, `defer()` re-queues it for replay after the next transition.
+
+### Design Philosophy
+
+machina was originally inspired by the `gen_fsm` behavior module from Erlang/OTP. v6 is TypeScript-first. State names, input names, and transition targets are all inferred from the config object — no manual type parameters needed for `createFsm`. String shorthand targets (`timeout: "red"`) are validated against actual state keys at compile time, so a typo is a type error rather than a runtime surprise.
+
+### How machina differs from XState
+
+XState is a comprehensive statechart framework with actors, spawning, inspection tools, and SCXML compatibility. machina is for when you want a state machine (or a hierarchy of them) and nothing else. No actors, no invocations, no spawning. Just states, inputs, transitions, and the occasional child FSM.
+
+---
+
+## Concepts
+
+A finite state machine is a model that is always in exactly one state, transitions between states in response to inputs, and can run logic on entry and exit.
+
+### Synchronous by Design
+
+machina's methods — `handle()`, `transition()`, `canHandle()`, `currentState()` — are all synchronous. When you call `handle("timeout")`, the entire transition sequence (exit → state change → enter → deferred replay) completes before `handle()` returns.
+
+This doesn't mean you can't use machina in async workflows. The pattern is: a handler kicks off async work (a fetch, a timer, a promise), and when that work resolves, it feeds a new input back into the FSM. The FSM stays synchronous; the async world calls back in.
+
+```ts
+checking: {
+  _onEnter({ ctx }) {
+    fetch("/health")
+      .then(res => fsm.handle(res.ok ? "passed" : "failed"))
+      .catch(() => fsm.handle("failed"));
+  },
+  passed: "online",
+  failed: "offline",
+}
+```
+
+### States
+
+An FSM is always in exactly one state. States are defined as keys of the `states` object in your config. TypeScript infers state names as string literals.
+
+```ts
+const light = createFsm({
+    id: "traffic-light",
+    initialState: "green",
+    context: { tickCount: 0 },
+    states: {
+        green: { /* ... */ },
+        yellow: { /* ... */ },
+        red: { /* ... */ },
+    },
+});
+```
+
+### Inputs
+
+An input is a named signal dispatched to the FSM via `handle(inputName, ...args)`. The FSM looks up the current state's handler for that input name and runs it.
+
+```ts
+light.handle("timeout");
+light.handle("tick", { source: "timer" });
+```
+
+If the current state has no handler for that input name and no wildcard handler, machina fires a `nohandler` event.
+
+### Handlers
+
+A handler is a property on a state object. There are two forms:
+
+**Function handler** — receives a `HandlerArgs` object plus any extra args. Return a state name to transition; return nothing to stay put.
+
+```ts
+green: {
+  timeout({ ctx }) {
+    if (ctx.tickCount >= 3) {
+      return "yellow"; // transition
+    }
+    // return nothing → stay in green
+  },
+  tick({ ctx }) {
+    ctx.tickCount++; // side effect, no transition
+  },
+}
+```
+
+The `HandlerArgs` object:
+
+| Property    | What it is                                                |
+| ----------- | --------------------------------------------------------- |
+| `ctx`       | The mutable context object (or client, for BehavioralFsm) |
+| `inputName` | The name of the input being handled                       |
+| `defer`     | Function to defer this input for later replay             |
+| `emit`      | Function to emit a custom event                           |
+
+**String shorthand** — always transitions to the named state. `timeout: "yellow"` is exactly equivalent to `timeout() { return "yellow"; }`.
+
+**Wildcard handler** — `"*"` matches any input not handled by a named handler in that state.
+
+```ts
+green: {
+  timeout: "yellow",
+  "*"({ inputName }) {
+    console.log(`unhandled in green: ${inputName}`);
+  },
+}
+```
+
+### Transitions
+
+When a handler returns a state name, machina runs the transition sequence:
+
+1. Calls `_onExit` on the current state (if defined)
+2. Emits a `transitioning` event: `{ fromState, toState }`
+3. Updates the current state
+4. Calls `_onEnter` on the new state (if defined)
+5. Emits a `transitioned` event: `{ fromState, toState }`
+6. Replays any deferred inputs targeting the new state
+
+If `_onEnter` returns a state name, machina immediately begins another transition — a "bounce."
+
+### Context
+
+Context is the mutable data object available to all handlers as `ctx`.
+
+For `createFsm`, you provide context in the config:
+
+```ts
+createFsm({
+    context: { tickCount: 0, lastEvent: null as string | null },
+    // ctx is inferred as { tickCount: number; lastEvent: string | null }
+});
+```
+
+For `createBehavioralFsm`, there is no separate context — the client object itself IS the context.
+
+### Lifecycle Hooks
+
+**`_onEnter`** — called when the FSM enters a state. Can return a state name to immediately transition again (a "bounce").
+
+**`_onExit`** — called when the FSM leaves a state. Cannot trigger a transition — return values are ignored.
+
+### Disposal
+
+`dispose()` permanently shuts down an FSM. All subsequent method calls become silent no-ops. Cascades to child FSMs by default. Pass `{ preserveChildren: true }` to prevent this.
+
+---
+
+## createFsm
+
+`createFsm` is the standard choice for most use cases. One config object produces one FSM instance with one internal context object.
+
+### Config
+
+```ts
+createFsm({
+    id: "traffic-light",       // identifier for lifecycle events
+    initialState: "green",     // must match a key in states
+    context: { tickCount: 0 }, // mutable data passed to handlers as ctx
+    states: { ... },           // map of state names to handler definitions
+});
+```
+
+| Property       | Type     | Description                                                                                    |
+| -------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `id`           | `string` | Identifier for this FSM. Appears in lifecycle event payloads.                                  |
+| `initialState` | `string` | The state the FSM boots into. Must match a key in `states`.                                    |
+| `context`      | `object` | Mutable data scoped to this FSM. Passed to every handler as `ctx`. Omit for context-free FSMs. |
+| `states`       | `object` | Map of state names to handler definitions. Keys become the state name union.                   |
+
+### State Handler Keys
+
+| Key           | Type                   | Description                                                           |
+| ------------- | ---------------------- | --------------------------------------------------------------------- |
+| `_onEnter`    | `HandlerFn`            | Lifecycle hook — called when entering this state.                     |
+| `_onExit`     | `HandlerFn`            | Lifecycle hook — called when exiting this state.                      |
+| `_child`      | `Fsm \| BehavioralFsm` | Child FSM — inputs delegated here first; unhandled inputs bubble up. |
+| `"*"`         | `HandlerFn`            | Catch-all — handles any input not explicitly defined.                 |
+| anything else | `string \| HandlerFn`  | Named input handler. String = always transition; function = dynamic.  |
+
+### Public API
+
+| Method                       | Description                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `handle(inputName, ...args)` | Dispatch an input to the current state's handler.                                        |
+| `canHandle(inputName)`       | `true` if the current state has a handler (or `"*"`) for this input.                     |
+| `transition(toState)`        | Directly transition; fires `_onExit`, `_onEnter`, and lifecycle events.                  |
+| `reset()`                    | Transition back to `initialState`.                                                       |
+| `currentState()`             | Returns the current state name.                                                          |
+| `compositeState()`           | Dot-delimited path including active child FSM states.                                    |
+| `on(eventName, callback)`    | Subscribe to a lifecycle event. Returns `{ off() }`.                                     |
+| `emit(eventName, data?)`     | Emit a custom event through the FSM to all `on()` subscribers.                           |
+| `dispose(options?)`          | Permanently shut down. Cascades to child FSMs unless `{ preserveChildren: true }`.       |
+
+### Full Example
+
+```ts
+import { createFsm } from "machina";
+
+const light = createFsm({
+    id: "traffic-light",
+    initialState: "green",
+    context: { tickCount: 0 },
+    states: {
+        green: {
+            _onEnter({ ctx }) {
+                ctx.tickCount = 0;
+            },
+            tick({ ctx }) {
+                ctx.tickCount++;
+            },
+            timeout({ ctx }) {
+                if (ctx.tickCount >= 5) {
+                    return "yellow";
+                }
+            },
+        },
+        yellow: {
+            timeout: "red",
+        },
+        red: {
+            timeout: "green",
+        },
+    },
+});
+
+const sub = light.on("transitioned", ({ fromState, toState }) => {
+    console.log(`${fromState} -> ${toState}`);
+});
+
+for (let i = 0; i < 5; i++) {
+    light.handle("tick");
+}
+light.handle("timeout"); // green -> yellow
+light.handle("timeout"); // yellow -> red
+
+light.currentState();    // "red"
+light.canHandle("tick"); // false
+
+sub.off();
+light.reset();
+light.dispose();
+```
+
+### TypeScript
+
+No manual type parameters needed. TypeScript infers context type from `config.context`, state names from `config.states` keys, and input names from handler keys.
+
+```ts
+light.handle("bogus");       // compile error — not a valid input
+light.transition("yellw");   // compile error — not a valid state
+```
+
+`StateNamesOf` and `InputNamesOf` utility types extract inferred types from a states config when needed explicitly.
+
+---
+
+## createBehavioralFsm
+
+`createBehavioralFsm` defines states and transitions once, then applies that behavior to any number of independent client objects. Per-client state is tracked in a `WeakMap` — nothing is stamped onto the client object. The client IS the context.
+
+### When to Use It
+
+- Many instances share the same state machine logic — network connections, game entities, UI components
+- You don't want the FSM to modify the client object's shape
+- The client already exists and you want to layer FSM behavior onto it
+
+### Config
+
+Same as `createFsm` without the `context` property. The client type is provided as an explicit type parameter:
+
+```ts
+const connFsm = createBehavioralFsm<Connection>({
+    id: "connectivity",
+    initialState: "disconnected",
+    states: { ... },
+});
+```
+
+### API
+
+Every method takes the client object as its first argument:
+
+| Method                               | Description                                                             |
+| ------------------------------------ | ----------------------------------------------------------------------- |
+| `handle(client, inputName, ...args)` | Dispatch an input to the client's current state handler                 |
+| `canHandle(client, inputName)`       | True if the client's current state has a handler for this input         |
+| `transition(client, toState)`        | Directly transition the client                                          |
+| `reset(client)`                      | Transition the client back to `initialState`                            |
+| `currentState(client)`               | Returns the client's current state, or `undefined` if never initialized |
+| `compositeState(client)`             | Dot-delimited path including active child FSM states                    |
+| `on(eventName, callback)`            | Subscribe to a lifecycle event — returns `{ off() }`                    |
+| `emit(eventName, data?)`             | Emit a custom event to subscribers                                      |
+| `dispose(client, options?)`          | Dispose a single client's state entry                                   |
+| `dispose()`                          | Permanently shut down the entire FSM                                    |
+
+`currentState(client)` returns `undefined` for a client the FSM has never seen. The first call to `handle()`, `transition()`, or `reset()` initializes the client in `initialState`.
+
+### Events
+
+Same lifecycle events as `Fsm`, but every payload includes a `client` field:
+
+```ts
+connFsm.on("transitioned", ({ fromState, toState, client }) => {
+    console.log(`[${client.url}] ${fromState} -> ${toState}`);
+});
+```
+
+### Full Example
+
+```ts
+import { createBehavioralFsm } from "machina";
+
+interface Connection {
+    url: string;
+    retries: number;
+}
+
+const connFsm = createBehavioralFsm<Connection>({
+    id: "connectivity",
+    initialState: "disconnected",
+    states: {
+        disconnected: {
+            connect: "connecting",
+        },
+        connecting: {
+            connected: "online",
+            failed({ ctx }) {
+                ctx.retries++;
+                if (ctx.retries >= 3) {
+                    return "error";
+                }
+                return "disconnected";
+            },
+        },
+        online: {
+            disconnect: "disconnected",
+        },
+        error: {
+            reset({ ctx }) {
+                ctx.retries = 0;
+                return "disconnected";
+            },
+        },
+    },
+});
+
+const connA = { url: "wss://host-a.example.com", retries: 0 };
+const connB = { url: "wss://host-b.example.com", retries: 0 };
+
+connFsm.handle(connA, "connect");
+connFsm.handle(connB, "connect");
+connFsm.handle(connB, "failed"); // connB retries++, back to disconnected
+
+connFsm.currentState(connA); // "connecting"
+connFsm.currentState(connB); // "disconnected"
+
+connFsm.on("transitioned", ({ fromState, toState, client }) => {
+    console.log(`[${client.url}] ${fromState} -> ${toState}`);
+});
+
+connFsm.reset(connA);
+connFsm.dispose();
+```
+
+---
+
+## Hierarchical States
+
+Any state can own a child FSM by setting `_child` to an FSM instance. While the parent is in that state, inputs are checked against the child first. If the child can handle the input, it's forwarded. If not, the parent's own handlers get it.
+
+### Input Delegation
+
+1. Input arrives at the parent via `handle()`
+2. Parent checks if the current state has a `_child`
+3. If yes, parent calls `canHandle()` on the child
+4. If the child can handle it, the input is forwarded — done
+5. If the child can't handle it, the parent's own state handlers get the input
+
+### compositeState()
+
+Returns the full state path as a dot-delimited string: `"active.uploading"`.
+
+Nesting is unbounded. A child can have its own `_child`, and `compositeState()` walks the whole chain.
+
+### Child Auto-Reset
+
+When the parent transitions into a state with `_child`, machina automatically calls `reset()` on the child. Re-entering a parent state always starts the child fresh.
+
+### Disposal
+
+`dispose()` cascades to child FSMs by default. Pass `{ preserveChildren: true }` to skip it.
+
+### Example
+
+```ts
+import { createFsm } from "machina";
+
+const childFsm = createFsm({
+    id: "upload-phases",
+    initialState: "preparing",
+    context: {},
+    states: {
+        preparing: { ready: "uploading" },
+        uploading: { done: "verifying" },
+        verifying: { verified: "complete" },
+        complete: {},
+    },
+});
+
+const uploader = createFsm({
+    id: "uploader",
+    initialState: "idle",
+    context: {},
+    states: {
+        idle: {
+            start: "active",
+        },
+        active: {
+            _child: childFsm,
+            cancel: "idle",
+        },
+    },
+});
+
+uploader.handle("start");
+uploader.compositeState(); // "active.preparing"
+
+uploader.handle("ready");
+uploader.compositeState(); // "active.uploading"
+
+uploader.handle("cancel"); // bubbles to parent — child has no "cancel"
+uploader.compositeState(); // "idle"
+
+uploader.handle("start");
+uploader.compositeState(); // "active.preparing" — child auto-reset
+```
+
+---
+
+## Events
+
+Both `Fsm` and `BehavioralFsm` emit lifecycle events. Subscribe with `on()`, which returns `{ off() }`.
+
+### Built-in Events
+
+| Event           | Payload                  | Fired when                              |
+| --------------- | ------------------------ | --------------------------------------- |
+| `transitioning` | `{ fromState, toState }` | A transition is about to occur          |
+| `transitioned`  | `{ fromState, toState }` | A transition completed                  |
+| `handling`      | `{ inputName }`          | An input is about to be dispatched      |
+| `handled`       | `{ inputName }`          | An input was successfully handled       |
+| `nohandler`     | `{ inputName, args }`    | No handler found in current state       |
+| `invalidstate`  | `{ stateName }`          | Transition targeted a nonexistent state |
+| `deferred`      | `{ inputName }`          | An input was deferred                   |
+
+Event naming: present participle (`transitioning`) = about to happen; past participle (`transitioned`) = just happened.
+
+`BehavioralFsm` payloads include a `client` field on every event.
+
+### Wildcard Subscriber
+
+```ts
+fsm.on("*", (eventName, data) => {
+    console.log(eventName, data);
+});
+```
+
+Wildcard listeners fire before named listeners.
+
+### Custom Events
+
+Handlers emit custom events via the `emit` arg:
+
+```ts
+tick({ ctx, emit }) {
+    ctx.count++;
+    if (ctx.count % 10 === 0) {
+        emit("milestone", { count: ctx.count });
+    }
+}
+```
+
+Custom events are received by `on()` and wildcard subscribers identically to built-in events.
+
+---
+
+## Deferred Input
+
+Call `defer()` inside a handler to queue the current input for automatic replay after a future transition.
+
+### Targeted Defer
+
+```ts
+loading: {
+  save({ defer }) {
+    defer({ until: "ready" }); // replay "save" when we enter "ready"
+  },
+  loaded: "ready",
+},
+ready: {
+  save() {
+    console.log("saving");
+  },
+},
+```
+
+### Untargeted Defer
+
+```ts
+error: {
+  "*"({ defer }) {
+    defer(); // replay on the very next transition, wherever it goes
+  },
+  retry: "idle",
+},
+```
+
+### Replay Mechanics
+
+- FIFO order
+- Replay happens after `_onEnter` completes on the target state
+- Re-deferring is allowed — the input goes back in the queue
+- Cascading: if a replayed input triggers a transition, remaining deferred inputs pause and wait
+
+### With BehavioralFsm
+
+Deferred inputs are tracked per-client. Calling `defer()` queues the input for that specific client only.
+
+---
+
+## TypeScript Reference
+
+### Exports
+
+```ts
+// Factory functions (primary API)
+export { createFsm } from "./fsm";
+export { createBehavioralFsm } from "./behavioral-fsm";
+
+// Classes (for type annotations and advanced usage)
+export { Fsm } from "./fsm";
+export { BehavioralFsm } from "./behavioral-fsm";
+
+// Types
+export type {
+    Subscription,
+    FsmConfig,
+    FsmEventMap,
+    BehavioralFsmEventMap,
+    HandlerArgs,
+    HandlerFn,
+    HandlerDef,
+    MachinaInstance,
+    StateNamesOf,
+    InputNamesOf,
+    DisposeOptions,
+};
+```
+
+### Key Types
+
+**HandlerArgs<TCtx, TStateNames>** — the object passed to every handler:
+
+```ts
+interface HandlerArgs<TCtx, TStateNames extends string = string> {
+    ctx: TCtx;
+    inputName: string;
+    defer(opts?: { until: TStateNames }): void;
+    emit(eventName: string, data?: unknown): void;
+}
+```
+
+**HandlerFn<TCtx, TStateNames>** — a handler function:
+
+```ts
+type HandlerFn<TCtx, TStateNames extends string = string> = (
+    args: HandlerArgs<TCtx, TStateNames>,
+    ...extra: unknown[]
+) => TStateNames | void;
+```
+
+**HandlerDef** — a handler is either a string (auto-transition) or a function:
+
+```ts
+type HandlerDef<TCtx, TStateNames> = TStateNames | HandlerFn<TCtx, TStateNames> | MachinaInstance;
+```
+
+**StateNamesOf<TStates>** — extracts state names as a union: `"green" | "yellow" | "red"`
+
+**InputNamesOf<TStates>** — extracts input names as a union: `"timeout" | "tick"`
+
+**FsmEventMap** — built-in event payloads for Fsm (no `client` field).
+
+**BehavioralFsmEventMap** — same events, but every payload intersected with `{ client: TClient }`.
+
+---
+
+## Migrating from v4 to v6
+
+v4.0.2 was the last public release. v5 was never released. v6 is a ground-up TypeScript rewrite: same mental model, substantially different API.
+
+### Quick Reference
+
+| Pattern              | v4                                       | v6                                       |
+| -------------------- | ---------------------------------------- | ---------------------------------------- |
+| Create FSM           | `new machina.Fsm({ namespace, ... })`    | `createFsm({ id, context, ... })`        |
+| Create behavioral    | `new machina.BehavioralFsm({ ... })`     | `createBehavioralFsm<Client>({ ... })`   |
+| Handler context      | `this` (bound to FSM)                    | `{ ctx, inputName, defer, emit }` arg    |
+| Arrow functions      | broken (wrong `this`)                    | work fine                                |
+| Transition (inside)  | `this.transition("state")`               | `return "state"`                         |
+| Transition (outside) | `fsm.transition("state")`                | `fsm.transition("state")` (unchanged)    |
+| Defer                | `this.deferUntilTransition("state")`     | `defer({ until: "state" })`              |
+| Defer + transition   | `this.deferAndTransition("state")`       | `defer(…); return "state"`               |
+| Get state            | `fsm.state`                              | `fsm.currentState()`                     |
+| Subscribe            | `fsm.on(event, cb)`                      | `const sub = fsm.on(event, cb)`          |
+| Unsubscribe          | `fsm.off(event, cb)`                     | `sub.off()`                              |
+| Behavioral state     | `client.__machina__[ns].state`           | `bfsm.currentState(client)`              |
+| Child FSM            | `_child: { factory: fn }` or constructor | `_child: fsmInstance`                    |
+
+### Config Changes
+
+| v4 property    | v6 equivalent  | Notes                                                             |
+| -------------- | -------------- | ----------------------------------------------------------------- |
+| `namespace`    | `id`           | Renamed.                                                          |
+| `initialState` | `initialState` | Unchanged.                                                        |
+| `states`       | `states`       | Unchanged.                                                        |
+| `initialize()` | removed        | Wire up external listeners after `createFsm()`.                  |
+| `useSafeEmit`  | removed        | Caller's responsibility.                                          |
+| _(none)_       | `context`      | New. Mutable data scoped to this FSM, passed as `ctx`.            |
+
+### Handler Signature Change (Biggest Change)
+
+v4 bound handlers to `this` (the FSM). v6 passes a plain `HandlerArgs` object. Arrow functions work. No `this`.
+
+```js
+// v4
+timeout: function() {
+    if (this.tickCount >= 5) {
+        this.transition("yellow");
+    }
+}
+```
+
+```ts
+// v6
+timeout({ ctx }) {
+    if (ctx.tickCount >= 5) {
+        return "yellow";
+    }
+}
+```
+
+### Event Changes
+
+- `"transition"` → `"transitioning"` (renamed for clarity)
+- `"newfsm"` — removed
+- BehavioralFsm payloads include `client` field
+- Wildcard receives `(eventName, data)` as two args
+
+### Removed Features
+
+- `.extend()` — use factory functions
+- `initialize()` — do setup after `createFsm()`
+- `useSafeEmit` — removed
+- `processQueue()` / `clearQueue()` — automatic
+- `deferAndTransition()` — call `defer()` then return state name
+- `__machina__` client stamping — replaced by WeakMap
+- Plugin/mixin system — removed
+- `machina.utils` — removed
+
+---
+
+## Common Patterns and Gotchas
+
+### BehavioralFsm: Per-Client Data Must Go on the Client
+
+The FSM instance is shared across all clients. Storing per-user data (timers, flags, counters) on `this` or on the FSM is a concurrency bug. Store it on `ctx` (which is the client object):
+
+```ts
+// WRONG — shared across all clients
+getContactInfo: {
+  _onEnter() {
+    this.timer = setTimeout(...); // BUG: overwrites for all clients
+  }
+}
+
+// RIGHT — per-client
+getContactInfo: {
+  _onEnter({ ctx }) {
+    ctx.timer = setTimeout(...); // each client gets its own timer
+  },
+  _onExit({ ctx }) {
+    if (ctx.timer) {
+      clearTimeout(ctx.timer);
+      ctx.timer = null;
+    }
+  }
+}
+```
+
+### Async Patterns
+
+machina is synchronous. For async work, kick off the operation and feed results back as inputs:
+
+```ts
+checking: {
+  _onEnter({ ctx }) {
+    ctx.abortController = new AbortController();
+    fetch("/health", { signal: ctx.abortController.signal })
+      .then(res => fsm.handle(res.ok ? "passed" : "failed"))
+      .catch(() => fsm.handle("failed"));
+  },
+  _onExit({ ctx }) {
+    ctx.abortController?.abort();
+  },
+  passed: "online",
+  failed: "offline",
+}
+```
+
+### Timer Cleanup
+
+Always clean up timers in `_onExit` to prevent ghost callbacks:
+
+```ts
+waiting: {
+  _onEnter({ ctx }) {
+    ctx.timer = setTimeout(() => fsm.handle("timeout"), 5000);
+  },
+  _onExit({ ctx }) {
+    if (ctx.timer) {
+      clearTimeout(ctx.timer);
+      ctx.timer = null;
+    }
+  },
+  timeout: "expired",
+  cancel: "idle",
+}
+```
+
+### Transition Depth Limit
+
+machina caps transition depth at 20 to prevent infinite `_onEnter → return "nextState"` loops. If you hit this, you have a cycle in your bounce logic.
