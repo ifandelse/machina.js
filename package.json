@@ -1,172 +1,146 @@
 {
-  "name": "machina",
-  "description": "A library for creating powerful and flexible finite state machines. Loosely inspired by Erlang/OTP's gen_fsm behavior.",
-  "version": "5.0.0-pre.1",
-  "homepage": "http://machina-js.org/",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/ifandelse/machina.js.git"
-  },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org"
-  },
-  "author": "Jim Cowart (http://ifandelse.com)",
-  "contributors": [
-    {
-      "name": "Jim Cowart",
-      "email": "jim@ifandelse.com",
-      "url": "http://ifandelse.com"
+    "name": "machina",
+    "private": true,
+    "description": "A library for creating powerful and flexible finite state machines. Loosely inspired by Erlang/OTP's gen_fsm behavior.",
+    "version": "5.0.0-pre.1",
+    "homepage": "http://machina-js.org/",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/ifandelse/machina.js.git"
     },
-    {
-      "name": "Doug Neiner",
-      "email": "doug@dougneiner.com",
-      "url": "http://code.dougneiner.com"
+    "author": "Jim Cowart (http://ifandelse.com)",
+    "contributors": [
+        {
+            "name": "Jim Cowart",
+            "email": "jim@ifandelse.com",
+            "url": "http://ifandelse.com"
+        },
+        {
+            "name": "Doug Neiner",
+            "email": "doug@dougneiner.com",
+            "url": "http://code.dougneiner.com"
+        },
+        {
+            "name": "Friedemann Altrock",
+            "email": "frodenius@gmail.com",
+            "url": "https://github.com/fwg"
+        },
+        {
+            "name": "Michiel Trimpe",
+            "email": "michiel@trimpe.nl",
+            "url": "https://github.com/mtrimpe"
+        },
+        {
+            "name": "Brian Mavity",
+            "url": "https://github.com/bmavity"
+        },
+        {
+            "name": "Alex Robson",
+            "email": "arobson@gmail.com",
+            "url": "http://github.com/arobson"
+        },
+        {
+            "name": "Dominic Barnes",
+            "email": "dominic@dbarnes.info",
+            "url": "http://github.com/dominicbarnes"
+        },
+        {
+            "name": "Tim Harper",
+            "email": "timcharper@gmail.com",
+            "url": "http://tim.theenchanter.com/"
+        },
+        {
+            "name": "James Pooton",
+            "email": "james@codelica.com",
+            "url": "http://github.com/codelica"
+        },
+        {
+            "name": "Brad Fol",
+            "url": "https://github.com/bradfol"
+        },
+        {
+            "name": "Ignacio Carbajo",
+            "url": "http://ignaciocarbajo.com"
+        },
+        {
+            "name": "Joel Purra",
+            "url": "http://joelpurra.com/"
+        }
+    ],
+    "keywords": [
+        "state machine",
+        "finite state machine",
+        "fsm",
+        "workflow",
+        "state",
+        "machina",
+        "machina-js",
+        "machina.js",
+        "machinajs",
+        "hierarchical",
+        "state chart",
+        "state charts"
+    ],
+    "bugs": {
+        "email": "jim@ifandelse.com",
+        "url": "http://github.com/ifandelse/machina.js/issues"
     },
-    {
-      "name": "Friedemann Altrock",
-      "email": "frodenius@gmail.com",
-      "url": "https://github.com/fwg"
+    "engines": {
+        "node": ">=22.22"
     },
-    {
-      "name": "Michiel Trimpe",
-      "email": "michiel@trimpe.nl",
-      "url": "https://github.com/mtrimpe"
+    "packageManager": "pnpm@10.29.3",
+    "licenses": [
+        {
+            "type": "MIT",
+            "url": "http://opensource.org/licenses/MIT"
+        },
+        {
+            "type": "GPL",
+            "url": "http://opensource.org/licenses/GPL-2.0"
+        }
+    ],
+    "scripts": {
+        "build": "turbo run build",
+        "dev": "turbo run dev",
+        "lint": "turbo run lint",
+        "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+        "test": "turbo run test",
+        "changeset": "changeset",
+        "version-packages": "changeset version",
+        "release": "turbo run build && changeset publish",
+        "checks": "turbo run lint && turbo run test && turbo run build",
+        "prepare": "husky"
     },
-    {
-      "name": "Brian Mavity",
-      "url": "https://github.com/bmavity"
+    "lint-staged": {
+        "*.{ts,tsx,js,jsx,mjs,css,md,mdx,astro}": "prettier --write",
+        "*.json": "prettier --write"
     },
-    {
-      "name": "Alex Robson",
-      "email": "arobson@gmail.com",
-      "url": "http://github.com/arobson"
+    "devDependencies": {
+        "@changesets/cli": "^2.29.8",
+        "@eslint/js": "^9.39.2",
+        "@types/jest": "^30.0.0",
+        "@types/node": "^25.2.3",
+        "@typescript-eslint/eslint-plugin": "^8.55.0",
+        "@typescript-eslint/parser": "^8.55.0",
+        "eslint": "^9.0.0",
+        "eslint-config-prettier": "^10.1.8",
+        "husky": "^9.1.7",
+        "jest": "^30.2.0",
+        "lint-staged": "^16.2.7",
+        "prettier": "^3.8.1",
+        "prettier-plugin-astro": "^0.14.0",
+        "ts-jest": "^29.4.6",
+        "ts-node": "^10.9.2",
+        "tsup": "^8.5.1",
+        "turbo": "^2.8.9",
+        "typescript": "^5.9.3"
     },
-    {
-      "name": "Dominic Barnes",
-      "email": "dominic@dbarnes.info",
-      "url": "http://github.com/dominicbarnes"
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "sharp"
+        ]
     },
-    {
-      "name": "Tim Harper",
-      "email": "timcharper@gmail.com",
-      "url": "http://tim.theenchanter.com/"
-    },
-    {
-      "name": "James Pooton",
-      "email": "james@codelica.com",
-      "url": "http://github.com/codelica"
-    },
-    {
-      "name": "Brad Fol",
-      "url": "https://github.com/bradfol"
-    },
-    {
-      "name": "Ignacio Carbajo",
-      "url": "http://ignaciocarbajo.com"
-    },
-    {
-      "name": "Joel Purra",
-      "url": "http://joelpurra.com/"
+    "dependencies": {
+        "@apogeelabs/the-agency": "0.4.0"
     }
-  ],
-  "keywords": [
-    "state machine",
-    "finite state machine",
-    "fsm",
-    "async",
-    "workflow",
-    "state",
-    "machina",
-    "machina-js",
-    "machina.js",
-    "machinajs",
-    "hierarchical",
-    "state chart",
-    "state charts"
-  ],
-  "bugs": {
-    "email": "jim@ifandelse.com",
-    "url": "http://github.com/ifandelse/machina.js/issues"
-  },
-  "directories": {
-    "lib": "lib"
-  },
-  "main": "lib/machina.js",
-  "files": [
-    "LICENSE",
-    "lib"
-  ],
-  "engines": {
-    "node": ">=0.4.0"
-  },
-  "dependencies": {
-    "lodash": "^4.17.5"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.14.6",
-    "@babel/eslint-parser": "^7.14.7",
-    "@babel/polyfill": "^7.12.1",
-    "@babel/preset-env": "^7.14.7",
-    "@babel/register": "^7.14.5",
-    "babel-loader": "^8.2.2",
-    "babel-plugin-add-module-exports": "^1.0.4",
-    "bower": "^1.8.14",
-    "express": "^3.11.0",
-    "gulp": "~3.9.0",
-    "gulp-changed": "^1.2.1",
-    "gulp-eslint": "^1.1.1",
-    "gulp-header": "~1.2.2",
-    "gulp-hint-not": "~0.0.3",
-    "gulp-imports": "~0.0.1",
-    "gulp-jscs": "^1.6.0",
-    "gulp-jshint": "^1.11.0",
-    "gulp-rename": "~1.2.2",
-    "gulp-sourcemaps": "^1.6.0",
-    "gulp-spawn-mocha": "^2.2.1",
-    "gulp-uglify": "~1.2.0",
-    "gulp-util": "~3.0.4",
-    "gulp-webpack": "^1.5.0",
-    "imports-loader": "^0.6.3",
-    "istanbul": "^0.3.2",
-    "istanbul-instrumenter-loader": "^0.1.3",
-    "jshint-stylish": "^2.0.1",
-    "karma": "^0.13.9",
-    "karma-chrome-launcher": "^0.1.5",
-    "karma-coverage": "^0.2.6",
-    "karma-firefox-launcher": "^0.1.3",
-    "karma-mocha": "^0.2.0",
-    "karma-phantomjs-launcher": "^0.1.4",
-    "karma-safari-launcher": "^0.1.1",
-    "karma-sourcemap-loader": "^0.3.0",
-    "karma-spec-reporter": "0.0.20",
-    "karma-webpack": "^1.7.0",
-    "mocha": "^2.2.5",
-    "open": "~0.0.4",
-    "should": "^6.0.3",
-    "sinon": "~1.11.0",
-    "source-map-loader": "^0.1.5",
-    "typescript": "^5.0.4",
-    "unminified-webpack-plugin": "^3.0.0",
-    "webpack": "^5.41.1",
-    "webpack-cli": "^4.7.2"
-  },
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "http://opensource.org/licenses/MIT"
-    },
-    {
-      "type": "GPL",
-      "url": "http://opensource.org/licenses/GPL-2.0"
-    }
-  ],
-  "scripts": {
-    "build": "npx webpack --config webpack.config.js; npx tsc",
-    "start": "npm run build; gulp server",
-    "test": "./node_modules/mocha/bin/mocha -r spec/helpers/node-setup.js spec",
-    "coverage": "./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -x 'spec/**/*'  -- -r spec/helpers/node-setup.js spec spec/*.spec.js",
-    "show-coverage": "open ./coverage/lcov-report/index.html",
-    "lint": "gulp lint",
-    "format": "gulp format"
-  }
 }

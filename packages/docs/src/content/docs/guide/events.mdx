@@ -1,0 +1,100 @@
+---
+title: Events
+description: Subscribe to lifecycle events, emit custom events, and use wildcards.
+---
+
+Both `Fsm` and `BehavioralFsm` emit lifecycle events throughout the input-handling and transition cycle. Subscribe with `on()`, which returns a `{ off() }` subscription object.
+
+## Subscribing
+
+```ts
+const sub = fsm.on("transitioned", ({ fromState, toState }) => {
+    console.log(`${fromState} -> ${toState}`);
+});
+
+sub.off(); // unsubscribe
+```
+
+`on()` is safe to call multiple times with the same callback — the underlying `Set` deduplicates. The returned `Subscription` is the only way to remove a specific listener; there's no `off(eventName, callback)` API.
+
+## Built-in events
+
+| Event           | Payload                  | Fired when                              |
+| --------------- | ------------------------ | --------------------------------------- |
+| `transitioning` | `{ fromState, toState }` | A transition is about to occur          |
+| `transitioned`  | `{ fromState, toState }` | A transition completed                  |
+| `handling`      | `{ inputName }`          | An input is about to be dispatched      |
+| `handled`       | `{ inputName }`          | An input was successfully handled       |
+| `nohandler`     | `{ inputName, args }`    | No handler found in current state       |
+| `invalidstate`  | `{ stateName }`          | Transition targeted a nonexistent state |
+| `deferred`      | `{ inputName }`          | An input was deferred                   |
+
+Events follow a grammatical pattern: present participle (`transitioning`, `handling`) means "about to happen"; past participle (`transitioned`, `handled`) means "just happened".
+
+## BehavioralFsm events
+
+`BehavioralFsm` shares the same event names, but every payload is intersected with a `client` field identifying which client the event pertains to:
+
+```ts
+connFsm.on("transitioned", ({ client, fromState, toState }) => {
+    console.log(client.url, `${fromState} -> ${toState}`);
+});
+```
+
+This is necessary because a single `BehavioralFsm` instance manages many independent clients — without `client` in the payload you'd have no idea whose event just fired.
+
+## Wildcard subscriber
+
+Subscribe to `"*"` to receive every event. The callback signature differs from named subscriptions: the first argument is the event name, the second is the payload.
+
+```ts
+fsm.on("*", (eventName, data) => {
+    console.log(eventName, data);
+});
+```
+
+Wildcard listeners fire **before** named listeners for the same event. This is intentional — it lets relay listeners observe all events before specific subscribers react.
+
+## Custom events
+
+Handlers can emit custom events via the `emit` argument on the handler args object. Built-in lifecycle events are emitted automatically by the engine; `emit` is for user-defined events.
+
+```ts
+const fsm = createFsm({
+    id: "checkout",
+    initialState: "idle",
+    context: { count: 0 },
+    states: {
+        idle: {
+            _onEnter({ ctx, emit }) {
+                ctx.count++;
+                emit("checkCountUpdated", { count: ctx.count });
+            },
+        },
+    },
+});
+
+fsm.on("checkCountUpdated", ({ count }) => {
+    console.log("check count:", count);
+});
+```
+
+Custom events are received by `on()` subscribers the same way as built-in events. The wildcard `"*"` subscription catches them too.
+
+## TypeScript
+
+The built-in event payloads are fully typed via `FsmEventMap` and `BehavioralFsmEventMap`. You won't normally need to reference these directly — `on()` is already typed through the FSM instance — but they're exported if you need them for callbacks defined outside the `on()` call.
+
+```ts
+import type { FsmEventMap, BehavioralFsmEventMap } from "machina";
+
+// Extracting the payload type for a specific event:
+type TransitionedPayload = FsmEventMap["transitioned"];
+// => { fromState: string; toState: string }
+
+// With state names narrowed to your actual states:
+type NarrowedPayload = FsmEventMap<"green" | "yellow" | "red">["transitioned"];
+// => { fromState: "green" | "yellow" | "red"; toState: "green" | "yellow" | "red" }
+```
+
+Custom events emitted via `emit()` are untyped — they flow through as `unknown` on the wildcard path. If you need typed custom events, narrow them at the subscriber.

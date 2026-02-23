@@ -1,0 +1,134 @@
+---
+title: Dungeon Critters
+description: BehavioralFsm example with multiple critter instances sharing one FSM definition.
+---
+
+import { LinkCard } from "@astrojs/starlight/components";
+
+Dungeon Critters spawns up to 80 animated critters on a canvas dungeon floor, each independently driven by a single shared FSM definition. It demonstrates `createBehavioralFsm` — define behavior once, pass a client object per call, and the FSM tracks state for every client separately via an internal `WeakMap`.
+
+<LinkCard
+    title="Run the Dungeon Critters"
+    href="/machina.js/demos/dungeon-critters/"
+    target="_blank"
+/>
+
+## What It Demonstrates
+
+- **`createBehavioralFsm` for shared behavior** — one FSM instance drives all 35–80 critters. No per-critter FSM instantiation.
+- **Per-client state via `WeakMap`** — the FSM stores nothing on the critter object itself. State is an internal implementation detail, not a property you can accidentally overwrite.
+- **The client object IS the context** — every handler receives the critter as `ctx`. Handlers read `ctx.x`, `ctx.y`, write `ctx.vx`, `ctx.vy`, record timestamps. The client is both the key and the working surface.
+- **Multiple clients in different states simultaneously** — `fsm.handle(critterA, "tick")` and `fsm.handle(critterB, "tick")` resolve independently. `fsm.currentState(critterA)` may return `"chase"` while `fsm.currentState(critterB)` returns `"idle"`.
+
+## States
+
+```
+             playerDetected        playerInRange
+  idle ──────────────────► alert ──────────────► chase
+    ▲  ◄──── fidget ──────── │  ▲                  │
+    │                        │  │ playerLostContact │ playerLostContact
+    │   patrol ◄─────────────┘  └──────────────────┘
+    ▲     │  ▲
+    │     │  │ playerDetected            attacked
+    │     └──┘                              │
+    └──────────── flee ◄────────────────── chase
+                   │
+                   └── (timer: FLEE_DURATION_MS) ──► idle
+```
+
+| State    | Color      | Behavior                                                                              |
+| -------- | ---------- | ------------------------------------------------------------------------------------- |
+| `idle`   | dim grey   | Stationary; occasional random fidget; drifts back toward home territory if it strayed |
+| `patrol` | green      | Moves toward a random waypoint within its home territory circle                       |
+| `alert`  | amber      | Stops and faces the player; blinking `!` indicator; auto-disengages after 2.5s        |
+| `chase`  | red        | Pursues the cursor at full speed; critter inflates visually                           |
+| `flee`   | near-white | Runs away from the click point for 2s then returns to idle                            |
+
+## Key Pattern
+
+One FSM definition, created once, drives every critter:
+
+```ts
+import { createBehavioralFsm } from "machina";
+
+export function createCritterBehavior() {
+  return createBehavioralFsm<CritterClient, ...>({
+    id: "critter-behavior",
+    initialState: "idle",
+
+    states: {
+      idle: {
+        // ctx IS the critter — read and write its properties directly
+        _onEnter({ ctx }) {
+          ctx.vx = 0;
+          ctx.vy = 0;
+          ctx.fidgetTime = Date.now();
+        },
+
+        tick({ ctx }) {
+          // Return a state name string to transition
+          if (Math.random() < 0.4) {
+            return "patrol";
+          }
+        },
+
+        // Shorthand: input name → target state string
+        playerDetected: "alert",
+      },
+
+      chase: {
+        tick({ ctx }, payload) {
+          const { playerX, playerY } = payload as TickPayload;
+          const dir = directionTo(ctx.x, ctx.y, playerX, playerY);
+          ctx.vx = dir.dx * CHASE_SPEED;
+          ctx.vy = dir.dy * CHASE_SPEED;
+        },
+
+        playerLostContact: "alert",
+
+        // Function handler — needed here to capture playerX/playerY before
+        // transitioning, since _onEnter does not receive the triggering args.
+        attacked({ ctx }, payload) {
+          const { playerX, playerY } = payload as TickPayload;
+          const dir = directionTo(ctx.x, ctx.y, playerX, playerY);
+          ctx.fleeDirection = { dx: -dir.dx, dy: -dir.dy };
+          return "flee";
+        },
+      },
+
+      // ... other states
+    },
+  });
+}
+```
+
+The game loop dispatches inputs across all critters each frame:
+
+```ts
+const fsm = createCritterBehavior();
+
+// Each call resolves independently — critters stay in their own states
+for (const critter of critters) {
+    fsm.handle(critter, "tick", { playerX, playerY, dt });
+}
+
+// State is a WeakMap lookup, not a property on the critter
+const state = fsm.currentState(critter); // "idle" | "patrol" | "alert" | "chase" | "flee"
+```
+
+**No timers in the FSM.** With 50+ critters, independent `setTimeout` chains would be chaos. Instead, `_onEnter` stamps `Date.now()` on the client, and `tick` handlers compare elapsed time. One `requestAnimationFrame` loop drives everything.
+
+**FSM sets velocity; the game loop integrates position.** Handlers write `ctx.vx` / `ctx.vy` (behavioral intent). The game loop applies `x += vx` and clamps to canvas bounds. FSM handlers stay focused on what the critter _wants_, not pixel math.
+
+## Interacting With the Demo
+
+- **Move the cursor** over critters to trigger detection and chase
+- **Click** to blast critters within 80px — only chasing critters flee
+- **Click directly on a critter** to select it and open the inspector panel
+- **Sensing range slider** — adjust detection radius live for all critters
+- **Show sensing radius** — toggle detection circle visualization
+- **Spawn** — add 10 more critters (up to 80 max)
+
+## Source
+
+[examples/dungeon-critters/](https://github.com/ifandelse/machina.js/tree/machina-v6/examples/dungeon-critters)

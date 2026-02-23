@@ -1,0 +1,48 @@
+---
+title: machina
+description: Focused finite state machines for JavaScript and TypeScript.
+template: splash
+hero:
+    tagline: Focused finite state machines for JavaScript and TypeScript. States in, states out.
+    image:
+        dark: ../../assets/machina-logo-dark.svg
+        light: ../../assets/machina-logo-light.svg
+    actions:
+        - text: Get Started
+          link: /machina.js/guide/getting-started/
+          icon: right-arrow
+          variant: primary
+        - text: View on GitHub
+          link: https://github.com/ifandelse/machina.js
+          icon: external
+          variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+<CardGrid>
+    <Card icon="seti:typescript" title="TypeScript-First">
+        Written in TypeScript from the ground up. Full type inference for states, inputs, and
+        transitions.
+    </Card>
+    <Card icon="random" title="Hierarchical States">
+        Nest FSMs as child states with automatic input bubbling and delegation between parent and
+        child machines.
+    </Card>
+    <Card icon="puzzle" title="Behavioral FSMs">
+        Define behavior once, apply it to n-number of independent clients with zero additional
+        overhead.
+    </Card>
+    <Card icon="rocket" title="Minimal Ceremony">
+        Define states, handle inputs, transition. No generics gymnastics. Just FSMs that solve your
+        problem and get out of your way.
+    </Card>
+    <Card icon="list-format" title="Deferred Inputs">
+        Queue inputs that arrive before a state is ready to handle them. Replay automatically on
+        transition.
+    </Card>
+    <Card icon="approve-check-circle" title="Lifecycle Hooks + Events">
+        Fine-grained hooks for enter, exit, and transition events. Subscribe to exactly what you
+        need.
+    </Card>
+</CardGrid>

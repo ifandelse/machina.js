@@ -1,0 +1,164 @@
+---
+title: createBehavioralFsm
+description: Define behavior once, apply to any number of independent client objects.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+## Overview
+
+`createBehavioralFsm` defines a set of states and transitions once, then applies that behavior to any number of independent client objects. Per-client state is tracked in a `WeakMap` — nothing is stamped onto the client object itself. The client IS the context; every handler receives it as `ctx`.
+
+## When to use it
+
+Use `createBehavioralFsm` when:
+
+- You have many instances that share the same state machine logic — network connections, game entities, UI components
+- You don't want the FSM to own or modify the client object's shape
+- The client already exists and you want to layer FSM behavior onto it without touching its structure
+
+Use `createFsm` when you have a single instance with its own dedicated context object.
+
+## Config
+
+The config is the same as `createFsm` with one difference: there's no `context` property. The client object IS the context. Because the client type can't be inferred from the config, you provide it as an explicit type parameter:
+
+```ts
+const connFsm = createBehavioralFsm<Connection>({
+    id: "connectivity",
+    initialState: "disconnected",
+    states: { ... },
+});
+```
+
+State names, input names, and transition target validation all work identically — inferred from the `states` config at compile time.
+
+## API
+
+Every method takes the client object as its first argument. The rest of the API mirrors `Fsm`.
+
+| Method                               | Description                                                             |
+| ------------------------------------ | ----------------------------------------------------------------------- |
+| `handle(client, inputName, ...args)` | Dispatch an input to the client's current state handler                 |
+| `canHandle(client, inputName)`       | True if the client's current state has a handler for this input         |
+| `transition(client, toState)`        | Directly transition the client; fires `_onExit`, `_onEnter`, events     |
+| `reset(client)`                      | Transition the client back to `initialState`                            |
+| `currentState(client)`               | Returns the client's current state, or `undefined` if never initialized |
+| `compositeState(client)`             | Dot-delimited path including active child FSM states                    |
+| `on(eventName, callback)`            | Subscribe to a lifecycle event — returns `{ off() }`                    |
+| `emit(eventName, data?)`             | Emit a custom event to subscribers                                      |
+| `dispose(client, options?)`          | Dispose a single client's state entry                                   |
+| `dispose()`                          | Permanently shut down the entire FSM; cascades to child FSMs by default |
+
+<Aside type="note">
+    `currentState(client)` returns `undefined` for a client the FSM has never seen — it does not
+    trigger initialization. The first call to `handle()`, `transition()`, or `reset()` initializes
+    the client in `initialState`.
+</Aside>
+
+## State storage
+
+Client state is tracked in a `WeakMap<TClient, ClientMeta>` inside the FSM instance — no properties are added to the client object. When a client is garbage collected, its state entry goes with it automatically. You don't need to clean up.
+
+First contact with a new client (via `handle()`, `transition()`, or `reset()`) runs the full initialization: transitions into `initialState`, fires `_onEnter`, emits lifecycle events. A client the FSM has never seen is transparently initialized on the first call.
+
+## Events
+
+`BehavioralFsm` emits the same lifecycle events as `Fsm`. The difference is every payload includes a `client` field so you can identify which client the event pertains to:
+
+| Event           | Payload                          | Fired when                              |
+| --------------- | -------------------------------- | --------------------------------------- |
+| `transitioning` | `{ fromState, toState, client }` | A transition is about to occur          |
+| `transitioned`  | `{ fromState, toState, client }` | A transition completed                  |
+| `handling`      | `{ inputName, client }`          | An input is about to be dispatched      |
+| `handled`       | `{ inputName, client }`          | An input was successfully handled       |
+| `nohandler`     | `{ inputName, args, client }`    | No handler found in current state       |
+| `invalidstate`  | `{ stateName, client }`          | Transition targeted a nonexistent state |
+| `deferred`      | `{ inputName, client }`          | An input was deferred                   |
+
+```ts
+connFsm.on("transitioned", ({ fromState, toState, client }) => {
+    console.log(`[${client.url}] ${fromState} -> ${toState}`);
+});
+```
+
+## Full example
+
+```ts
+import { createBehavioralFsm } from "machina";
+
+interface Connection {
+    url: string;
+    retries: number;
+}
+
+const connFsm = createBehavioralFsm<Connection>({
+    id: "connectivity",
+    initialState: "disconnected",
+    states: {
+        disconnected: {
+            connect: "connecting",
+        },
+        connecting: {
+            connected: "online",
+            failed({ ctx }) {
+                ctx.retries++;
+                if (ctx.retries >= 3) {
+                    return "error";
+                }
+                return "disconnected";
+            },
+        },
+        online: {
+            disconnect: "disconnected",
+        },
+        error: {
+            reset({ ctx }) {
+                ctx.retries = 0;
+                return "disconnected";
+            },
+        },
+    },
+});
+
+// Two completely independent clients, one FSM definition
+const connA = { url: "wss://host-a.example.com", retries: 0 };
+const connB = { url: "wss://host-b.example.com", retries: 0 };
+
+connFsm.handle(connA, "connect");
+connFsm.handle(connB, "connect");
+connFsm.handle(connB, "failed"); // connB retries++, back to disconnected
+
+connFsm.currentState(connA); // "connecting"
+connFsm.currentState(connB); // "disconnected"
+
+// Subscribe — client field tells you which one fired
+connFsm.on("transitioned", ({ fromState, toState, client }) => {
+    console.log(`[${client.url}] ${fromState} -> ${toState}`);
+});
+
+// Reset a single client to initialState
+connFsm.reset(connA);
+
+// Tear down the whole FSM when done
+connFsm.dispose();
+```
+
+## TypeScript
+
+The client type is the only thing you need to supply explicitly. State names and input names are inferred from the `states` config the same way `createFsm` handles it.
+
+```ts
+import type { BehavioralFsmEventMap, HandlerArgs } from "machina";
+
+// Handler args are typed to your client
+type ConnHandlerArgs = HandlerArgs<Connection>;
+
+// Event payloads are typed to your client and state names
+type ConnEvents = BehavioralFsmEventMap<
+    Connection,
+    "disconnected" | "connecting" | "online" | "error"
+>;
+```
+
+String shorthand transition targets are validated against actual state keys at compile time. A typo like `connect: "conecting"` is a type error.

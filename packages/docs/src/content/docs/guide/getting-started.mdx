@@ -1,0 +1,131 @@
+---
+title: Getting Started
+description: Install machina and create your first finite state machine in under a minute.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+## Installation
+
+```sh
+npm install machina
+# or
+pnpm add machina
+```
+
+## Your first FSM
+
+Import `createFsm` and pass it a config object. That's the whole setup.
+
+```ts
+import { createFsm } from "machina";
+
+const light = createFsm({
+    id: "traffic-light",
+    initialState: "green",
+    context: { tickCount: 0 },
+    states: {
+        green: {
+            _onEnter({ ctx }) {
+                ctx.tickCount = 0;
+            },
+            tick({ ctx }) {
+                ctx.tickCount++;
+            },
+            timeout({ ctx }) {
+                // Return a state name to transition, return nothing to stay put
+                if (ctx.tickCount >= 5) {
+                    return "yellow";
+                }
+            },
+        },
+        yellow: {
+            timeout: "red",
+        },
+        red: {
+            timeout: "green",
+        },
+    },
+});
+```
+
+A few things to note:
+
+- **`id`** — a label for debugging and events. Not required to be unique, but it helps.
+- **`initialState`** — the state the FSM boots into. `_onEnter` fires on first entry.
+- **`context`** — a plain object scoped to this FSM instance. Mutate it freely; it's yours.
+- **`states`** — a map of state names to handler maps. Each key (other than lifecycle hooks like `_onEnter` and `_onExit`) is an input name.
+
+**Handlers** are functions that receive `{ ctx, inputName, defer, emit }`. Returning a valid state name triggers a transition. Returning `undefined` (or nothing) keeps the FSM in its current state.
+
+<Aside type="tip">
+    TypeScript infers state names, input names, and handler signatures directly from your config. No
+    manual type annotations needed — and string shorthand transition targets are validated at
+    compile time, so a typo like `timeout: "yellw"` is a type error.
+</Aside>
+
+## Interacting with the FSM
+
+```ts
+// Dispatch an input to the current state
+light.handle("tick");
+light.handle("tick");
+light.handle("timeout"); // tickCount is 2 — stays green
+
+// Query current state
+light.currentState(); // "green"
+
+// Check if the current state can handle an input before committing
+if (light.canHandle("timeout")) {
+    light.handle("timeout");
+}
+
+// Subscribe to lifecycle events
+const sub = light.on("transitioned", ({ fromState, toState }) => {
+    console.log(`${fromState} -> ${toState}`);
+});
+
+sub.off(); // unsubscribe when done
+
+// Reset to initialState (fires _onExit / _onEnter)
+light.reset();
+
+// Tear it down — all subsequent calls become silent no-ops
+light.dispose();
+```
+
+| Method                       | What it does                                                      |
+| ---------------------------- | ----------------------------------------------------------------- |
+| `handle(inputName, ...args)` | Dispatch an input to the current state                            |
+| `canHandle(inputName)`       | True if the current state has a handler (or `"*"`) for this input |
+| `currentState()`             | Returns the current state name as a string                        |
+| `on(eventName, callback)`    | Subscribe to a lifecycle event — returns `{ off() }`              |
+| `emit(eventName, data?)`     | Emit a custom event to subscribers                                |
+| `reset()`                    | Transition back to `initialState`                                 |
+| `dispose()`                  | Permanently shut down the FSM                                     |
+
+## String shorthand
+
+When a handler always transitions to the same state with no logic needed, use the string shorthand instead of a function:
+
+```ts
+// These are exactly equivalent
+yellow: {
+    timeout: "red",
+}
+
+yellow: {
+    timeout() {
+        return "red";
+    },
+}
+```
+
+Shorthand is validated by TypeScript — the target must be an actual key in your `states` config.
+
+## Next steps
+
+- [Concepts](/machina.js/guide/concepts/) — the mental model behind states, inputs, and transitions
+- [createFsm](/machina.js/guide/fsm/) — full API reference including hierarchical states, deferred input, and events
+- [createBehavioralFsm](/machina.js/guide/behavioral-fsm/) — define behavior once, apply it to many independent client objects
+- [Examples](/machina.js/examples/overview/) — real-world patterns you can steal

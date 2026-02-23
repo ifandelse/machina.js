@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#27276A"/>
+  <g transform="translate(250, 256) scale(1.1765)">
+
+  <defs>
+
+    <marker id="arrow" viewBox="0 0 10 12" refX="0" refY="6"
+            markerWidth="24" markerHeight="28"
+            markerUnits="userSpaceOnUse"
+            orient="auto-start-reverse"
+            fill="#FFFFFF">
+      <path d="M 0 0 L 10 6 L 0 12 Z"/>
+    </marker>
+    <marker id="arrow-cyan" viewBox="0 0 10 12" refX="0" refY="6"
+            markerWidth="24" markerHeight="28"
+            markerUnits="userSpaceOnUse"
+            orient="auto-start-reverse"
+            fill="#04C2EA">
+      <path d="M 0 0 L 10 6 L 0 12 Z"/>
+    </marker>
+  
+  </defs>
+  <g transform="scale(0.195312)">
+
+  <!--
+    machina logo v6 — M-shaped state diagram
+    Flow: A→B→C ← D←E  (both sides converge on center)
+    Larger arrowheads (wider base) for small-size legibility.
+    Lines stop at arrowhead base (refX=0, markerUnits=userSpaceOnUse)
+  -->
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 12" refX="0" refY="6"
+            markerWidth="24" markerHeight="28"
+            markerUnits="userSpaceOnUse"
+            orient="auto-start-reverse"
+            fill="#FFFFFF">
+      <path d="M 0 0 L 10 6 L 0 12 Z"/>
+    </marker>
+    <marker id="arrow-cyan" viewBox="0 0 10 12" refX="0" refY="6"
+            markerWidth="24" markerHeight="28"
+            markerUnits="userSpaceOnUse"
+            orient="auto-start-reverse"
+            fill="#04C2EA">
+      <path d="M 0 0 L 10 6 L 0 12 Z"/>
+    </marker>
+  </defs>
+
+  <!--
+    Positions: A(96,400) B(96,112) C(256,264) D(416,112) E(416,400)  r=26
+    Gap = 8px from edge = 34px from center
+    Arrow = 24px long now (was 20)
+
+    B→C: dx=160, dy=152, len≈220.7, unit=(0.7249, 0.6887)
+    D→C: dx=-160, dy=152, len≈220.7, unit=(-0.7249, 0.6887)
+  -->
+
+  <g stroke-linejoin="round">
+
+    <!-- === Transition lines === -->
+
+    <!-- A → B  (vertical upward) -->
+    <!-- Start: (96, 400-34)=(96,366)   End: (96, 112+34+24)=(96,170) -->
+    <line x1="96" y1="366" x2="96" y2="170"
+          stroke="#FFFFFF" stroke-width="11.5" stroke-linecap="butt"
+          marker-end="url(#arrow)"/>
+
+    <!-- B → C  (diagonal to center) -->
+    <!-- Start gap: 34px from B center along B→C direction -->
+    <!-- End: 34+24=58px from C center back along C→B direction -->
+    <!-- unit B→C = (0.7249, 0.6887) -->
+    <!-- Start: (96+34*0.7249, 112+34*0.6887) = (120.6, 135.4) ≈ (121, 135) -->
+    <!-- Gap point from C: (256-34*0.7249, 264-34*0.6887) = (231.4, 240.6) -->
+    <!-- Line end (gap+arrow): (256-58*0.7249, 264-58*0.6887) = (214.0, 224.1) ≈ (214, 224) -->
+    <line x1="121" y1="135" x2="214" y2="224"
+          stroke="#04C2EA" stroke-width="11.5" stroke-linecap="butt"
+          marker-end="url(#arrow-cyan)"/>
+
+    <!-- E → D  (vertical upward) -->
+    <!-- Start: (416, 366)   End: (416, 170) -->
+    <line x1="416" y1="366" x2="416" y2="170"
+          stroke="#FFFFFF" stroke-width="11.5" stroke-linecap="butt"
+          marker-end="url(#arrow)"/>
+
+    <!-- D → C  (diagonal to center) -->
+    <!-- unit D→C = (-0.7249, 0.6887) -->
+    <!-- Start: (416-34*0.7249, 112+34*0.6887) = (391.4, 135.4) ≈ (391, 135) -->
+    <!-- Line end: (256+58*0.7249, 264-58*0.6887) = (298.0, 224.1) ≈ (298, 224) -->
+    <line x1="391" y1="135" x2="298" y2="224"
+          stroke="#04C2EA" stroke-width="11.5" stroke-linecap="butt"
+          marker-end="url(#arrow-cyan)"/>
+
+    <!-- === State circles (drawn on top) === -->
+
+    <!-- A — bottom-left (outline) -->
+    <circle cx="96"  cy="400" r="26" fill="white" stroke="#FFFFFF" stroke-width="8.5"/>
+
+    <!-- B — top-left (outline) -->
+    <circle cx="96"  cy="112" r="26" fill="white" stroke="#FFFFFF" stroke-width="8.5"/>
+
+    <!-- C — center (FILLED — convergence state) -->
+    <circle cx="256" cy="264" r="26" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="8.5"/>
+
+    <!-- D — top-right (outline) -->
+    <circle cx="416" cy="112" r="26" fill="white" stroke="#FFFFFF" stroke-width="8.5"/>
+
+    <!-- E — bottom-right (outline) -->
+    <circle cx="416" cy="400" r="26" fill="white" stroke="#FFFFFF" stroke-width="8.5"/>
+
+  </g>
+
+  </g>
+  <g transform="translate(124, 0)">
+    <path d="M82 0V730H308L474.5 319.5H493.5L659 730H889V0H726.5V623L750 621L557.25 148H400.5L206.75 621L232 623V0Z" transform="translate(0.00, 85) scale(0.109589, -0.109589)" fill="#FFFFFF"/>
+    <path d="M411.25 0V160.5H391.75V342.5Q391.75 393.25 366.0 418.875Q340.25 444.5 289 444.5Q261 444.5 227.0 443.5Q193 442.5 160.25 441.25Q127.5 440 102.5 438V539Q125 541 151.625 542.625Q178.25 544.25 206.625 544.875Q235 545.5 260.5 545.5Q343.25 545.5 397.125 524.625Q451 503.75 477.625 458.25Q504.25 412.75 504.25 337.25V0ZM236.25 -14Q176.75 -14 132.875 6.625Q89 27.25 65.0 66.375Q41 105.5 41 160.5Q41 218.75 68.375 256.875Q95.75 295 147.0 314.125Q198.25 333.25 268.75 333.25H404.25V255.75H265.75Q213 255.75 184.75 230.125Q156.5 204.5 156.5 163.75Q156.5 123.25 184.75 98.375Q213 73.5 265.75 73.5Q297.25 73.5 325.125 85.0Q353 96.5 371.375 123.875Q389.75 151.25 391.75 199.5L421.75 161Q416.75 104 394.25 65.25Q371.75 26.5 332.25 6.25Q292.75 -14 236.25 -14Z" transform="translate(103.12, 85) scale(0.109589, -0.109589)" fill="#FFFFFF"/>
+    <path d="M320.25 -18.5Q250.5 -18.5 199.375 5.375Q148.25 29.25 114.625 69.625Q81 110 64.25 159.5Q47.5 209 47.5 259.5V278Q47.5 330.75 64.5 380.5Q81.5 430.25 115.625 469.875Q149.75 509.5 200.5 533.25Q251.25 557 318.75 557Q388 557 442.625 530.75Q497.25 504.5 530.25 457.25Q563.25 410 567.25 346.5H453.75Q447.75 392.25 413.125 423.125Q378.5 454 318.75 454Q267.25 454 233.125 430.0Q199 406 182.0 364.25Q165 322.5 165 268.75Q165 217.25 181.625 175.125Q198.25 133 232.75 108.75Q267.25 84.5 320.25 84.5Q361 84.5 390.5 99.0Q420 113.5 437.75 138.375Q455.5 163.25 459.25 195H572.75Q569.5 130.25 535.5 82.5Q501.5 34.75 445.875 8.125Q390.25 -18.5 320.25 -18.5Z" transform="translate(165.15, 85) scale(0.109589, -0.109589)" fill="#FFFFFF"/>
+    <path d="M85.5 0V730H203V299H179Q179 379.25 199.625 436.625Q220.25 494 262.625 524.5Q305 555 370.25 555H375.25Q469.75 555 518.375 491.125Q567 427.25 567 307.25V0H449.5V324Q449.5 382.25 416.375 415.375Q383.25 448.5 330.25 448.5Q272.75 448.5 237.875 410.5Q203 372.5 203 310.75V0Z" transform="translate(227.40, 85) scale(0.109589, -0.109589)" fill="#FFFFFF"/>
+    <path d="M111.5 0V538.5H229V0Z M32.5 448.5V538.5H229V448.5Z" transform="translate(296.88, 85) scale(0.109589, -0.109589)" fill="#FFFFFF"/>
+    <path d="M150.375 614Q114 614 96.5 633.125Q79 652.25 79 681.75Q79 711.25 96.5297619047619 730.375Q114.05952380952381 749.5 150.25 749.5Q186.75 749.5 204.125 730.375Q221.5 711.25 221.5 681.75Q221.5 652.25 204.125 633.125Q186.75 614 150.375 614Z" transform="translate(296.88, 85) scale(0.109589, -0.109589)" fill="#04C2EA"/>
+    <path d="M85.5 0V538.5H178.5V307.5H167.5Q167.5 388.25 189.125 443.25Q210.75 498.25 254.625 526.625Q298.5 555 364.25 555H369.25Q468.5 555 517.75 492.125Q567 429.25 567 307.75V0H449.5V324Q449.5 380 417.625 414.25Q385.75 448.5 330.25 448.5Q273.25 448.5 238.125 413.125Q203 377.75 203 319V0Z" transform="translate(330.52, 85) scale(0.109589, -0.109589)" fill="#FFFFFF"/>
+    <path d="M411.25 0V160.5H391.75V342.5Q391.75 393.25 366.0 418.875Q340.25 444.5 289 444.5Q261 444.5 227.0 443.5Q193 442.5 160.25 441.25Q127.5 440 102.5 438V539Q125 541 151.625 542.625Q178.25 544.25 206.625 544.875Q235 545.5 260.5 545.5Q343.25 545.5 397.125 524.625Q451 503.75 477.625 458.25Q504.25 412.75 504.25 337.25V0ZM236.25 -14Q176.75 -14 132.875 6.625Q89 27.25 65.0 66.375Q41 105.5 41 160.5Q41 218.75 68.375 256.875Q95.75 295 147.0 314.125Q198.25 333.25 268.75 333.25H404.25V255.75H265.75Q213 255.75 184.75 230.125Q156.5 204.5 156.5 163.75Q156.5 123.25 184.75 98.375Q213 73.5 265.75 73.5Q297.25 73.5 325.125 85.0Q353 96.5 371.375 123.875Q389.75 151.25 391.75 199.5L421.75 161Q416.75 104 394.25 65.25Q371.75 26.5 332.25 6.25Q292.75 -14 236.25 -14Z" transform="translate(399.45, 85) scale(0.109589, -0.109589)" fill="#FFFFFF"/>
+  </g>
+
+  </g>
+</svg>

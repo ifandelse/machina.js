@@ -1,0 +1,169 @@
+---
+title: Hierarchical States
+description: Nest child FSMs inside parent states with _child for input delegation and bubbling.
+---
+
+## Overview
+
+Any state can own a child FSM by setting `_child` to an FSM instance. While the parent is in that state, inputs dispatched via `handle()` are checked against the child first using `canHandle()`. If the child can handle the input, it's forwarded. If not, the parent's own state handlers get it. If the child itself sends an input it can't handle (e.g. from `_onEnter`), that fires `nohandler` on the child and bubbles up to the parent.
+
+## Setting up a child
+
+Assign any `createFsm` (or `createBehavioralFsm`) instance to the `_child` property of a state definition. The parent delegates to it automatically — no other wiring required.
+
+```ts
+import { createFsm } from "machina";
+
+const childFsm = createFsm({
+    id: "upload-phases",
+    initialState: "preparing",
+    context: {},
+    states: {
+        preparing: { ready: "uploading" },
+        uploading: { done: "verifying" },
+        verifying: { verified: "complete" },
+        complete: {},
+    },
+});
+
+const uploader = createFsm({
+    id: "uploader",
+    initialState: "idle",
+    context: {},
+    states: {
+        idle: {
+            start: "active",
+        },
+        active: {
+            _child: childFsm, // inputs go here first
+            cancel: "idle", // "cancel" isn't on childFsm, so it bubbles here
+        },
+    },
+});
+```
+
+## Input delegation
+
+When `handle()` is called on the parent, the dispatch order is:
+
+1. Input arrives at the parent via `handle()`
+2. Parent checks if the current state has a `_child`
+3. If yes, parent calls `canHandle()` on the child
+4. If the child can handle it, the input is forwarded to the child's `handle()` — done
+5. If the child can't handle it, the parent's own state handlers get the input
+
+The child gets first shot via `canHandle()`, and the parent's handlers act as a fallback. Separately, if the child sends itself an input it can't handle (e.g. inside `_onEnter`), that fires `nohandler` on the child and bubbles up to the parent — this is how the traffic intersection's `phaseComplete` input reaches the parent from the child's `red` state.
+
+## compositeState()
+
+`compositeState()` returns the full state path as a dot-delimited string, walking down through active child FSMs. If the parent is in `"active"` and the child is in `"uploading"`, you get `"active.uploading"`.
+
+```ts
+uploader.handle("start");
+uploader.compositeState(); // "active.preparing"
+
+uploader.handle("ready");
+uploader.compositeState(); // "active.uploading"
+
+uploader.handle("done");
+uploader.compositeState(); // "active.verifying"
+```
+
+This is useful for driving UIs from a single string — one `compositeState()` call tells you the full picture without interrogating multiple FSMs.
+
+Nesting is unbounded. A child can itself have a `_child`, and `compositeState()` walks the whole chain: `"stateA.stateB.stateC"`.
+
+## Child auto-reset
+
+When the parent transitions **into** a state that owns `_child`, machina automatically calls `reset()` on the child, returning it to its `initialState`. This happens after `_onEnter` and the `transitioned` event, but before deferred queue processing.
+
+```ts
+uploader.handle("start");
+uploader.compositeState(); // "active.preparing"
+
+uploader.handle("ready");
+uploader.compositeState(); // "active.uploading"
+
+// Cancel drops back to idle, then...
+uploader.handle("cancel");
+uploader.compositeState(); // "idle"
+
+// Re-entering "active" auto-resets childFsm back to "preparing"
+uploader.handle("start");
+uploader.compositeState(); // "active.preparing" — fresh start
+```
+
+Re-entering a parent state always starts the child fresh. There is no way to "resume" a child mid-way — if you need that, model it explicitly in your state machine.
+
+## Disposal
+
+`dispose()` on the parent cascades to child FSMs by default. If the same child FSM appears in multiple states, it is only disposed once.
+
+```ts
+uploader.dispose();
+// childFsm is also disposed — all method calls become silent no-ops
+```
+
+Pass `{ preserveChildren: true }` to skip child disposal and keep the child FSM running independently:
+
+```ts
+uploader.dispose({ preserveChildren: true });
+// childFsm is still alive
+```
+
+## Full example
+
+The uploader above, assembled and exercised:
+
+```ts
+import { createFsm } from "machina";
+
+const childFsm = createFsm({
+    id: "upload-phases",
+    initialState: "preparing",
+    context: {},
+    states: {
+        preparing: { ready: "uploading" },
+        uploading: { done: "verifying" },
+        verifying: { verified: "complete" },
+        complete: {},
+    },
+});
+
+const uploader = createFsm({
+    id: "uploader",
+    initialState: "idle",
+    context: {},
+    states: {
+        idle: {
+            start: "active",
+        },
+        active: {
+            _child: childFsm,
+            cancel: "idle",
+        },
+    },
+});
+
+uploader.handle("start");
+uploader.compositeState(); // "active.preparing"
+
+uploader.handle("ready");
+uploader.compositeState(); // "active.uploading"
+
+uploader.handle("done");
+uploader.compositeState(); // "active.verifying"
+
+uploader.handle("verified");
+uploader.compositeState(); // "active.complete"
+
+// "cancel" has no handler on childFsm — bubbles to parent
+uploader.handle("cancel");
+uploader.compositeState(); // "idle"
+
+// Re-start: child resets automatically to "preparing"
+uploader.handle("start");
+uploader.compositeState(); // "active.preparing"
+```
+
+For a more complex real-world case — two independent child FSM instances, input bubbling across phases, `defer()` for pedestrian requests, and child auto-reset driving a full traffic signal cycle — see the [Traffic Intersection example](/machina.js/examples/traffic-intersection/).

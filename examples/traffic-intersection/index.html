@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Traffic Intersection — machina.js v6 hierarchical FSM</title>
+    </head>
+    <body>
+        <div class="app">
+            <header class="app-header">
+                <h1 class="app-title">Traffic Intersection</h1>
+                <p class="app-subtitle">
+                    machina.js v6 — <code>_child</code>, <code>compositeState()</code>,
+                    <code>defer()</code>
+                </p>
+            </header>
+
+            <main class="app-main">
+                <div class="canvas-panel">
+                    <canvas id="intersection-canvas" width="600" height="600"></canvas>
+                </div>
+
+                <div class="side-panel">
+                    <section class="state-panel" id="state-panel">
+                        <h2 class="panel-title">FSM State</h2>
+                        <div class="composite-state" id="composite-state">—</div>
+                        <div class="state-details">
+                            <div class="state-row">
+                                <span class="state-label">Parent</span>
+                                <span class="state-value" id="parent-state">—</span>
+                            </div>
+                            <div class="state-row">
+                                <span class="state-label">Active child</span>
+                                <span class="state-value" id="active-child">—</span>
+                            </div>
+                            <div class="state-row">
+                                <span class="state-label">Child state</span>
+                                <span class="state-value" id="child-state">—</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="controls-section">
+                        <button class="start-btn" id="start-btn" type="button">
+                            Start Simulation
+                        </button>
+                        <button class="pedestrian-btn" id="pedestrian-btn" type="button" disabled>
+                            Press to Cross
+                        </button>
+                        <p class="btn-hint">
+                            Press during green to defer until interruptible green
+                        </p>
+                    </section>
+
+                    <section class="log-section">
+                        <h2 class="log-title">Event Log</h2>
+                        <ol
+                            class="log-list"
+                            id="log-list"
+                            aria-live="polite"
+                            aria-label="FSM event log"
+                        ></ol>
+                    </section>
+                </div>
+            </main>
+        </div>
+
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

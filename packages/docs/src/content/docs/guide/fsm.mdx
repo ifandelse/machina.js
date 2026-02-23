@@ -1,0 +1,302 @@
+---
+title: createFsm
+description: "The single-client FSM: one config, one instance, one context object."
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+`createFsm` is the standard choice for most use cases. One config object produces one FSM instance with one internal context object — there's no separate client to pass around. Handler signatures receive `({ ctx, inputName, defer, emit }, ...args)` as a plain destructurable object, so arrow functions work without caveats and there's no `this` to think about. Return a state name to transition; return nothing to stay put.
+
+If you need one FSM definition to manage many independent client objects, see [createBehavioralFsm](/machina.js/guide/behavioral-fsm/).
+
+## Config
+
+```ts
+createFsm({
+    id: "traffic-light",       // identifier used in lifecycle event payloads
+    initialState: "green",     // must match a key in states
+    context: { tickCount: 0 }, // mutable data object passed to handlers as ctx
+    states: { ... },           // map of state names to handler definitions
+});
+```
+
+| Property       | Type     | Description                                                                                    |
+| -------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `id`           | `string` | Identifier for this FSM. Appears in lifecycle event payloads.                                  |
+| `initialState` | `string` | The state the FSM boots into. Must match a key in `states`.                                    |
+| `context`      | `object` | Mutable data scoped to this FSM. Passed to every handler as `ctx`. Omit for context-free FSMs. |
+| `states`       | `object` | Map of state names to handler definitions. Keys become the state name union.                   |
+
+### State handler keys
+
+Within each state, the following keys have special meaning:
+
+| Key           | Type                   | Description                                                                                      |
+| ------------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `_onEnter`    | `HandlerFn`            | Lifecycle hook — called when entering this state.                                                |
+| `_onExit`     | `HandlerFn`            | Lifecycle hook — called when exiting this state.                                                 |
+| `_child`      | `Fsm \| BehavioralFsm` | Child FSM — inputs are delegated here first; unhandled inputs bubble up.                         |
+| `"*"`         | `HandlerFn`            | Catch-all — handles any input not explicitly defined.                                            |
+| anything else | `string \| HandlerFn`  | Named input handler. String shorthand always transitions; function returns a state name or void. |
+
+## Handler signatures
+
+Every handler — whether a named input handler, `_onEnter`, `_onExit`, or the catch-all — receives the same args object as its first parameter:
+
+```ts
+states: {
+    green: {
+        // Full destructuring
+        tick({ ctx, inputName, defer, emit }, ...args) {
+            ctx.tickCount++;
+        },
+
+        // Destructure only what you need
+        timeout({ ctx }) {
+            if (ctx.tickCount >= 5) {
+                return "yellow";
+            }
+        },
+
+        // Arrow functions work fine
+        _onEnter: ({ ctx }) => {
+            ctx.tickCount = 0;
+        },
+    },
+}
+```
+
+| Parameter   | Description                                                                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------------- |
+| `ctx`       | The context object from the config. Mutate it freely.                                                          |
+| `inputName` | The name of the input currently being handled. Useful in catch-all handlers.                                   |
+| `defer`     | Queues the current input for replay after the next transition. See [Deferred Input](/machina.js/guide/defer/). |
+| `emit`      | Emits a custom event through the FSM's event emitter.                                                          |
+| `...args`   | Additional arguments passed through `handle("inputName", arg1, arg2)`.                                         |
+
+Handlers return a state name to transition or `void`/`undefined` to stay in the current state. This is the dynamic equivalent of string shorthand — same concept, two expressions.
+
+<Aside type="tip">
+    Returning a state name is the preferred way to trigger transitions from inside handlers. The
+    public `transition()` method is there when you need to transition from *outside* the FSM — e.g.,
+    in response to an external event.
+</Aside>
+
+## Public API
+
+| Method                       | Description                                                                                                                                        |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `handle(inputName, ...args)` | Dispatch an input to the current state's handler.                                                                                                  |
+| `canHandle(inputName)`       | `true` if the current state has a handler (or `"*"`) for this input.                                                                               |
+| `transition(toState)`        | Directly transition; fires `_onExit`, `_onEnter`, and lifecycle events. Same-state transitions are silently ignored.                               |
+| `reset()`                    | Transition back to `initialState`. Fires `_onEnter` as if entering fresh.                                                                          |
+| `currentState()`             | Returns the current state name.                                                                                                                    |
+| `compositeState()`           | Dot-delimited path including active child FSM states (e.g. `"active.uploading.retrying"`). Returns just the current state when no child is active. |
+| `on(eventName, callback)`    | Subscribe to a lifecycle event. Returns `{ off() }`.                                                                                               |
+| `emit(eventName, data?)`     | Emit a custom event through the FSM to all `on()` subscribers.                                                                                     |
+| `dispose(options?)`          | Permanently shut down. All subsequent calls are silent no-ops. Cascades to child FSMs unless `{ preserveChildren: true }` is passed.               |
+
+### `handle`
+
+```ts
+// Basic dispatch
+light.handle("timeout");
+
+// With extra args — received as ...args in the handler
+fsm.handle("success", responseData);
+```
+
+### `canHandle`
+
+Useful for conditionally triggering inputs without swallowing `nohandler` events:
+
+```ts
+if (light.canHandle("timeout")) {
+    light.handle("timeout");
+}
+```
+
+Returns `false` after `dispose()`.
+
+### `transition`
+
+For transitioning from _outside_ a handler — a timer, an event listener, anything external to the FSM:
+
+```ts
+// Fires _onExit on current state, _onEnter on "red", emits transitioning/transitioned
+light.transition("red");
+```
+
+Prefer returning a state name from inside handlers over calling this from within handlers — it keeps transition logic declarative and co-located with the state.
+
+### `on` and `emit`
+
+Subscribe to built-in lifecycle events or custom ones:
+
+```ts
+// Typed payload — fromState/toState are narrowed to your actual state names
+const sub = light.on("transitioned", ({ fromState, toState }) => {
+    console.log(`${fromState} -> ${toState}`);
+});
+
+sub.off(); // unsubscribe
+
+// Wildcard — catches every event, named and custom
+light.on("*", (eventName, data) => {
+    console.log(eventName, data);
+});
+
+// Custom event from inside a handler
+states: {
+    green: {
+        tick({ ctx, emit }) {
+            ctx.tickCount++;
+            if (ctx.tickCount % 10 === 0) {
+                emit("milestone", { count: ctx.tickCount });
+            }
+        },
+    },
+}
+
+// Or from outside the FSM
+light.emit("milestone", { count: 42 });
+```
+
+Built-in events emitted by lifecycle:
+
+| Event           | Payload                  | Fired when                               |
+| --------------- | ------------------------ | ---------------------------------------- |
+| `transitioning` | `{ fromState, toState }` | A transition is about to occur.          |
+| `transitioned`  | `{ fromState, toState }` | A transition completed.                  |
+| `handling`      | `{ inputName }`          | An input is about to be dispatched.      |
+| `handled`       | `{ inputName }`          | An input was successfully handled.       |
+| `nohandler`     | `{ inputName, args }`    | No handler found in the current state.   |
+| `invalidstate`  | `{ stateName }`          | Transition targeted a nonexistent state. |
+| `deferred`      | `{ inputName }`          | An input was deferred.                   |
+
+See [Events](/machina.js/guide/events/) for the full event reference.
+
+### `dispose`
+
+```ts
+fsm.dispose(); // also disposes child FSMs
+fsm.dispose({ preserveChildren: true }); // leave child FSMs running
+```
+
+After `dispose()`, every method call is a silent no-op. `on()` returns a no-op `Subscription`. This is intentional — you don't need to null-guard callsites just because something may have been torn down.
+
+## TypeScript
+
+No manual type parameters are needed for `createFsm`. TypeScript infers the context type from `config.context`, the state name union from the keys of `config.states`, and the input name union from the handler keys across all states.
+
+```ts
+const light = createFsm({
+    id: "traffic-light",
+    initialState: "green",
+    context: { tickCount: 0 },
+    states: {
+        green: {
+            timeout: "yellow",
+            tick({ ctx }) {
+                ctx.tickCount++;
+            },
+        },
+        yellow: { timeout: "red" },
+        red: { timeout: "green" },
+    },
+});
+
+// These are compile errors:
+light.handle("bogus"); // "bogus" is not a valid input name
+light.transition("yellw"); // "yellw" is not a valid state name
+```
+
+String shorthand targets are validated against actual state keys. `timeout: "yellw"` is a type error, not a runtime surprise.
+
+When you need the inferred types explicitly — say, for a function that receives input names — the `StateNamesOf` and `InputNamesOf` utility types extract them from your states config:
+
+```ts
+import type { StateNamesOf, InputNamesOf } from "machina";
+
+const config = {
+    id: "traffic-light",
+    initialState: "green" as const,
+    context: { tickCount: 0 },
+    states: {
+        green: {
+            timeout: "yellow" as const,
+            tick({ ctx }: any) {
+                ctx.tickCount++;
+            },
+        },
+        yellow: { timeout: "red" as const },
+        red: { timeout: "green" as const },
+    },
+} as const;
+
+type States = StateNamesOf<typeof config.states>; // "green" | "yellow" | "red"
+type Inputs = InputNamesOf<typeof config.states>; // "timeout" | "tick"
+```
+
+In practice, you won't need these often — the FSM's own `handle()` and `transition()` methods are already narrowed to the correct literal unions.
+
+## Full example
+
+A traffic light with tick-based timing, event subscription, and lifecycle hooks:
+
+```ts
+import { createFsm } from "machina";
+
+const light = createFsm({
+    id: "traffic-light",
+    initialState: "green",
+    context: { tickCount: 0 },
+    states: {
+        green: {
+            _onEnter({ ctx }) {
+                ctx.tickCount = 0;
+            },
+            tick({ ctx }) {
+                ctx.tickCount++;
+            },
+            timeout({ ctx }) {
+                if (ctx.tickCount >= 5) {
+                    return "yellow";
+                }
+            },
+        },
+        yellow: {
+            // String shorthand — always transitions to "red", no logic needed
+            timeout: "red",
+        },
+        red: {
+            timeout: "green",
+        },
+    },
+});
+
+// Subscribe before driving the FSM
+const sub = light.on("transitioned", ({ fromState, toState }) => {
+    console.log(`${fromState} -> ${toState}`);
+});
+
+// Drive it
+for (let i = 0; i < 5; i++) {
+    light.handle("tick");
+}
+light.handle("timeout"); // tickCount is 5 — transitions to yellow
+// logs: green -> yellow
+
+light.handle("timeout"); // transitions to red
+// logs: yellow -> red
+
+light.currentState(); // "red"
+light.compositeState(); // "red"
+
+light.canHandle("tick"); // false — red has no "tick" handler
+
+sub.off(); // unsubscribe
+
+light.reset(); // back to green, fires _onEnter (resets tickCount to 0)
+light.dispose();
+```

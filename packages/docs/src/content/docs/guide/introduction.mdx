@@ -1,0 +1,36 @@
+---
+title: Introduction
+description: What machina is, what it's for, and how it differs from other state machine libraries.
+---
+
+## What is machina?
+
+machina is a focused finite state machine library for JavaScript and TypeScript. You define states, the inputs each state responds to, and the handlers that decide what happens — including whether to transition. That's the whole model. The tagline is "States in, states out" and it means it.
+
+The library provides two factory functions. `createFsm` produces a single-client FSM that owns its own context object — use it when you have one instance of a thing. `createBehavioralFsm` produces a multi-client FSM where state is tracked per-client in a `WeakMap` — one FSM definition, any number of independent clients, no properties stamped on your objects. Both produce FSMs with the same core API.
+
+Handlers are plain functions (or string shorthand for simple transitions) that receive a `{ ctx, inputName, defer, emit }` args object. Return a state name to transition; return nothing to stay put. Lifecycle hooks (`_onEnter`, `_onExit`) run on entry and exit of each state. Child FSMs can be attached to parent states via `_child` for hierarchical behavior, with unhandled inputs bubbling up. When a handler can't deal with an input yet, `defer()` re-queues it for replay after the next transition.
+
+## Design philosophy
+
+machina was originally inspired by the `gen_fsm` behavior module from Erlang/OTP. The JavaScript landscape is obviously different territory, but the qualities worth preserving are the same: pragmatic, focused on FSM patterns, minimal ceremony, and straightforward to reason about.
+
+v6 is TypeScript-first. State names, input names, and transition targets are all inferred from the config object — no manual type parameters needed for `createFsm`. String shorthand targets (`timeout: "red"`) are validated against actual state keys at compile time, so a typo is a type error rather than a runtime surprise.
+
+## How machina differs from other libraries
+
+The most prominent alternative is [XState](https://xstate.js.org/). XState is a comprehensive statechart framework with actors, spawning, inspection tools, and SCXML compatibility. It's a phenomenal library — if you need those features, use it.
+
+machina is for when you want a state machine (or a hierarchy of them) and nothing else. No actors, no invocations, no spawning. Just states, inputs, transitions, and the occasional child FSM. If your state management requirements are a finite machine and XState feels like bringing a bulldozer to plant a garden, machina is probably the right call.
+
+## What's new in v6
+
+- **TypeScript-first**: state names, input names, and transition targets are inferred from config — typos in string shorthand are compile errors.
+- **Clean handler signatures**: `({ ctx, inputName, defer, emit })` args object — no `this`, works with arrow functions throughout.
+- **`createBehavioralFsm`**: tracks state per-client in a `WeakMap` — no properties stamped on client objects, one FSM definition serves any number of independent clients.
+- **`dispose()`**: permanent teardown that cascades to child FSMs by default. All post-dispose calls are silent no-ops. Pass `{ preserveChildren: true }` to leave child FSMs running.
+- **String shorthand**: `timeout: "red"` handles simple always-transition cases without a function.
+
+## Next steps
+
+Ready to build? Head to [Getting Started](/machina.js/guide/getting-started/).

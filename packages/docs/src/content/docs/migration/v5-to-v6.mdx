@@ -1,0 +1,421 @@
+---
+title: Migrating from v4 to v6
+description: v4.0.2 was the last public release. v6 is a ground-up TypeScript rewrite — same mental model, substantially different API. This page covers everything you need to update.
+---
+
+v4.0.2 was the last public release of machina. v5 was never released. v6 is a ground-up TypeScript rewrite: the mental model of states, inputs, handlers, and transitions is unchanged, but almost every API surface has moved. This page is the translation guide.
+
+---
+
+## Imports and creation
+
+v4 exported a `machina` namespace object with constructor functions on it. v6 exports named factory functions.
+
+**v4**
+
+```js
+var machina = require("machina");
+
+var fsm = new machina.Fsm({ ... });
+var bfsm = new machina.BehavioralFsm({ ... });
+
+// Inheritance via .extend()
+var MyFsm = machina.Fsm.extend({ ... });
+var instance = new MyFsm();
+```
+
+**v6**
+
+```ts
+import { createFsm, createBehavioralFsm } from "machina";
+
+const fsm = createFsm({ ... });
+const bfsm = createBehavioralFsm<ClientType>({ ... });
+
+// No .extend() — use factory functions instead
+function createMyFsm(options: MyOptions) {
+    return createFsm({ ... });
+}
+```
+
+`.extend()` is gone. v4 used prototype-based inheritance to share and override FSM behavior across instances. v6 replaces that pattern with plain factory functions — call `createFsm` inside a function, close over whatever you need, and return the instance. Less magic, easier to type, easier to follow.
+
+---
+
+## Config changes
+
+| v4 property    | v6 equivalent  | Notes                                                                                           |
+| -------------- | -------------- | ----------------------------------------------------------------------------------------------- |
+| `namespace`    | `id`           | Renamed. Used in lifecycle event payloads for debugging.                                        |
+| `initialState` | `initialState` | Unchanged.                                                                                      |
+| `states`       | `states`       | Unchanged.                                                                                      |
+| `initialize()` | removed        | Wire up external listeners outside the FSM config. See below.                                   |
+| `useSafeEmit`  | removed        | v4's `useSafeEmit` wrapped handlers in a try/catch. In v6, this is the caller's responsibility. |
+| _(none)_       | `context`      | New. A plain object scoped to this FSM, passed to every handler as `ctx`.                       |
+
+**`namespace` → `id`**
+
+```js
+// v4
+new machina.Fsm({ namespace: "traffic-light", ... });
+```
+
+```ts
+// v6
+createFsm({ id: "traffic-light", ... });
+```
+
+**`initialize()` is removed**
+
+v4's `initialize()` was a lifecycle hook that ran after construction. It was typically used to set up timers, subscribe to external events, or wire callbacks. In v6, do that work outside the `createFsm` call:
+
+```js
+// v4
+new machina.Fsm({
+    initialize() {
+        this.on("transitioned", this._onTransition.bind(this));
+        startTimer(this);
+    },
+    ...
+});
+```
+
+```ts
+// v6
+const fsm = createFsm({ ... });
+const sub = fsm.on("transitioned", onTransition);
+startTimer(fsm);
+```
+
+**`context` is new on `createFsm`**
+
+v6 has no `this` in handlers (see next section), so mutable state needs a home. That's `context`. Pass a plain object; machina hands it to every handler as `ctx`. Omit it for FSMs that don't need state.
+
+```ts
+createFsm({
+    id: "counter",
+    initialState: "running",
+    context: { count: 0 },
+    states: {
+        running: {
+            increment({ ctx }) {
+                ctx.count++;
+            },
+        },
+    },
+});
+```
+
+---
+
+## Handler signatures
+
+This is the biggest change in v6.
+
+**v4 bound handlers to `this` (the FSM instance).** Reading state, calling `transition()`, calling `deferUntilTransition()` — all of it went through `this`. Arrow functions were broken because they captured the outer `this` instead.
+
+**v6 handlers receive a plain `HandlerArgs` object as the first argument.** Arrow functions work fine. `this` is never involved.
+
+```js
+// v4 — function expressions required; arrow functions break
+states: {
+    green: {
+        _onEnter: function() {
+            this.tickCount = 0;
+        },
+        timeout: function() {
+            if (this.tickCount >= 5) {
+                this.transition("yellow");
+            }
+        },
+        "*": function(inputType) {
+            console.log("unhandled input:", inputType);
+        },
+    },
+},
+```
+
+```ts
+// v6 — destructure what you need; arrow functions work
+states: {
+    green: {
+        _onEnter({ ctx }) {
+            ctx.tickCount = 0;
+        },
+        timeout({ ctx }) {
+            if (ctx.tickCount >= 5) {
+                return "yellow";   // return triggers transition
+            }
+        },
+        "*"({ inputName }) {
+            console.log("unhandled input:", inputName);
+        },
+    },
+},
+```
+
+The full `HandlerArgs` object:
+
+| Field       | Description                                                                   |
+| ----------- | ----------------------------------------------------------------------------- |
+| `ctx`       | The context object (or the client object for `BehavioralFsm`). Mutate freely. |
+| `inputName` | The input currently being handled. Useful in `"*"` catch-alls.                |
+| `defer`     | Function to queue the current input for replay after a future transition.     |
+| `emit`      | Function to emit a custom event through the FSM.                              |
+
+Additional arguments passed to `handle("inputName", arg1, arg2)` are spread after the args object: `handler({ ctx, inputName, defer, emit }, arg1, arg2)`.
+
+---
+
+## Transitions
+
+**v4: call `this.transition()` imperatively from inside handlers.**
+
+**v6: return a state name from a handler.** Returning a string triggers the transition; returning nothing (or `undefined`) keeps the FSM in its current state.
+
+```js
+// v4
+timeout: function() {
+    this.transition("red");
+},
+```
+
+```ts
+// v6
+timeout() {
+    return "red";
+},
+
+// Or string shorthand when there's no logic at all:
+timeout: "red",
+```
+
+`transition()` still exists as a **public method** for transitioning from _outside_ a handler — a timer callback, an event listener, anything external to the FSM. Inside handlers, return is the pattern.
+
+```ts
+// External code forcing a transition — valid use of transition()
+setTimeout(() => {
+    fsm.transition("red");
+}, 5000);
+```
+
+**Deferred inputs**
+
+v4's `deferUntilTransition(state)` and `deferAndTransition(state)` are replaced by the `defer` function in handler args.
+
+```js
+// v4
+waiting: function() {
+    this.deferUntilTransition("ready");
+    this.transition("loading");
+},
+```
+
+```ts
+// v6 — defer the input, then return a state name to transition
+waiting({ defer }) {
+    defer({ until: "ready" });
+    return "loading";
+},
+
+// Or defer to the next transition, whatever it is
+waiting({ defer }) {
+    defer();
+},
+```
+
+`deferAndTransition()` is gone — it was shorthand for defer-then-transition. Just do both explicitly.
+
+---
+
+## Methods
+
+| v4 method                      | v6 equivalent                   | Notes                                                     |
+| ------------------------------ | ------------------------------- | --------------------------------------------------------- |
+| `fsm.handle(input, ...args)`   | `fsm.handle(input, ...args)`    | Unchanged.                                                |
+| `fsm.state`                    | `fsm.currentState()`            | Property → method.                                        |
+| `this.transition(state)`       | return state name from handler  | Or `fsm.transition(state)` from outside a handler.        |
+| `this.deferUntilTransition(s)` | `defer({ until: "s" })` in args | Via the handler args object.                              |
+| `this.deferUntilTransition()`  | `defer()` in args               | No argument = next transition.                            |
+| `this.deferAndTransition(s)`   | `defer(…); return "s"`          | Removed — do both explicitly.                             |
+| `fsm.processQueue()`           | removed                         | Queue processing is automatic.                            |
+| `fsm.clearQueue()`             | removed                         | Queue processing is automatic.                            |
+| `fsm.off(event, cb)`           | `sub.off()`                     | `on()` returns `{ off() }` — use the subscription.        |
+| _(none)_                       | `fsm.canHandle(input)`          | New. True if current state has a handler for this input.  |
+| _(none)_                       | `fsm.reset()`                   | New. Transitions back to `initialState`.                  |
+| _(none)_                       | `fsm.dispose()`                 | New. Permanently shuts down; subsequent calls are no-ops. |
+| _(none)_                       | `fsm.compositeState()`          | New. Dot-delimited path through active child FSM states.  |
+
+**Unsubscribing from events**
+
+v4's `fsm.off(eventName, callback)` is removed. In v6, `on()` returns a subscription object with an `off()` method:
+
+```js
+// v4
+var handler = function(data) { ... };
+fsm.on("transitioned", handler);
+// later...
+fsm.off("transitioned", handler);
+```
+
+```ts
+// v6
+const sub = fsm.on("transitioned", (data) => { ... });
+// later...
+sub.off();
+```
+
+---
+
+## Events
+
+Most event names are the same, but two changed:
+
+- **`transition` → `transitioning`** — v4 emitted `"transition"` before the state change. v6 renamed it to `"transitioning"` so the before/after pair reads clearly: `transitioning` then `transitioned`.
+- **`newfsm` — removed.** v4 emitted this when a new FSM was created. v6 doesn't.
+
+The rest are unchanged: `transitioned`, `handling`, `handled`, `nohandler`, `invalidstate`, `deferred`.
+
+What else changed:
+
+- **Payloads no longer include `namespace`.** Use `id` if you need to identify the source FSM from outside.
+- **`BehavioralFsm` payloads include a `client` field** on every event so you can tell which client fired it.
+- **Wildcard `"*"` listener** receives `(eventName, data)` as two separate arguments, not a single wrapped object.
+
+```js
+// v4 — wildcard
+fsm.on("*", function (data) {
+    console.log(data.namespace, data.inputType);
+});
+```
+
+```ts
+// v6 — wildcard
+fsm.on("*", (eventName, data) => {
+    console.log(eventName, data);
+});
+```
+
+**Custom events via `emit`**
+
+v4 had `fsm.emit()` as a public method. v6 keeps that, and also surfaces `emit` inside handler args so handlers can fire custom events without needing a reference to the FSM instance:
+
+```ts
+states: {
+    running: {
+        tick({ ctx, emit }) {
+            ctx.count++;
+            if (ctx.count % 100 === 0) {
+                emit("milestone", { count: ctx.count });
+            }
+        },
+    },
+}
+```
+
+---
+
+## BehavioralFsm
+
+The concept is the same: one FSM definition, many independent clients.
+
+```js
+// v4
+var bfsm = new machina.BehavioralFsm({
+    namespace: "connectivity",
+    initialState: "disconnected",
+    states: { ... },
+});
+
+bfsm.handle(client, "connect");
+client.__machina__["connectivity"].state; // "connecting"
+```
+
+```ts
+// v6
+const bfsm = createBehavioralFsm<Connection>({
+    id: "connectivity",
+    initialState: "disconnected",
+    states: { ... },
+});
+
+bfsm.handle(client, "connect");
+bfsm.currentState(client); // "connecting"
+```
+
+Key differences:
+
+- **No `context` property in the config.** The client IS the context. Handler `ctx` is the client object.
+- **v4 stamped `__machina__` onto client objects** to track state. v6 uses an internal `WeakMap` — client objects stay clean. You don't need to delete or ignore `__machina__` entries.
+- **State lookup**: read `bfsm.currentState(client)` instead of `client.__machina__[namespace].state`.
+- `currentState(client)` returns `undefined` for a client the FSM has never seen. The first call to `handle()`, `transition()`, or `reset()` initializes the client.
+
+---
+
+## Hierarchical states
+
+`_child` works the same way: assign an FSM instance to a state's `_child` property, and inputs are delegated to the child first, bubbling to the parent if unhandled.
+
+What changed:
+
+- **v4 accepted `_child: { factory: fn }` and `_child: ConstructorFn`** — factory patterns for creating the child FSM. v6 only accepts a direct FSM instance. Create the child with `createFsm` before building the parent.
+- **`compositeState()`** works the same.
+- **Child auto-reset on parent re-entry** works the same — entering a parent state always resets the child to its `initialState`.
+- **`dispose()` cascades to children** by default. Pass `{ preserveChildren: true }` to skip it.
+
+```js
+// v4 — factory pattern
+active: {
+    _child: {
+        factory: function() { return new ChildFsm(); }
+    },
+},
+```
+
+```ts
+// v6 — direct instance
+const childFsm = createFsm({ ... });
+
+const parentFsm = createFsm({
+    ...
+    states: {
+        active: {
+            _child: childFsm,
+        },
+    },
+});
+```
+
+---
+
+## Removed features
+
+- **`machina.utils`** — removed. No replacement.
+- **`.extend()`** — use factory functions.
+- **`initialize()`** — do external setup after calling `createFsm`.
+- **`useSafeEmit`** — removed. Emission is always safe.
+- **`processQueue()` / `clearQueue()`** — removed. Deferred queue processing is automatic.
+- **`deferAndTransition()`** — removed. Call `defer()` then return a state name.
+- **Plugin / mixin system** — removed. No replacement.
+- **`__machina__` client stamping** — replaced by internal `WeakMap`. Client objects are not modified.
+
+---
+
+## Quick reference
+
+| Pattern              | v4                                       | v6                                       |
+| -------------------- | ---------------------------------------- | ---------------------------------------- |
+| Create FSM           | `new machina.Fsm({ namespace, ... })`    | `createFsm({ id, context, ... })`        |
+| Create behavioral    | `new machina.BehavioralFsm({ ... })`     | `createBehavioralFsm<Client>({ ... })`   |
+| Handler context      | `this` (bound to FSM)                    | `{ ctx, inputName, defer, emit }` arg    |
+| Arrow functions      | broken (wrong `this`)                    | work fine                                |
+| Transition (inside)  | `this.transition("state")`               | `return "state"`                         |
+| Transition (outside) | `fsm.transition("state")`                | `fsm.transition("state")` (unchanged)    |
+| Defer                | `this.deferUntilTransition("state")`     | `defer({ until: "state" })`              |
+| Defer + transition   | `this.deferAndTransition("state")`       | `defer(…); return "state"`               |
+| Get state            | `fsm.state`                              | `fsm.currentState()`                     |
+| Subscribe            | `fsm.on(event, cb)`                      | `const sub = fsm.on(event, cb)`          |
+| Unsubscribe          | `fsm.off(event, cb)`                     | `sub.off()`                              |
+| Behavioral handle    | `bfsm.handle(client, input)`             | `bfsm.handle(client, input)` (unchanged) |
+| Behavioral state     | `client.__machina__[ns].state`           | `bfsm.currentState(client)`              |
+| Child FSM            | `_child: { factory: fn }` or constructor | `_child: fsmInstance`                    |

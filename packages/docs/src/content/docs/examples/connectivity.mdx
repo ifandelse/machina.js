@@ -1,0 +1,95 @@
+---
+title: Connectivity Monitor
+description: Network connectivity monitoring with async health checks and abort handling.
+---
+
+import { LinkCard } from "@astrojs/starlight/components";
+
+This example monitors network connectivity using a three-state FSM. It simulates health checks client-side — no backend required — and drives a real-time UI entirely through FSM event subscriptions. The browser's `online`/`offline` events feed the FSM as inputs; everything downstream is reactive.
+
+<LinkCard
+    title="Run the Connectivity Monitor"
+    href="/machina.js/demos/connectivity/"
+    target="_blank"
+/>
+
+## What it demonstrates
+
+- **Async operations in `_onEnter`**: The `checking` state kicks off an async health check and feeds the result back as an FSM input via `fsm.handle()`. The FSM stays synchronous; the async work lives in the side effect.
+- **`AbortController` cleanup in `_onExit`**: Every in-flight health check gets an `AbortController`. When the FSM leaves `checking`, `_onExit` calls `abort()` so stale callbacks cannot trigger unexpected transitions.
+- **Timer management co-located in `_onEnter`/`_onExit`**: The retry timer (`offline`) and heartbeat timer (`online`) are both started in `_onEnter` and cleared in `_onExit`. Cleanup is guaranteed regardless of which input caused the transition.
+- **Custom events emitted from handlers**: `checking._onEnter` emits `checkCountUpdated` so the UI can display progress without polling state. `offline._onEnter` emits `maxChecksReached` when the retry cap is hit.
+- **Event-driven UI**: `main.ts` subscribes to `transitioned` and custom events. The UI never reads FSM state directly — it only reacts to events.
+
+## State diagram
+
+```
+              connectionLost
+  online ─────────────────────> checking
+    ^                              |   |
+    |       healthCheckPassed      |   |
+    +──────────────────────────────+   |
+                                       | healthCheckFailed
+              connectionRestored       v
+  offline <─────────────────────── checking
+    |   ^
+    |   | retryCheck (timer, up to MAX_CHECKS)
+    +───+
+```
+
+| From     | Input              | To       |
+| -------- | ------------------ | -------- |
+| online   | connectionLost     | checking |
+| offline  | connectionRestored | checking |
+| offline  | retryCheck         | checking |
+| checking | healthCheckPassed  | online   |
+| checking | healthCheckFailed  | offline  |
+| checking | connectionLost     | offline  |
+
+The `online` state also runs a periodic heartbeat. If it fails, it fires `connectionLost` — the same input the browser `offline` event sends. The FSM does not distinguish the source.
+
+## Key pattern
+
+The `checking` state is the core of the example: `_onEnter` kicks off async work and feeds the result back as an FSM input. `_onExit` aborts any in-flight request so stale callbacks can't fire after the state is gone.
+
+```ts
+checking: {
+    _onEnter({ ctx, emit }) {
+        ctx.checkCount++;
+        emit("checkCountUpdated", { checkCount: ctx.checkCount });
+
+        // AbortController lets _onExit cancel an in-flight check
+        // if the FSM leaves this state before the promise settles.
+        ctx.checkController = new AbortController();
+
+        checkHealth(ctx.checkController.signal)
+            .then(res => {
+                fsm.handle(res.ok ? "healthCheckPassed" : "healthCheckFailed");
+            })
+            .catch(() => {
+                // Aborted checks reject here. healthCheckFailed is harmless
+                // from any state other than `checking` — emits `nohandler`, no transition.
+                fsm.handle("healthCheckFailed");
+            });
+    },
+
+    _onExit({ ctx }) {
+        // Abort any in-flight check so stale callbacks don't call fsm.handle()
+        // after we've already left this state.
+        if (ctx.checkController !== null) {
+            ctx.checkController.abort();
+            ctx.checkController = null;
+        }
+    },
+
+    healthCheckPassed: "online",
+    healthCheckFailed: "offline",
+    connectionLost: "offline",
+},
+```
+
+`fsm` is declared before `createFsm()` so `_onEnter` callbacks can close over it. This is safe because the callbacks are async — they run after `createFsm()` returns and `fsm` is assigned.
+
+## Source
+
+[examples/connectivity/](https://github.com/ifandelse/machina.js/tree/machina-v6/examples/connectivity)

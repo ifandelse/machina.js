@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Network Connectivity Monitor — machina.js v6</title>
+    </head>
+    <body>
+        <div class="app">
+            <header class="app-header">
+                <h1 class="app-title">Network Connectivity Monitor</h1>
+                <p class="app-subtitle">machina.js v6 — <code>createFsm</code> example</p>
+            </header>
+
+            <main class="app-main">
+                <section class="status-section">
+                    <div class="status-indicator" id="status-indicator">
+                        <div class="status-ring"></div>
+                        <div class="status-core"></div>
+                    </div>
+                    <div class="status-label" id="status-label">online</div>
+                    <div class="status-check" id="status-check" aria-live="polite"></div>
+                </section>
+
+                <section class="controls-section">
+                    <button class="simulate-btn" id="simulate-btn" type="button">
+                        Simulate Connection Failure
+                    </button>
+                </section>
+
+                <section class="log-section">
+                    <h2 class="log-title">Event Log</h2>
+                    <ol class="log-list" id="log-list" aria-live="polite" aria-label="FSM transition log">
+                    </ol>
+                </section>
+            </main>
+        </div>
+
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

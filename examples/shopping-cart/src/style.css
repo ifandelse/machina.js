@@ -1,0 +1,582 @@
+/* =============================================================================
+   style.css — Shopping Cart demo styles
+
+   Layout: page-wrapper → demo-layout (state diagram | actions) → deferred panel → controls
+
+   Design tokens use CSS custom properties so the color scheme is one place.
+   No framework, no preprocessor — just variables and utility classes.
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Design tokens
+   ----------------------------------------------------------------------------- */
+
+:root {
+    --color-bg: #0d1117;
+    --color-surface: #161b22;
+    --color-surface-raised: #1f2937;
+    --color-border: #30363d;
+    --color-text: #e6edf3;
+    --color-text-muted: #8b949e;
+    --color-text-subtle: #6e7681;
+
+    --color-active: #58a6ff;
+    --color-active-glow: rgba(88, 166, 255, 0.25);
+    --color-success: #3fb950;
+    --color-success-glow: rgba(63, 185, 80, 0.25);
+    --color-deferred: #d29922;
+    --color-deferred-glow: rgba(210, 153, 34, 0.25);
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+
+    --font-mono: "Fira Code", "Cascadia Code", "Consolas", monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+
+    --transition-fast: 150ms ease;
+    --transition-medium: 300ms ease;
+}
+
+/* -----------------------------------------------------------------------------
+   Base reset
+   ----------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background-color: var(--color-surface-raised);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+/* -----------------------------------------------------------------------------
+   Page wrapper and header
+   ----------------------------------------------------------------------------- */
+
+.page-wrapper {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+}
+
+.page-header {
+    margin-bottom: 32px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 4px;
+}
+
+.page-subtitle {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--color-text-muted);
+    margin-bottom: 16px;
+}
+
+.page-intro {
+    color: var(--color-text-muted);
+    max-width: 720px;
+    font-size: 14px;
+    line-height: 1.7;
+    border-left: 3px solid var(--color-border);
+    padding-left: 16px;
+}
+
+/* -----------------------------------------------------------------------------
+   Panel shared styles
+   ----------------------------------------------------------------------------- */
+
+.panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* -----------------------------------------------------------------------------
+   Demo layout — state diagram (left) + actions (right)
+   ----------------------------------------------------------------------------- */
+
+.demo-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+/* -----------------------------------------------------------------------------
+   State diagram panel
+   ----------------------------------------------------------------------------- */
+
+.state-diagram-panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.state-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    position: relative;
+}
+
+/* State boxes rendered by ui.ts — styles applied via these class names */
+
+.state-box {
+    position: relative;
+    background-color: var(--color-surface-raised);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    cursor: default;
+    transition:
+        border-color var(--transition-medium),
+        box-shadow var(--transition-medium),
+        background-color var(--transition-medium);
+}
+
+.state-box.state-box--active {
+    border-color: var(--color-active);
+    box-shadow:
+        0 0 0 3px var(--color-active-glow),
+        var(--shadow-md);
+    background-color: #1a2535;
+}
+
+.state-box.state-box--flash {
+    border-color: var(--color-success);
+    box-shadow:
+        0 0 0 3px var(--color-success-glow),
+        var(--shadow-md);
+    background-color: #162120;
+}
+
+.state-box-name {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.state-box-name--active {
+    color: var(--color-active);
+}
+
+.state-box-desc {
+    font-size: 11px;
+    color: var(--color-text-subtle);
+    margin-top: 2px;
+}
+
+.state-box-desc--active {
+    color: var(--color-text-muted);
+}
+
+/* Connector lines between state boxes */
+
+.state-connector {
+    width: 2px;
+    height: 20px;
+    background-color: var(--color-border);
+    margin: 0 auto;
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* Downward arrow at the bottom of each connector */
+.state-connector::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--color-border);
+}
+
+/* -----------------------------------------------------------------------------
+   Actions panel
+   ----------------------------------------------------------------------------- */
+
+.actions-panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.actions-hint {
+    font-size: 12px;
+    color: var(--color-text-subtle);
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    cursor: pointer;
+    text-align: left;
+    transition:
+        background-color var(--transition-fast),
+        border-color var(--transition-fast),
+        opacity var(--transition-fast);
+    font-family: inherit;
+    font-size: 13px;
+}
+
+.action-btn:hover:not(:disabled) {
+    background-color: #2d333b;
+    border-color: var(--color-active);
+}
+
+.action-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.action-btn-icon {
+    font-size: 16px;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.action-btn-label {
+    font-weight: 600;
+    flex: 1;
+}
+
+.action-btn-sub {
+    font-size: 11px;
+    color: var(--color-text-subtle);
+    font-style: italic;
+}
+
+/* -----------------------------------------------------------------------------
+   Deferred queue panel
+   ----------------------------------------------------------------------------- */
+
+.deferred-panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.deferred-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-deferred);
+    color: #0d1117;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    padding: 0 5px;
+    font-family: var(--font-mono);
+}
+
+.deferred-count[data-count="0"] {
+    background-color: var(--color-surface-raised);
+    color: var(--color-text-subtle);
+}
+
+.deferred-hint {
+    font-size: 12px;
+    color: var(--color-text-subtle);
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.deferred-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 40px;
+}
+
+.deferred-empty {
+    font-size: 12px;
+    color: var(--color-text-subtle);
+    font-style: italic;
+    text-align: center;
+    padding: 8px;
+}
+
+/* Individual deferred item — created by ui.ts */
+
+.deferred-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-deferred);
+    border-radius: var(--radius-md);
+    animation: deferred-pulse 2s ease-in-out infinite;
+}
+
+.deferred-item-label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-deferred);
+    flex: 1;
+}
+
+.deferred-item-until {
+    font-size: 11px;
+    color: var(--color-text-subtle);
+    font-style: italic;
+}
+
+/* The pulsing "waiting" animation — uses animation (not transition) so it loops */
+@keyframes deferred-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(210, 153, 34, 0);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(210, 153, 34, 0.2);
+    }
+}
+
+/* -----------------------------------------------------------------------------
+   Controls panel
+   ----------------------------------------------------------------------------- */
+
+.controls-panel {
+    display: flex;
+    align-items: flex-end;
+    gap: 32px;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.control-group {
+    flex: 1;
+}
+
+.control-label {
+    display: block;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.range-input {
+    width: 100%;
+    cursor: pointer;
+    accent-color: var(--color-active);
+}
+
+.speed-hint {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--color-text-subtle);
+    margin-top: 4px;
+}
+
+.reset-btn {
+    padding: 8px 20px;
+    background-color: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    transition:
+        border-color var(--transition-fast),
+        color var(--transition-fast);
+    white-space: nowrap;
+}
+
+.reset-btn:hover {
+    border-color: #f85149;
+    color: #f85149;
+}
+
+/* -----------------------------------------------------------------------------
+   Tooltip
+   ----------------------------------------------------------------------------- */
+
+.tooltip {
+    position: fixed;
+    z-index: 1000;
+    max-width: 320px;
+    padding: 10px 14px;
+    background-color: #2d333b;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    color: var(--color-text);
+    line-height: 1.5;
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+}
+
+.tooltip[hidden] {
+    display: none;
+}
+
+.tooltip.tooltip--entering {
+    animation: tooltip-in 150ms ease forwards;
+}
+
+.tooltip.tooltip--exiting {
+    animation: tooltip-out 150ms ease forwards;
+}
+
+@keyframes tooltip-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes tooltip-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* -----------------------------------------------------------------------------
+   Action token layer — ephemeral flying tokens live here
+
+   The token-layer div is fixed/full-viewport so tokens can fly across the page
+   coordinate space without being clipped by parent overflow rules.
+   ----------------------------------------------------------------------------- */
+
+.token-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 500;
+}
+
+/* Action tokens — created programmatically, styled with these classes */
+
+.action-token {
+    position: absolute;
+    padding: 4px 10px;
+    background-color: var(--color-active);
+    color: #0d1117;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 20px;
+    white-space: nowrap;
+    pointer-events: none;
+
+    /* Initial state before animation — token starts at button position */
+    opacity: 1;
+    transform: translate(0, 0);
+    transition:
+        transform 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        opacity 300ms ease;
+}
+
+.action-token--deferred {
+    background-color: var(--color-deferred);
+}
+
+.action-token--fading {
+    opacity: 0;
+    transform: scale(1.2);
+    transition:
+        opacity 300ms ease,
+        transform 300ms ease;
+}
+
+/* Flash animation on state box when an action is handled */
+
+.state-box--flash-success {
+    animation: state-flash-success 600ms ease forwards;
+}
+
+@keyframes state-flash-success {
+    0% {
+        border-color: var(--color-success);
+        box-shadow: 0 0 0 4px var(--color-success-glow);
+    }
+    70% {
+        border-color: var(--color-success);
+        box-shadow: 0 0 0 4px var(--color-success-glow);
+    }
+    100% {
+        border-color: var(--color-border);
+        box-shadow: none;
+    }
+}

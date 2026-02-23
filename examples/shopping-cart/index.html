@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Shopping Cart — machina.js v6 defer() Showcase</title>
+        <link rel="stylesheet" href="/src/style.css" />
+    </head>
+    <body>
+        <div class="page-wrapper">
+            <!-- Header and intro -->
+            <header class="page-header">
+                <h1 class="page-title">Shopping Cart</h1>
+                <p class="page-subtitle">machina.js v6 — <code>defer()</code> Showcase</p>
+                <p class="page-intro">
+                    Using an FSM to manage a workflow like a shopping cart lets you control the
+                    order in which operations execute, even when users trigger them faster than
+                    the system can process them. Instead of brittle flag-checking and nested
+                    callbacks, the FSM declaratively queues premature actions and replays them
+                    at the right time. Race conditions become a non-issue.
+                </p>
+            </header>
+
+            <!-- Main demo layout -->
+            <div class="demo-layout">
+                <!-- Left: State diagram -->
+                <div class="state-diagram-panel" id="state-diagram-panel">
+                    <h2 class="panel-title">FSM States</h2>
+                    <div class="state-diagram" id="state-diagram">
+                        <!-- State boxes rendered by ui.ts -->
+                    </div>
+                </div>
+
+                <!-- Right: Action buttons -->
+                <div class="actions-panel" id="actions-panel">
+                    <h2 class="panel-title">Actions</h2>
+                    <p class="actions-hint">
+                        Click at any time — the FSM decides whether to handle or defer.
+                    </p>
+
+                    <div class="action-buttons" id="action-buttons">
+                        <button class="action-btn" id="btn-add-item" type="button">
+                            <span class="action-btn-icon">+</span>
+                            <span class="action-btn-label">Add Item</span>
+                            <span class="action-btn-sub">validates inventory &amp; price</span>
+                        </button>
+
+                        <button class="action-btn" id="btn-apply-coupon" type="button">
+                            <span class="action-btn-icon">%</span>
+                            <span class="action-btn-label">Apply Coupon</span>
+                            <span class="action-btn-sub">calculates discount</span>
+                        </button>
+
+                        <button class="action-btn" id="btn-checkout" type="button" disabled>
+                            <span class="action-btn-icon">→</span>
+                            <span class="action-btn-label">Checkout</span>
+                            <span class="action-btn-sub">reserves inventory</span>
+                        </button>
+
+                        <button class="action-btn" id="btn-record-analytics" type="button">
+                            <span class="action-btn-icon">📊</span>
+                            <span class="action-btn-label">Record Analytics</span>
+                            <span class="action-btn-sub">defers until checkout</span>
+                        </button>
+
+                        <button class="action-btn" id="btn-confirm" type="button" hidden>
+                            <span class="action-btn-icon">✓</span>
+                            <span class="action-btn-label">Confirm Order</span>
+                            <span class="action-btn-sub">finalize the purchase</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deferred queue panel -->
+            <div class="deferred-panel" id="deferred-panel">
+                <h2 class="panel-title">
+                    Deferred Queue
+                    <span class="deferred-count" id="deferred-count">0</span>
+                </h2>
+                <p class="deferred-hint">
+                    Actions the FSM has parked for replay when the right state is reached.
+                </p>
+                <div class="deferred-queue" id="deferred-queue">
+                    <div class="deferred-empty" id="deferred-empty">No deferred actions — queue is clear</div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls-panel" id="controls-panel">
+                <div class="control-group">
+                    <label class="control-label" for="speed-slider">
+                        Processing Speed:
+                        <span id="speed-label">1×</span>
+                    </label>
+                    <input
+                        class="range-input"
+                        id="speed-slider"
+                        type="range"
+                        min="0.25"
+                        max="3"
+                        step="0.25"
+                        value="1"
+                    />
+                    <div class="speed-hint">
+                        <span>Faster</span>
+                        <span>Slower</span>
+                    </div>
+                </div>
+
+                <button class="reset-btn" id="btn-reset" type="button">
+                    Reset Demo
+                </button>
+            </div>
+        </div>
+
+        <!-- Tooltip container — single element, repositioned per event -->
+        <div class="tooltip" id="tooltip" hidden role="tooltip" aria-live="polite"></div>
+
+        <!-- Action token container — ephemeral tokens fly through here -->
+        <div class="token-layer" id="token-layer" aria-hidden="true"></div>
+
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

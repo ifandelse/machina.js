@@ -1,0 +1,73 @@
+---
+title: Traffic Intersection
+description: Hierarchical FSM example modeling a traffic light intersection.
+---
+
+import { LinkCard } from "@astrojs/starlight/components";
+
+A canvas-rendered traffic intersection demonstrating hierarchical FSMs in machina v6. The parent FSM manages the intersection's phase sequencing; two child FSMs independently control the signal progression for each active phase.
+
+<LinkCard
+    title="Run the Traffic Intersection"
+    href="/machina.js/demos/traffic-intersection/"
+    target="_blank"
+/>
+
+## What it demonstrates
+
+Five machina v6 features working together in a realistic scenario:
+
+1. **`_child` delegation** — parent states forward inputs to an active child FSM automatically; the parent never manually routes them
+2. **Input bubbling** — `phaseComplete` has no handler in the child's `red` state, so it bubbles up to the parent
+3. **`compositeState()`** — returns `"northSouthPhase.green"` as a single readable string, combining parent and child state
+4. **Child auto-reset** — when the parent re-enters a phase state, machina calls `reset()` on the child automatically, returning it to `green`
+5. **`defer()`** — a pedestrian button press during non-interruptible green is queued and replayed automatically when `interruptibleGreen` is entered
+
+## State hierarchy
+
+```
+Intersection (parent FSM)
+  ready                    — all signals red, waiting for Start
+  northSouthPhase          — N/S has right-of-way
+    _child: nsPhaseCtrl    — delegates to child FSM
+  clearanceNS              — all-red interval, parent owns the timer
+  eastWestPhase            — E/W has right-of-way
+    _child: ewPhaseCtrl    — delegates to child FSM
+  clearanceEW              — all-red interval, parent owns the timer
+
+PhaseController (child FSM — one factory, two instances)
+  green                    — 3s, pedestrianRequest deferred here
+  interruptibleGreen       — 6s, pedestrianRequest shortens the phase
+  yellow                   — 2.5s caution interval
+  red                      — emits phaseComplete, bubbles to parent
+```
+
+The two child instances (`nsPhaseCtrl` and `ewPhaseCtrl`) are created by the same factory but have independent context objects and timers. They never share state.
+
+## Signal state mapping
+
+`compositeState()` drives everything the renderer shows. The lookup table in `config.ts` maps every composite state string to visual signal states for all four directions:
+
+| Composite State                      | N/S Vehicle | N/S Ped    | E/W Vehicle | E/W Ped    |
+| ------------------------------------ | ----------- | ---------- | ----------- | ---------- |
+| `ready`                              | red         | don't walk | red         | don't walk |
+| `northSouthPhase.green`              | green       | walk       | red         | don't walk |
+| `northSouthPhase.interruptibleGreen` | green       | flashing   | red         | don't walk |
+| `northSouthPhase.yellow`             | yellow      | don't walk | red         | don't walk |
+| `northSouthPhase.red`                | red         | don't walk | red         | don't walk |
+| `clearanceNS`                        | red         | don't walk | red         | don't walk |
+| `eastWestPhase.green`                | red         | don't walk | green       | walk       |
+| `eastWestPhase.interruptibleGreen`   | red         | don't walk | green       | flashing   |
+| `eastWestPhase.yellow`               | red         | don't walk | yellow      | don't walk |
+| `eastWestPhase.red`                  | red         | don't walk | red         | don't walk |
+| `clearanceEW`                        | red         | don't walk | red         | don't walk |
+
+## The pedestrian button
+
+Pressing the button during the non-interruptible `green` state calls `defer({ until: "interruptibleGreen" })`. Machina queues the input and replays it automatically when `interruptibleGreen` is entered — the press "works", it just takes effect at the earliest safe moment.
+
+Whether the `pedestrianRequest` input arrives as a live press or a deferred replay, it lands in `interruptibleGreen` and immediately transitions to `yellow`, shortening the phase. Pressing the button during `yellow`, clearance, or `ready` is unhandled and fires a `nohandler` event.
+
+## Source
+
+[examples/traffic-intersection/](https://github.com/ifandelse/machina.js/tree/machina-v6/examples/traffic-intersection)
