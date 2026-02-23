@@ -45,6 +45,9 @@ packages/docs/src/content/docs/api/
 
 # Claude AI
 .claude/settings.local.json
+.claude/agents/*
+.claude/commands/*
+.ai/*
 
 docs/archive/
 

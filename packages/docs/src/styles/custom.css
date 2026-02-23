@@ -1,0 +1,33 @@
+.hero {
+    background: linear-gradient(
+        135deg,
+        var(--sl-color-gray-6) 0%,
+        var(--sl-color-bg) 50%,
+        var(--sl-color-gray-6) 100%
+    );
+    border-radius: 0.75rem;
+    padding: 2rem;
+}
+
+.hero h1 {
+    color: #27276a;
+}
+
+:root[data-theme="dark"] .hero h1 {
+    color: #04c2ea;
+}
+
+/* Nova hardcodes Tailwind bg-black/bg-gray-100 on primary buttons — override with brand colors */
+.hero a.bg-black {
+    background-color: #27276a;
+}
+
+:root[data-theme="dark"] .hero a.dark\:bg-gray-100 {
+    background-color: #04c2ea;
+    color: #000;
+}
+
+/* Lift cards off the dark background for visual separation */
+:root[data-theme="dark"] .sl-markdown-content .card {
+    background-color: #121222;
+}

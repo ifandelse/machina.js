@@ -1,6 +1,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
+import starlightThemeNova from "starlight-theme-nova";
 
 export default defineConfig({
     site: "https://ifandelse.github.io",
@@ -16,9 +17,41 @@ export default defineConfig({
     integrations: [
         starlight({
             title: "machina",
+            logo: {
+                light: "./src/assets/machina-logo-wordmark-light.svg",
+                dark: "./src/assets/machina-logo-wordmark-dark.svg",
+                replacesTitle: true,
+            },
             description:
                 "Focused finite state machines for JavaScript and TypeScript. States in, states out.",
+            favicon: "/favicon.svg",
+            head: [
+                {
+                    tag: "link",
+                    attrs: {
+                        rel: "icon",
+                        href: "/machina.js/favicon.ico",
+                        sizes: "32x32",
+                    },
+                },
+                {
+                    tag: "link",
+                    attrs: {
+                        rel: "apple-touch-icon",
+                        href: "/machina.js/apple-touch-icon.png",
+                    },
+                },
+                {
+                    tag: "meta",
+                    attrs: {
+                        property: "og:image",
+                        content: "/machina.js/og-image.png",
+                    },
+                },
+            ],
+            customCss: ["./src/styles/custom.css"],
             plugins: [
+                starlightThemeNova(),
                 starlightTypeDoc({
                     entryPoints: ["../machina/src/index.ts"],
                     tsconfig: "../machina/tsconfig.json",

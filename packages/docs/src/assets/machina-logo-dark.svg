@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    machina logo v6 — dark variant (white on transparent) — M-shaped state diagram
+    Flow: A→B→C ← D←E  (both sides converge on center)
+    Larger arrowheads (wider base) for small-size legibility.
+    Lines stop at arrowhead base (refX=0, markerUnits=userSpaceOnUse)
+  -->
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 12" refX="0" refY="6"
+            markerWidth="24" markerHeight="28"
+            markerUnits="userSpaceOnUse"
+            orient="auto-start-reverse"
+            fill="#FFFFFF">
+      <path d="M 0 0 L 10 6 L 0 12 Z"/>
+    </marker>
+    <marker id="arrow-cyan" viewBox="0 0 10 12" refX="0" refY="6"
+            markerWidth="24" markerHeight="28"
+            markerUnits="userSpaceOnUse"
+            orient="auto-start-reverse"
+            fill="#04C2EA">
+      <path d="M 0 0 L 10 6 L 0 12 Z"/>
+    </marker>
+  </defs>
+
+  <!--
+    Positions: A(96,400) B(96,112) C(256,264) D(416,112) E(416,400)  r=26
+    Gap = 8px from edge = 34px from center
+    Arrow = 24px long now (was 20)
+
+    B→C: dx=160, dy=152, len≈220.7, unit=(0.7249, 0.6887)
+    D→C: dx=-160, dy=152, len≈220.7, unit=(-0.7249, 0.6887)
+  -->
+
+  <g stroke-linejoin="round">
+
+    <!-- === Transition lines === -->
+
+    <!-- A → B  (vertical upward) -->
+    <!-- Start: (96, 400-34)=(96,366)   End: (96, 112+34+24)=(96,170) -->
+    <line x1="96" y1="366" x2="96" y2="170"
+          stroke="#FFFFFF" stroke-width="11.5" stroke-linecap="butt"
+          marker-end="url(#arrow)"/>
+
+    <!-- B → C  (diagonal to center) -->
+    <!-- Start gap: 34px from B center along B→C direction -->
+    <!-- End: 34+24=58px from C center back along C→B direction -->
+    <!-- unit B→C = (0.7249, 0.6887) -->
+    <!-- Start: (96+34*0.7249, 112+34*0.6887) = (120.6, 135.4) ≈ (121, 135) -->
+    <!-- Gap point from C: (256-34*0.7249, 264-34*0.6887) = (231.4, 240.6) -->
+    <!-- Line end (gap+arrow): (256-58*0.7249, 264-58*0.6887) = (214.0, 224.1) ≈ (214, 224) -->
+    <line x1="121" y1="135" x2="214" y2="224"
+          stroke="#04C2EA" stroke-width="11.5" stroke-linecap="butt"
+          marker-end="url(#arrow-cyan)"/>
+
+    <!-- E → D  (vertical upward) -->
+    <!-- Start: (416, 366)   End: (416, 170) -->
+    <line x1="416" y1="366" x2="416" y2="170"
+          stroke="#FFFFFF" stroke-width="11.5" stroke-linecap="butt"
+          marker-end="url(#arrow)"/>
+
+    <!-- D → C  (diagonal to center) -->
+    <!-- unit D→C = (-0.7249, 0.6887) -->
+    <!-- Start: (416-34*0.7249, 112+34*0.6887) = (391.4, 135.4) ≈ (391, 135) -->
+    <!-- Line end: (256+58*0.7249, 264-58*0.6887) = (298.0, 224.1) ≈ (298, 224) -->
+    <line x1="391" y1="135" x2="298" y2="224"
+          stroke="#04C2EA" stroke-width="11.5" stroke-linecap="butt"
+          marker-end="url(#arrow-cyan)"/>
+
+    <!-- === State circles (drawn on top) === -->
+
+    <!-- A — bottom-left (outline) -->
+    <circle cx="96"  cy="400" r="26" fill="white" stroke="#FFFFFF" stroke-width="8.5"/>
+
+    <!-- B — top-left (outline) -->
+    <circle cx="96"  cy="112" r="26" fill="white" stroke="#FFFFFF" stroke-width="8.5"/>
+
+    <!-- C — center (FILLED — convergence state) -->
+    <circle cx="256" cy="264" r="26" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="8.5"/>
+
+    <!-- D — top-right (outline) -->
+    <circle cx="416" cy="112" r="26" fill="white" stroke="#FFFFFF" stroke-width="8.5"/>
+
+    <!-- E — bottom-right (outline) -->
+    <circle cx="416" cy="400" r="26" fill="white" stroke="#FFFFFF" stroke-width="8.5"/>
+
+  </g>
+</svg>
