@@ -53,7 +53,10 @@ export class BehavioralFsm<
     readonly initialState: TStateNames;
     // Type discriminant — lets ChildLink adapter identify this at runtime
     readonly [MACHINA_TYPE] = "BehavioralFsm" as const;
-    private readonly states: Record<string, Record<string, unknown>>;
+    // Public so inspection tooling (machina-inspect) can read the state graph
+    // without private field access. The states object is mutated by wrapChildLinks()
+    // at construction time — _child values become ChildLink wrappers in-place.
+    readonly states: Record<string, Record<string, unknown>>;
     private readonly emitter = new Emitter<BehavioralFsmEventMap<TClient, TStateNames>>();
     private readonly clients = new WeakMap<TClient, ClientMeta<TStateNames>>();
     // Tracks all initialized clients so the Fsm-child nohandler listener can
@@ -641,6 +644,7 @@ function createChildLink(child: any): ChildLink {
 
     if (childType === "BehavioralFsm") {
         return {
+            instance: child,
             canHandle(client: object, inputName: string): boolean {
                 return child.canHandle(client, inputName);
             },
@@ -664,6 +668,7 @@ function createChildLink(child: any): ChildLink {
 
     if (childType === "Fsm") {
         return {
+            instance: child,
             canHandle(_client: object, inputName: string): boolean {
                 return child.canHandle(inputName);
             },

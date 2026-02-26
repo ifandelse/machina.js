@@ -2,6 +2,7 @@
 export default {};
 
 import { createFsm } from "./fsm";
+import { MACHINA_TYPE } from "./types";
 
 // =============================================================================
 // Fixtures
@@ -705,6 +706,26 @@ describe("Fsm", () => {
     });
 
     // =========================================================================
+    // states
+    // =========================================================================
+
+    describe("states", () => {
+        it("should expose a states property", () => {
+            expect(fsm.states).toBeDefined();
+        });
+
+        it("should contain all declared state names", () => {
+            expect(Object.keys(fsm.states)).toEqual(
+                expect.arrayContaining(["green", "yellow", "red"])
+            );
+        });
+
+        it("should reflect string shorthand handlers", () => {
+            expect(fsm.states["green"]["timeout"]).toBe("yellow");
+        });
+    });
+
+    // =========================================================================
     // canHandle()
     // =========================================================================
 
@@ -1284,6 +1305,63 @@ describe("Fsm — hierarchical (Task 4)", () => {
             it("should bubble up and be handled by parent", () => {
                 expect(parentHandled).toBe(true);
             });
+        });
+    });
+
+    describe("ChildLink.instance", () => {
+        describe("when the parent Fsm has a child FSM", () => {
+            let parent: any, child: any;
+
+            beforeEach(() => {
+                child = makeChildFsm();
+                parent = createFsm({
+                    id: "childlink-instance-parent",
+                    initialState: "active",
+                    states: {
+                        active: {
+                            _child: child,
+                            pause: "paused",
+                        },
+                        paused: { resume: "active" },
+                    },
+                });
+            });
+
+            it("should expose an instance property on the ChildLink", () => {
+                const childLink = parent.states["active"]._child;
+                expect(childLink.instance).toBeDefined();
+            });
+
+            it("should reference the original child FSM instance", () => {
+                const childLink = parent.states["active"]._child;
+                expect(childLink.instance).toBe(child);
+            });
+        });
+    });
+
+    describe("MACHINA_TYPE", () => {
+        it("should stamp the instance with the Fsm type", () => {
+            const instance = createFsm({
+                id: "type-check-fsm",
+                initialState: "a",
+                states: { a: {}, b: {} },
+            });
+            expect((instance as any)[MACHINA_TYPE]).toBe("Fsm");
+        });
+    });
+
+    describe("states with _child", () => {
+        it("should reflect the ChildLink wrapper after construction", () => {
+            const child = makeChildFsm();
+            const parent: any = createFsm({
+                id: "childlink-states-parent",
+                initialState: "active",
+                states: {
+                    active: { _child: child, pause: "paused" },
+                    paused: { resume: "active" },
+                },
+            });
+            expect(typeof parent.states["active"]._child.canHandle).toBe("function");
         });
     });
 });

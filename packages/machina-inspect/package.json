@@ -1,0 +1,50 @@
+{
+    "name": "machina-inspect",
+    "version": "0.1.0",
+    "description": "Static analysis and structural inspection for machina FSM configs.",
+    "author": "Jim Cowart (http://ifandelse.com)",
+    "license": "MIT",
+    "publishConfig": {
+        "access": "public"
+    },
+    "main": "dist/index.cjs",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.mts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.mts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=22.22"
+    },
+    "sideEffects": false,
+    "scripts": {
+        "dev": "tsdown --watch",
+        "build": "tsdown",
+        "test": "jest --passWithNoTests",
+        "test:watch": "jest --watch",
+        "lint": "ESLINT_USE_FLAT_CONFIG=false eslint --config ../../.eslintrc.js 'src/**/*.{ts,tsx}'"
+    },
+    "dependencies": {
+        "acorn": "^8.14.1",
+        "acorn-walk": "^8.3.4"
+    },
+    "peerDependencies": {
+        "machina": ">=6.0.0"
+    },
+    "devDependencies": {
+        "eslint": "^9.39.2",
+        "jest": "^30.2.0",
+        "machina": "workspace:*",
+        "ts-jest": "^29.4.6",
+        "tsdown": "^0.20.3",
+        "typescript": "^5.9.3"
+    }
+}

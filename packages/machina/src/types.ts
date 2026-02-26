@@ -421,6 +421,13 @@ export interface ChildLink {
     compositeState(client: object): string;
     /** Dispose the child FSM */
     dispose(): void;
+    /**
+     * The raw Fsm or BehavioralFsm instance this ChildLink wraps.
+     * Exposed for inspection tooling (machina-inspect) — allows external
+     * tools to introspect child graph structure without reaching through
+     * private fields.
+     */
+    instance: MachinaInstance;
 }
 
 /**

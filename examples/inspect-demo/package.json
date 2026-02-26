@@ -1,0 +1,17 @@
+{
+    "name": "@machina-examples/inspect-demo",
+    "version": "0.0.1",
+    "private": true,
+    "description": "machina-inspect demo — exercises the inspect API against intentionally buggy FSM configs",
+    "scripts": {
+        "demo": "tsx demo.ts"
+    },
+    "dependencies": {
+        "machina": "workspace:*",
+        "machina-inspect": "workspace:*"
+    },
+    "devDependencies": {
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3"
+    }
+}
