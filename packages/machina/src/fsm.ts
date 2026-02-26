@@ -34,8 +34,13 @@ import {
  */
 export class Fsm<TCtx extends object, TStateNames extends string, TInputNames extends string> {
     readonly id: string;
+    readonly initialState: TStateNames;
     // Type discriminant — lets ChildLink adapter identify this at runtime
     readonly [MACHINA_TYPE] = "Fsm" as const;
+    // Public so inspection tooling (machina-inspect) can read the state graph.
+    // Set from config.states — same object reference as BehavioralFsm.states,
+    // so ChildLink wrapping done by wrapChildLinks() is reflected automatically.
+    readonly states: Record<string, Record<string, unknown>>;
     private readonly bfsm: BehavioralFsm<TCtx, TStateNames, TInputNames>;
     private readonly context: TCtx;
     // FsmEventMap is an interface, which lacks the implicit index signature
@@ -47,9 +52,13 @@ export class Fsm<TCtx extends object, TStateNames extends string, TInputNames ex
 
     constructor(config: FsmConfig<TCtx, Record<string, Record<string, unknown>>>) {
         this.id = config.id;
+        this.initialState = config.initialState as TStateNames;
         this.context = (config.context ?? {}) as TCtx;
 
         this.bfsm = new BehavioralFsm(config);
+        // Assign after bfsm construction so ChildLink wrapping (done by
+        // BehavioralFsm.wrapChildLinks) is already reflected in config.states.
+        this.states = config.states as Record<string, Record<string, unknown>>;
 
         // Relay events from BehavioralFsm → Fsm emitter, stripping the
         // `client` field from built-in event payloads. Custom events (from

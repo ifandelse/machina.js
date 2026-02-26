@@ -131,7 +131,7 @@
         "prettier-plugin-astro": "^0.14.0",
         "ts-jest": "^29.4.6",
         "ts-node": "^10.9.2",
-        "tsup": "^8.5.1",
+        "tsdown": "^0.20.3",
         "turbo": "^2.8.9",
         "typescript": "^5.9.3"
     },

@@ -47,6 +47,14 @@ export default defineConfig({
                         content: "/og-image.png",
                     },
                 },
+                {
+                    tag: "script",
+                    attrs: {
+                        defer: true,
+                        src: "https://cloud.umami.is/script.js",
+                        "data-website-id": "0fc5aee8-bb41-4435-bb49-08749d0263a9",
+                    },
+                },
             ],
             customCss: ["./src/styles/custom.css"],
             plugins: [

@@ -5,7 +5,7 @@ This document provides guidelines for developing in this repo. It covers setup, 
 ## Tooling
 
 1. **pnpm** - Package management
-2. **tsup** - TypeScript build tool
+2. **tsdown** - TypeScript build tool
 3. **Jest** - Testing framework
 4. **Prettier** - Code formatting (with pre-commit hook via husky + lint-staged)
 5. **Changesets** - Version management and publishing
@@ -13,7 +13,7 @@ This document provides guidelines for developing in this repo. It covers setup, 
 ## Project Configuration
 
 - **TypeScript**: Configuration in `tsconfig.json`
-- **tsup**: Build configuration in `tsup.config.ts`
+- **tsdown**: Build configuration in `tsdown.config.ts`
 - **Jest**: Test configuration in `jest.config.ts`
 
 ## Prerequisites
@@ -52,7 +52,7 @@ Before you begin, ensure you have the following installed:
 pnpm build
 ```
 
-This uses [tsup](https://github.com/egoist/tsup) to transpile TypeScript source in `src/` to ESM output in `dist/`, along with declaration files.
+This uses [tsdown](https://github.com/rolldown/tsdown) to transpile TypeScript source in `src/` to CJS + ESM output in `dist/`, along with declaration files.
 
 ### Testing
 

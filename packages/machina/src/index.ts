@@ -29,4 +29,8 @@ export type {
     StateNamesOf,
     InputNamesOf,
     DisposeOptions,
+    ChildLink,
 } from "./types";
+
+// Runtime values used by inspection tooling
+export { MACHINA_TYPE } from "./types";

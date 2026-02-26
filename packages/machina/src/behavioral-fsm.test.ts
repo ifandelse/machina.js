@@ -2,6 +2,7 @@
 export default {};
 
 import { createBehavioralFsm, BehavioralFsm } from "./behavioral-fsm";
+import { MACHINA_TYPE } from "./types";
 
 // =============================================================================
 // Test FSM configs & helpers
@@ -255,6 +256,26 @@ describe("BehavioralFsm", () => {
             it("should not initialize the client", () => {
                 expect(fsm.currentState(client)).toBeUndefined();
             });
+        });
+    });
+
+    // =========================================================================
+    // states
+    // =========================================================================
+
+    describe("states", () => {
+        it("should expose a states property", () => {
+            expect(fsm.states).toBeDefined();
+        });
+
+        it("should contain all declared state names", () => {
+            expect(Object.keys(fsm.states)).toEqual(
+                expect.arrayContaining(["green", "yellow", "red"])
+            );
+        });
+
+        it("should reflect string shorthand handlers", () => {
+            expect(fsm.states["green"]["timeout"]).toBe("yellow");
         });
     });
 
@@ -2589,6 +2610,56 @@ describe("BehavioralFsm — hierarchical hardening", () => {
             it("should not change state after disposal", () => {
                 expect(resetFsm.currentState(client)).toBe("active");
             });
+        });
+    });
+
+    // =========================================================================
+    // ChildLink.instance
+    // =========================================================================
+
+    describe("ChildLink.instance", () => {
+        describe("when the parent BehavioralFsm has a child FSM", () => {
+            let bfsm: any, child: any;
+
+            beforeEach(() => {
+                child = makeChildFsm();
+                bfsm = createBehavioralFsm({
+                    id: "childlink-instance-bfsm",
+                    initialState: "active",
+                    states: {
+                        active: {
+                            _child: child,
+                            pause: "paused",
+                        },
+                        paused: { resume: "active" },
+                    },
+                });
+            });
+
+            it("should expose an instance property on the ChildLink", () => {
+                const childLink = bfsm.states["active"]._child;
+                expect(childLink.instance).toBeDefined();
+            });
+
+            it("should reference the original child FSM instance", () => {
+                const childLink = bfsm.states["active"]._child;
+                expect(childLink.instance).toBe(child);
+            });
+        });
+    });
+
+    // =========================================================================
+    // MACHINA_TYPE
+    // =========================================================================
+
+    describe("MACHINA_TYPE", () => {
+        it("should stamp the instance with the BehavioralFsm type", () => {
+            const instance = createBehavioralFsm({
+                id: "type-check-bfsm",
+                initialState: "a",
+                states: { a: {}, b: {} },
+            });
+            expect((instance as any)[MACHINA_TYPE]).toBe("BehavioralFsm");
         });
     });
 });
