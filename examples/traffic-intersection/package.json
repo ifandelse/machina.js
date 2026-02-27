@@ -13,6 +13,9 @@
         "machina": "workspace:*"
     },
     "devDependencies": {
+        "@typescript-eslint/parser": "^8.55.0",
+        "eslint": "^9.39.2",
+        "eslint-plugin-machina": "workspace:*",
         "jest": "^30.2.0",
         "ts-jest": "^29.4.6",
         "typescript": "^5.9.3",
