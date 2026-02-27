@@ -36,9 +36,12 @@ jobs:
       - name: Build machina library
         run: pnpm --filter machina build
 
+      - name: Build machina-inspect
+        run: pnpm --filter machina-inspect build
+
       - name: Build examples with base paths
         run: |
-          for example in connectivity traffic-intersection dungeon-critters shopping-cart with-react; do
+          for example in connectivity traffic-intersection dungeon-critters shopping-cart with-react machina-explorer; do
               echo "Building $example..."
               VITE_BASE_PATH="/demos/$example/" pnpm --filter "@machina-examples/$example" build
           done
@@ -48,7 +51,7 @@ jobs:
 
       - name: Copy examples into docs output
         run: |
-          for example in connectivity traffic-intersection dungeon-critters shopping-cart with-react; do
+          for example in connectivity traffic-intersection dungeon-critters shopping-cart with-react machina-explorer; do
               mkdir -p packages/docs/dist/demos/$example
               cp -r examples/$example/dist/* packages/docs/dist/demos/$example/
           done
