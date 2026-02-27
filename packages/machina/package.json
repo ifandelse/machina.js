@@ -1,6 +1,6 @@
 {
     "name": "machina",
-    "version": "6.0.0",
+    "version": "6.1.0",
     "description": "Focused finite state machines for JavaScript and TypeScript. States in, states out.",
     "author": "Jim Cowart (http://ifandelse.com)",
     "license": "MIT",
