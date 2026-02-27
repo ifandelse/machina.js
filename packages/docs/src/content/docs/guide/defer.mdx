@@ -102,5 +102,5 @@ fsm.handle(clientB, "save"); // deferred for clientB, independent queue
 
 ## Real-world examples
 
-- [Shopping Cart](/machina.js/examples/shopping-cart/) — targeted defer across multiple transitions (`recordPurchaseAnalytics` queued from `browsing` through `validating` and `applyingDiscount` all the way to `checkout`), plus untargeted defer in the `error` state's `"*"` catch-all.
-- [Traffic Intersection](/machina.js/examples/traffic-intersection/) — pedestrian button press deferred from `green` to `interruptibleGreen`; if the button is pressed too early in the green phase, it queues and automatically shortens the interruptible portion when that window opens.
+- [Shopping Cart](/examples/shopping-cart/) — targeted defer across multiple transitions (`recordPurchaseAnalytics` queued from `browsing` through `validating` and `applyingDiscount` all the way to `checkout`), plus untargeted defer in the `error` state's `"*"` catch-all.
+- [Traffic Intersection](/examples/traffic-intersection/) — pedestrian button press deferred from `green` to `interruptibleGreen`; if the button is pressed too early in the green phase, it queues and automatically shortens the interruptible portion when that window opens.

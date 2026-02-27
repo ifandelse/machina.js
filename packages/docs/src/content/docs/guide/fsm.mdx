@@ -7,7 +7,7 @@ import { Aside } from "@astrojs/starlight/components";
 
 `createFsm` is the standard choice for most use cases. One config object produces one FSM instance with one internal context object — there's no separate client to pass around. Handler signatures receive `({ ctx, inputName, defer, emit }, ...args)` as a plain destructurable object, so arrow functions work without caveats and there's no `this` to think about. Return a state name to transition; return nothing to stay put.
 
-If you need one FSM definition to manage many independent client objects, see [createBehavioralFsm](/machina.js/guide/behavioral-fsm/).
+If you need one FSM definition to manage many independent client objects, see [createBehavioralFsm](/guide/behavioral-fsm/).
 
 ## Config
 
@@ -66,13 +66,13 @@ states: {
 }
 ```
 
-| Parameter   | Description                                                                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------------- |
-| `ctx`       | The context object from the config. Mutate it freely.                                                          |
-| `inputName` | The name of the input currently being handled. Useful in catch-all handlers.                                   |
-| `defer`     | Queues the current input for replay after the next transition. See [Deferred Input](/machina.js/guide/defer/). |
-| `emit`      | Emits a custom event through the FSM's event emitter.                                                          |
-| `...args`   | Additional arguments passed through `handle("inputName", arg1, arg2)`.                                         |
+| Parameter   | Description                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------- |
+| `ctx`       | The context object from the config. Mutate it freely.                                               |
+| `inputName` | The name of the input currently being handled. Useful in catch-all handlers.                        |
+| `defer`     | Queues the current input for replay after the next transition. See [Deferred Input](/guide/defer/). |
+| `emit`      | Emits a custom event through the FSM's event emitter.                                               |
+| `...args`   | Additional arguments passed through `handle("inputName", arg1, arg2)`.                              |
 
 Handlers return a state name to transition or `void`/`undefined` to stay in the current state. This is the dynamic equivalent of string shorthand — same concept, two expressions.
 
@@ -174,7 +174,7 @@ Built-in events emitted by lifecycle:
 | `invalidstate`  | `{ stateName }`          | Transition targeted a nonexistent state. |
 | `deferred`      | `{ inputName }`          | An input was deferred.                   |
 
-See [Events](/machina.js/guide/events/) for the full event reference.
+See [Events](/guide/events/) for the full event reference.
 
 ### `dispose`
 
