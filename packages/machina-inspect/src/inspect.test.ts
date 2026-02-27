@@ -188,8 +188,10 @@ describe("inspect", () => {
             } as any);
         });
 
-        it("should return no findings for a clean config", () => {
-            expect(result).toHaveLength(0);
+        it("should return no unreachable-state or onenter-loop findings", () => {
+            // Asymmetric handlers produce missing-handler suggestions (expected),
+            // but no structural bugs like unreachable states or _onEnter loops.
+            expect(result.filter(f => f.type !== "missing-handler")).toHaveLength(0);
         });
     });
 
@@ -211,8 +213,10 @@ describe("inspect", () => {
             } as any);
         });
 
-        it("should return no findings for a clean config", () => {
-            expect(result).toHaveLength(0);
+        it("should return no unreachable-state or onenter-loop findings", () => {
+            // Asymmetric handlers produce missing-handler suggestions (expected),
+            // but no structural bugs like unreachable states or _onEnter loops.
+            expect(result.filter(f => f.type !== "missing-handler")).toHaveLength(0);
         });
     });
 
@@ -261,8 +265,9 @@ describe("inspect", () => {
             result = inspect(bfsm as any);
         });
 
-        it("should return no findings for a clean BehavioralFsm instance", () => {
-            expect(result).toHaveLength(0);
+        it("should return no unreachable-state or onenter-loop findings", () => {
+            // Asymmetric two-state FSMs produce missing-handler suggestions (expected).
+            expect(result.filter(f => f.type !== "missing-handler")).toHaveLength(0);
         });
     });
 

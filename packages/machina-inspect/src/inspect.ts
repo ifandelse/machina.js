@@ -9,6 +9,7 @@
 import { buildStateGraph } from "./graph-builder";
 import { checkUnreachable } from "./checks/unreachable";
 import { checkOnEnterLoops } from "./checks/onenter-loop";
+import { checkMissingHandlers } from "./checks/missing-handler";
 import type { StateGraph, Finding, InspectInput } from "./types";
 
 /**
@@ -30,5 +31,9 @@ export function inspect(input: InspectInput): Finding[] {
  * @param graph - A StateGraph produced by buildStateGraph()
  */
 export function inspectGraph(graph: StateGraph): Finding[] {
-    return [...checkUnreachable(graph), ...checkOnEnterLoops(graph)];
+    return [
+        ...checkUnreachable(graph),
+        ...checkOnEnterLoops(graph),
+        ...checkMissingHandlers(graph),
+    ];
 }

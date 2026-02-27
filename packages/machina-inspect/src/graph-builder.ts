@@ -84,6 +84,17 @@ function isChildLink(value: unknown): value is ChildLink {
 }
 
 /**
+ * Detect a plain config object that looks like an FSM config (has `initialState`
+ * and `states`). This covers eval'd user input in the explorer, where _child is
+ * a bare object literal rather than a createFsm() instance.
+ */
+function isConfigShaped(value: unknown): value is FsmLike {
+    return (
+        typeof value === "object" && value !== null && "initialState" in value && "states" in value
+    );
+}
+
+/**
  * Build a StateGraph from an FSM config or live instance.
  * Child FSMs declared via _child are recursively built into child graphs.
  *
@@ -102,16 +113,17 @@ export function buildStateGraph(input: InspectInput): StateGraph {
             const value = stateObj[key];
 
             if (key === "_child") {
-                // _child values are either raw FSM instances (config path) or
-                // ChildLink wrappers (live instance path). Recurse to build
-                // the child graph either way.
+                // _child values come in three shapes:
+                //   1. ChildLink wrapper (live instance post-construction)
+                //   2. Raw FSM instance with MACHINA_TYPE (config passed a createFsm() result)
+                //   3. Plain config object with initialState + states (e.g. from eval'd user input)
                 if (isChildLink(value)) {
-                    // Live instance: follow .instance to get the raw FSM
                     children[stateName] = buildStateGraph(
                         value.instance as unknown as InspectInput
                     );
                 } else if (typeof value === "object" && value !== null && MACHINA_TYPE in value) {
-                    // Config path: raw FSM instance assigned to _child
+                    children[stateName] = buildStateGraph(value as unknown as InspectInput);
+                } else if (isConfigShaped(value)) {
                     children[stateName] = buildStateGraph(value as unknown as InspectInput);
                 }
                 continue;

@@ -76,15 +76,13 @@ export interface StateGraph {
 }
 
 // -----------------------------------------------------------------------------
-// Findings
+// Findings — discriminated union
 // -----------------------------------------------------------------------------
 
 /**
- * A structural issue found by one of the analysis checks.
+ * Shared fields for all finding types.
  */
-export interface Finding {
-    /** Which check produced this finding */
-    type: "unreachable-state" | "onenter-loop";
+export interface BaseFinding {
     /** Human-readable description of the issue */
     message: string;
     /** The FSM id where the issue was found */
@@ -92,6 +90,7 @@ export interface Finding {
     /**
      * The relevant state name(s). For unreachable-state: the unreachable
      * state. For onenter-loop: all states in the cycle.
+     * For missing-handler: the state that is missing handlers.
      */
     states: string[];
     /**
@@ -100,3 +99,38 @@ export interface Finding {
      */
     parentState?: string;
 }
+
+/**
+ * A state that has no inbound path from the initial state.
+ */
+export interface UnreachableFinding extends BaseFinding {
+    type: "unreachable-state";
+}
+
+/**
+ * An unconditional _onEnter transition cycle that will infinite-loop the runtime.
+ */
+export interface OnEnterLoopFinding extends BaseFinding {
+    type: "onenter-loop";
+}
+
+/**
+ * A state that is missing handlers for inputs that other states in the FSM handle.
+ * The `inputs` field lists the input names that this state does not handle.
+ * States with a `*` catch-all handler are excluded from this check.
+ *
+ * Limitation: only inputs visible as graph edges are included in the comparison.
+ * Function handlers with no statically-extractable return are invisible to this check.
+ */
+export interface MissingHandlerFinding extends BaseFinding {
+    type: "missing-handler";
+    /** The input names that this state is missing handlers for */
+    inputs: string[];
+}
+
+/**
+ * A structural issue found by one of the analysis checks.
+ * Discriminated by the `type` field — narrow on `finding.type` to access
+ * type-specific fields like `MissingHandlerFinding.inputs`.
+ */
+export type Finding = UnreachableFinding | OnEnterLoopFinding | MissingHandlerFinding;

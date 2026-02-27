@@ -17,6 +17,47 @@ export interface HandlerTarget {
     confidence: "definite" | "possible";
 }
 
+// acorn nodes have a `type` string field plus arbitrary children.
+// We use a loose type to keep the AST walking code simple.
+// Declared early so AstFunctionNode can reference it.
+type AcornNode = {
+    type: string;
+    body?: AcornNode | AcornNode[];
+    argument?: AcornNode | null;
+    value?: unknown;
+    consequent?: AcornNode | AcornNode[];
+    alternate?: AcornNode | null;
+    cases?: AcornNode[];
+    block?: AcornNode;
+    handler?: AcornNode | null;
+    finalizer?: AcornNode | null;
+    left?: AcornNode;
+    right?: AcornNode;
+    expression?: AcornNode | boolean;
+    declarations?: AcornNode[];
+    init?: AcornNode | null;
+    test?: AcornNode | null;
+    update?: AcornNode | null;
+    params?: AcornNode[];
+    [key: string]: unknown;
+};
+
+/**
+ * A union of ESTree node types that represent a callable handler function.
+ * Structurally compatible with both acorn nodes and ESLint's @types/estree,
+ * so walkHandlerAst can accept either without type juggling at the call site.
+ *
+ * The index signature `[key: string]: unknown` keeps this loose enough that
+ * acorn's extra fields (start, end, loc) don't cause structural mismatches.
+ */
+export type AstFunctionNode = {
+    type: "FunctionDeclaration" | "FunctionExpression" | "ArrowFunctionExpression";
+    body: AcornNode;
+    expression?: boolean; // true for concise arrow functions (no block body)
+    params: AcornNode[];
+    [key: string]: unknown;
+};
+
 // Node types that make a return "conditional" — any string-returning
 // ReturnStatement nested inside one of these becomes "possible".
 const CONDITIONAL_ANCESTORS = new Set([
@@ -103,18 +144,74 @@ function findArrowFunction(node: AcornNode): AcornNode | undefined {
  *   - undefined if the AST doesn't match the concise arrow pattern at all
  *     (caller should fall through to the general walker)
  */
-function checkConciseArrow(ast: AcornNode): HandlerTarget[] | undefined {
-    const arrowNode = findArrowFunction(ast);
-    if (!arrowNode || !arrowNode.expression) {
+function checkConciseArrow(node: AstFunctionNode): HandlerTarget[] | undefined {
+    // A concise arrow has `expression: true` and the body is not a BlockStatement.
+    if (node.type !== "ArrowFunctionExpression" || !node.expression) {
+        // Not a concise arrow — let checkConciseArrow's caller also check
+        // the parsed Program wrapper for arrow functions embedded in Program nodes.
         return undefined;
     }
-    // Concise arrow: body is the expression directly (not a BlockStatement)
-    const body = arrowNode.body as AcornNode;
+    const body = node.body as AcornNode;
     if (body && body.type === "Literal" && typeof body.value === "string") {
         return [{ target: body.value, confidence: "definite" }];
     }
     // Non-string concise arrow (e.g., `() => someVar`) — no targets extractable
     return [];
+}
+
+/**
+ * Handle concise arrow functions found inside a parsed Program/ExpressionStatement.
+ * Used by analyzeHandler after tryParse() wraps the source in a Program node.
+ */
+function checkConciseArrowInAst(ast: AcornNode): HandlerTarget[] | undefined {
+    const arrowNode = findArrowFunction(ast);
+    if (!arrowNode || !arrowNode.expression) {
+        return undefined;
+    }
+    const body = arrowNode.body as AcornNode;
+    if (body && body.type === "Literal" && typeof body.value === "string") {
+        return [{ target: body.value, confidence: "definite" }];
+    }
+    return [];
+}
+
+/**
+ * Walk a pre-parsed handler function AST node and extract transition targets.
+ *
+ * Accepts a FunctionDeclaration, FunctionExpression, or ArrowFunctionExpression
+ * node (as produced by acorn or the ESLint rule engine). Returns an array of
+ * { target, confidence } pairs. Empty array means no statically-determinable
+ * string return targets were found.
+ *
+ * This is the shared core used by both:
+ *   - analyzeHandler() — the runtime path (parses fn.toString() first)
+ *   - ESLint rules — the AST path (ESLint already has the parsed node)
+ */
+export function walkHandlerAst(node: AstFunctionNode): HandlerTarget[] {
+    // Concise arrow functions (`() => "state"`) have no ReturnStatement.
+    // The body is the expression directly — handle before the general walker.
+    const conciseResult = checkConciseArrow(node);
+    if (conciseResult !== undefined) {
+        return conciseResult;
+    }
+
+    const returns: ReturnInfo[] = [];
+    walkForReturns(node as unknown as AcornNode, [], returns);
+
+    if (returns.length === 0) {
+        return [];
+    }
+
+    // Determine confidence:
+    // - A single non-conditional return that's the ONLY string return → "definite"
+    // - Multiple returns or conditional returns → all "possible"
+    const allNonConditional = returns.every(r => !r.isConditional);
+    const isSoleReturn = returns.length === 1;
+
+    return returns.map(({ target, isConditional }) => ({
+        target,
+        confidence: allNonConditional && isSoleReturn && !isConditional ? "definite" : "possible",
+    }));
 }
 
 /**
@@ -141,24 +238,26 @@ export function analyzeHandler(fn: (...args: unknown[]) => unknown): HandlerTarg
     // Concise arrow functions (`() => "state"`) have no ReturnStatement in their
     // AST. Instead, the ArrowFunctionExpression node has `expression: true` and
     // the body is a Literal directly. Handle this before the general walker.
-    const conciseResult = checkConciseArrow(ast as unknown as AcornNode);
+    const conciseResult = checkConciseArrowInAst(ast as unknown as AcornNode);
     if (conciseResult !== undefined) {
         return conciseResult;
     }
 
-    const returns: ReturnInfo[] = [];
+    // For block-body functions, find the top-level function node and delegate
+    // to the shared AST walker.
+    const fnNode = findTopLevelFunctionNode(ast as unknown as AcornNode);
+    if (fnNode) {
+        return walkHandlerAst(fnNode as unknown as AstFunctionNode);
+    }
 
-    // Walk the AST. We use a custom recursive walk to track the ancestor
-    // chain so we can detect conditional nesting.
+    // Fallback: walk the raw AST directly (method shorthand wrapper case)
+    const returns: ReturnInfo[] = [];
     walkForReturns(ast as unknown as AcornNode, [], returns);
 
     if (returns.length === 0) {
         return [];
     }
 
-    // Determine confidence:
-    // - A single non-conditional return that's the ONLY string return → "definite"
-    // - Multiple returns or conditional returns → all "possible"
     const allNonConditional = returns.every(r => !r.isConditional);
     const isSoleReturn = returns.length === 1;
 
@@ -168,29 +267,37 @@ export function analyzeHandler(fn: (...args: unknown[]) => unknown): HandlerTarg
     }));
 }
 
-// acorn nodes have a `type` string field plus arbitrary children.
-// We use a loose type to keep the AST walking code simple.
-type AcornNode = {
-    type: string;
-    body?: AcornNode | AcornNode[];
-    argument?: AcornNode | null;
-    value?: unknown;
-    consequent?: AcornNode | AcornNode[];
-    alternate?: AcornNode | null;
-    cases?: AcornNode[];
-    block?: AcornNode;
-    handler?: AcornNode | null;
-    finalizer?: AcornNode | null;
-    left?: AcornNode;
-    right?: AcornNode;
-    expression?: AcornNode;
-    declarations?: AcornNode[];
-    init?: AcornNode | null;
-    test?: AcornNode | null;
-    update?: AcornNode | null;
-    params?: AcornNode[];
-    [key: string]: unknown;
-};
+/**
+ * Find the top-level function node in a parsed Program AST.
+ * Returns the first FunctionDeclaration, FunctionExpression, or
+ * ArrowFunctionExpression at the top level.
+ */
+function findTopLevelFunctionNode(ast: AcornNode): AcornNode | undefined {
+    const children = getChildren(ast);
+    for (const child of children) {
+        if (
+            child.type === "FunctionDeclaration" ||
+            child.type === "FunctionExpression" ||
+            child.type === "ArrowFunctionExpression"
+        ) {
+            return child;
+        }
+        // ExpressionStatement wrapper (anonymous function expressions wrapped in parens)
+        if (child.type === "ExpressionStatement") {
+            const grandChildren = getChildren(child);
+            for (const gc of grandChildren) {
+                if (
+                    gc.type === "FunctionDeclaration" ||
+                    gc.type === "FunctionExpression" ||
+                    gc.type === "ArrowFunctionExpression"
+                ) {
+                    return gc;
+                }
+            }
+        }
+    }
+    return undefined;
+}
 
 /**
  * Collect string literals from a conditional expression tree.
@@ -362,7 +469,16 @@ function getChildren(node: AcornNode): AcornNode[] {
             // For any node type we don't explicitly handle, try common child fields.
             // This prevents us from silently missing returns in unusual constructs.
             for (const key of Object.keys(node)) {
-                if (key === "type" || key === "start" || key === "end" || key === "loc") {
+                // ESLint AST nodes have circular `parent` pointers that Acorn nodes lack.
+                // Traversing into `parent` causes infinite recursion.
+                if (
+                    key === "type" ||
+                    key === "start" ||
+                    key === "end" ||
+                    key === "loc" ||
+                    key === "parent" ||
+                    key === "range"
+                ) {
                     continue;
                 }
                 const val = node[key];

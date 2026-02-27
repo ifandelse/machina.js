@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export default {};
 
-import { analyzeHandler } from "./handler-analyzer";
+import { analyzeHandler, walkHandlerAst, type AstFunctionNode } from "./handler-analyzer";
 
 // Module-scope function needed by the bound-function test — linter requires
 // functions used as bind targets to live at the outer scope.
@@ -570,6 +570,445 @@ describe("analyzeHandler", () => {
 
         it("should return an empty array", () => {
             expect(result).toHaveLength(0);
+        });
+    });
+});
+
+// =============================================================================
+// walkHandlerAst — accepts a pre-parsed AST node directly
+//
+// These tests construct synthetic ESTree-compatible nodes by hand to verify
+// that walkHandlerAst produces the same results as analyzeHandler for
+// equivalent function bodies, without going through fn.toString() + acorn.
+// =============================================================================
+
+describe("walkHandlerAst", () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        jest.resetModules();
+    });
+
+    // Helper: build a minimal ArrowFunctionExpression node with a concise
+    // (expression) body — equivalent to `() => "targetState"`.
+    const makeConciseArrow = (returnValue: string): AstFunctionNode => ({
+        type: "ArrowFunctionExpression",
+        expression: true,
+        params: [],
+        body: {
+            type: "Literal",
+            value: returnValue,
+        } as any,
+    });
+
+    // Helper: build a FunctionExpression with a single unconditional return.
+    // Equivalent to `function() { return "targetState"; }`.
+    const makeFunctionWithReturn = (returnValue: string): AstFunctionNode => ({
+        type: "FunctionExpression",
+        expression: false,
+        params: [],
+        body: {
+            type: "BlockStatement",
+            body: [
+                {
+                    type: "ReturnStatement",
+                    argument: {
+                        type: "Literal",
+                        value: returnValue,
+                    },
+                },
+            ],
+        } as any,
+    });
+
+    // Helper: build a FunctionExpression with a return inside an IfStatement.
+    // Equivalent to `function() { if (x) { return "targetState"; } }`.
+    const makeFunctionWithConditionalReturn = (returnValue: string): AstFunctionNode => ({
+        type: "FunctionExpression",
+        expression: false,
+        params: [],
+        body: {
+            type: "BlockStatement",
+            body: [
+                {
+                    type: "IfStatement",
+                    test: { type: "Identifier", name: "x" },
+                    consequent: {
+                        type: "BlockStatement",
+                        body: [
+                            {
+                                type: "ReturnStatement",
+                                argument: { type: "Literal", value: returnValue },
+                            },
+                        ],
+                    },
+                    alternate: null,
+                },
+            ],
+        } as any,
+    });
+
+    // =========================================================================
+    // Concise arrow with string literal body → one definite target
+    // =========================================================================
+
+    describe("when given a concise ArrowFunctionExpression returning a string literal", () => {
+        let result: ReturnType<typeof walkHandlerAst>;
+
+        beforeEach(() => {
+            result = walkHandlerAst(makeConciseArrow("warp-speed"));
+        });
+
+        it("should return one target", () => {
+            expect(result).toHaveLength(1);
+        });
+
+        it("should return the correct target state", () => {
+            expect(result[0].target).toBe("warp-speed");
+        });
+
+        it("should assign definite confidence", () => {
+            expect(result[0].confidence).toBe("definite");
+        });
+    });
+
+    // =========================================================================
+    // FunctionExpression with single unconditional return → one definite target
+    // =========================================================================
+
+    describe("when given a FunctionExpression with a single unconditional return", () => {
+        let result: ReturnType<typeof walkHandlerAst>;
+
+        beforeEach(() => {
+            result = walkHandlerAst(makeFunctionWithReturn("hyperspace"));
+        });
+
+        it("should return one target", () => {
+            expect(result).toHaveLength(1);
+        });
+
+        it("should return the correct target state", () => {
+            expect(result[0].target).toBe("hyperspace");
+        });
+
+        it("should assign definite confidence", () => {
+            expect(result[0].confidence).toBe("definite");
+        });
+    });
+
+    // =========================================================================
+    // FunctionExpression with conditional return → one possible target
+    // =========================================================================
+
+    describe("when given a FunctionExpression with a conditional return inside an IfStatement", () => {
+        let result: ReturnType<typeof walkHandlerAst>;
+
+        beforeEach(() => {
+            result = walkHandlerAst(makeFunctionWithConditionalReturn("shields-up"));
+        });
+
+        it("should return one target", () => {
+            expect(result).toHaveLength(1);
+        });
+
+        it("should return the correct target state", () => {
+            expect(result[0].target).toBe("shields-up");
+        });
+
+        it("should assign possible confidence", () => {
+            expect(result[0].confidence).toBe("possible");
+        });
+    });
+
+    // =========================================================================
+    // FunctionExpression with no string return → empty array
+    // =========================================================================
+
+    describe("when given a FunctionExpression with no string return", () => {
+        let result: ReturnType<typeof walkHandlerAst>;
+
+        beforeEach(() => {
+            const node: AstFunctionNode = {
+                type: "FunctionExpression",
+                expression: false,
+                params: [],
+                body: {
+                    type: "BlockStatement",
+                    body: [
+                        {
+                            type: "ReturnStatement",
+                            argument: null,
+                        },
+                    ],
+                } as any,
+            };
+            result = walkHandlerAst(node);
+        });
+
+        it("should return an empty array", () => {
+            expect(result).toHaveLength(0);
+        });
+    });
+
+    // =========================================================================
+    // Concise arrow with non-string body → empty array (no false edges)
+    // =========================================================================
+
+    describe("when given a concise ArrowFunctionExpression returning a non-string expression", () => {
+        let result: ReturnType<typeof walkHandlerAst>;
+
+        beforeEach(() => {
+            const node: AstFunctionNode = {
+                type: "ArrowFunctionExpression",
+                expression: true,
+                params: [],
+                body: {
+                    type: "Identifier",
+                    name: "someVar",
+                } as any,
+            };
+            result = walkHandlerAst(node);
+        });
+
+        it("should return an empty array", () => {
+            expect(result).toHaveLength(0);
+        });
+    });
+
+    // =========================================================================
+    // FunctionExpression with multiple unconditional string returns
+    // → isSoleReturn is false → all targets get "possible" confidence
+    // =========================================================================
+
+    describe("when given a FunctionExpression with two unconditional string returns", () => {
+        let result: ReturnType<typeof walkHandlerAst>;
+
+        beforeEach(() => {
+            // Two top-level return statements (unreachable second one, but AST has both).
+            // isSoleReturn = false, so all returns become "possible".
+            const node: AstFunctionNode = {
+                type: "FunctionExpression",
+                expression: false,
+                params: [],
+                body: {
+                    type: "BlockStatement",
+                    body: [
+                        {
+                            type: "ReturnStatement",
+                            argument: { type: "Literal", value: "enterprise" },
+                        },
+                        {
+                            type: "ReturnStatement",
+                            argument: { type: "Literal", value: "voyager" },
+                        },
+                    ],
+                } as any,
+            };
+            result = walkHandlerAst(node);
+        });
+
+        it("should return two targets", () => {
+            expect(result).toHaveLength(2);
+        });
+
+        it("should assign possible confidence to both when there are multiple returns", () => {
+            expect(result.every(r => r.confidence === "possible")).toBe(true);
+        });
+
+        it("should include both target state names", () => {
+            const targets = result.map(r => r.target);
+            expect(targets).toEqual(expect.arrayContaining(["enterprise", "voyager"]));
+        });
+    });
+
+    // =========================================================================
+    // FunctionExpression with a switch statement → conditional returns
+    // =========================================================================
+
+    describe("when given a FunctionExpression with returns inside a switch statement", () => {
+        let result: ReturnType<typeof walkHandlerAst>;
+
+        beforeEach(() => {
+            const node: AstFunctionNode = {
+                type: "FunctionExpression",
+                expression: false,
+                params: [],
+                body: {
+                    type: "BlockStatement",
+                    body: [
+                        {
+                            type: "SwitchStatement",
+                            discriminant: { type: "Identifier", name: "x" },
+                            cases: [
+                                {
+                                    type: "SwitchCase",
+                                    test: { type: "Literal", value: 1 },
+                                    consequent: [
+                                        {
+                                            type: "ReturnStatement",
+                                            argument: { type: "Literal", value: "warp" },
+                                        },
+                                    ],
+                                },
+                                {
+                                    type: "SwitchCase",
+                                    test: null,
+                                    consequent: [
+                                        {
+                                            type: "ReturnStatement",
+                                            argument: { type: "Literal", value: "impulse" },
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                } as any,
+            };
+            result = walkHandlerAst(node);
+        });
+
+        it("should return two targets", () => {
+            expect(result).toHaveLength(2);
+        });
+
+        it("should mark all switch-case returns as possible", () => {
+            expect(result.every(r => r.confidence === "possible")).toBe(true);
+        });
+
+        it("should include both case target states", () => {
+            const targets = result.map(r => r.target);
+            expect(targets).toEqual(expect.arrayContaining(["warp", "impulse"]));
+        });
+    });
+
+    // =========================================================================
+    // FunctionExpression that only throws — no returns at all → empty array
+    // =========================================================================
+
+    describe("when given a FunctionExpression that only throws and never returns", () => {
+        let result: ReturnType<typeof walkHandlerAst>;
+
+        beforeEach(() => {
+            const node: AstFunctionNode = {
+                type: "FunctionExpression",
+                expression: false,
+                params: [],
+                body: {
+                    type: "BlockStatement",
+                    body: [
+                        {
+                            type: "ThrowStatement",
+                            argument: {
+                                type: "NewExpression",
+                                callee: { type: "Identifier", name: "Error" },
+                                arguments: [{ type: "Literal", value: "E_COLD_CALZONE" }],
+                            },
+                        },
+                    ],
+                } as any,
+            };
+            result = walkHandlerAst(node);
+        });
+
+        it("should return an empty array", () => {
+            expect(result).toHaveLength(0);
+        });
+    });
+
+    // =========================================================================
+    // ArrowFunctionExpression with a block body (not concise) — expression: false
+    // → checkConciseArrow returns undefined, falls through to general walker
+    // =========================================================================
+
+    describe("when given a block-body ArrowFunctionExpression (not concise)", () => {
+        let result: ReturnType<typeof walkHandlerAst>;
+
+        beforeEach(() => {
+            const node: AstFunctionNode = {
+                type: "ArrowFunctionExpression",
+                expression: false,
+                params: [],
+                body: {
+                    type: "BlockStatement",
+                    body: [
+                        {
+                            type: "ReturnStatement",
+                            argument: { type: "Literal", value: "deep-space-nine" },
+                        },
+                    ],
+                } as any,
+            };
+            result = walkHandlerAst(node);
+        });
+
+        it("should return one target", () => {
+            expect(result).toHaveLength(1);
+        });
+
+        it("should extract the correct target state", () => {
+            expect(result[0].target).toBe("deep-space-nine");
+        });
+
+        it("should assign definite confidence for a sole unconditional return", () => {
+            expect(result[0].confidence).toBe("definite");
+        });
+    });
+
+    // =========================================================================
+    // FunctionExpression with deeply nested if-inside-if returns
+    // =========================================================================
+
+    describe("when given a FunctionExpression with an if nested inside another if", () => {
+        let result: ReturnType<typeof walkHandlerAst>;
+
+        beforeEach(() => {
+            const node: AstFunctionNode = {
+                type: "FunctionExpression",
+                expression: false,
+                params: [],
+                body: {
+                    type: "BlockStatement",
+                    body: [
+                        {
+                            type: "IfStatement",
+                            test: { type: "Identifier", name: "a" },
+                            consequent: {
+                                type: "BlockStatement",
+                                body: [
+                                    {
+                                        type: "IfStatement",
+                                        test: { type: "Identifier", name: "b" },
+                                        consequent: {
+                                            type: "BlockStatement",
+                                            body: [
+                                                {
+                                                    type: "ReturnStatement",
+                                                    argument: {
+                                                        type: "Literal",
+                                                        value: "bajor",
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                        alternate: null,
+                                    },
+                                ],
+                            },
+                            alternate: null,
+                        },
+                    ],
+                } as any,
+            };
+            result = walkHandlerAst(node);
+        });
+
+        it("should find the deeply nested return", () => {
+            const targets = result.map(r => r.target);
+            expect(targets).toContain("bajor");
+        });
+
+        it("should mark the deeply nested return as possible", () => {
+            expect(result.every(r => r.confidence === "possible")).toBe(true);
         });
     });
 });
