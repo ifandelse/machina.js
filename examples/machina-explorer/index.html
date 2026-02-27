@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>machina-explorer — FSM Inspector &amp; Visualizer</title>
+        <link rel="stylesheet" href="/src/style.css" />
+    </head>
+    <body>
+        <div class="app">
+            <header class="app-header">
+                <h1 class="app-title">machina-explorer</h1>
+                <p class="app-subtitle">Paste an FSM config — inspect its structure and visualize the state graph.</p>
+                <p class="app-disclaimer">Experimental — diagram rendering may be incomplete or incorrect, especially for hierarchical FSMs.</p>
+            </header>
+
+            <main class="app-main">
+                <!-- Left panel: editor + analyze button -->
+                <section class="panel panel-editor" aria-label="FSM config editor">
+                    <div class="panel-heading">
+                        <h2 class="panel-title">Config</h2>
+                    </div>
+                    <p class="editor-hint">Paste a machina FSM config object below, then hit Analyze to inspect it and generate a state diagram.</p>
+                    <div class="editor-container" id="editor-container"></div>
+                    <div class="editor-actions">
+                        <button class="btn btn-primary" id="analyze-btn" type="button">
+                            Analyze
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Right panel: tabbed findings / diagram -->
+                <section class="panel panel-results" aria-label="Analysis results">
+                    <div class="panel-heading">
+                        <div class="results-tabs" role="tablist">
+                            <button class="results-tab active" id="tab-findings" role="tab" aria-selected="true" aria-controls="findings-section" type="button">Findings</button>
+                            <button class="results-tab" id="tab-diagram" role="tab" aria-selected="false" aria-controls="diagram-section" type="button">Diagram</button>
+                        </div>
+                        <label class="toggle-label" for="handler-notes-toggle" id="handler-notes-label" hidden>
+                            <input
+                                type="checkbox"
+                                id="handler-notes-toggle"
+                                class="toggle-input"
+                            />
+                            Show handler notes
+                        </label>
+                    </div>
+
+                    <!-- Findings (visible by default) -->
+                    <div class="results-pane" id="findings-section" role="tabpanel">
+                        <div class="findings-container" id="findings-container">
+                            <p class="placeholder-text">Run Analyze to see results.</p>
+                        </div>
+                    </div>
+
+                    <!-- Diagram (hidden by default) -->
+                    <div class="results-pane results-pane--diagram" id="diagram-section" role="tabpanel" hidden>
+                        <div class="diagram-container" id="diagram-container">
+                            <p class="placeholder-text">Run Analyze to see the state diagram.</p>
+                        </div>
+                        <div class="diagram-actions" id="diagram-actions" hidden>
+                            <button class="btn btn-secondary" id="copy-mermaid-btn" type="button">
+                                Copy Mermaid
+                            </button>
+                            <button class="btn btn-secondary" id="download-svg-btn" type="button">
+                                Download SVG
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>
