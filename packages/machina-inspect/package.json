@@ -33,8 +33,7 @@
         "lint": "ESLINT_USE_FLAT_CONFIG=false eslint --config ../../.eslintrc.js 'src/**/*.{ts,tsx}'"
     },
     "dependencies": {
-        "acorn": "^8.14.1",
-        "acorn-walk": "^8.3.4"
+        "acorn": "^8.14.1"
     },
     "peerDependencies": {
         "machina": ">=6.0.0"

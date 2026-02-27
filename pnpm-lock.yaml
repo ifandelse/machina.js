@@ -317,9 +317,6 @@ importers:
       acorn:
         specifier: ^8.14.1
         version: 8.15.0
-      acorn-walk:
-        specifier: ^8.3.4
-        version: 8.3.4
     devDependencies:
       eslint:
         specifier: ^9.39.2
