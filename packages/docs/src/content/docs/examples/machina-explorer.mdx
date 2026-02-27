@@ -1,0 +1,59 @@
+---
+title: machina-explorer
+description: Interactive FSM inspector and state diagram visualizer.
+---
+
+import { LinkCard } from "@astrojs/starlight/components";
+
+machina-explorer is a browser-based tool for validating FSM configs and visualizing their state graphs. Paste a config object, click **Analyze**, and the app runs machina-inspect checks and renders a mermaid state diagram — no build step, no backend.
+
+<LinkCard title="Open machina-explorer" href="/demos/machina-explorer/" target="_blank" />
+
+## What it does
+
+- **Paste and analyze**: Drop a raw FSM config object into the editor and click Analyze. The app evaluates it via `new Function()`, builds the state graph with `buildStateGraph()`, and runs all structural checks with `inspectGraph()`.
+- **Inspect findings**: Findings are grouped by type — unreachable states, `_onEnter` loops, missing handlers. A clean config shows a confirmation instead.
+- **State diagram**: Generates a `stateDiagram-v2` mermaid diagram from the `StateGraph` IR. Possible transitions (conditional returns) are labeled with `(?)`. Child FSMs appear as nested subgraphs.
+- **Handler notes toggle**: Optionally overlay the list of handler keys (including `_onEnter` and `_onExit`) on each state node in the diagram.
+- **Export**: Copy the raw mermaid source to clipboard, or download the rendered diagram as a PNG.
+
+## Architecture
+
+Vanilla TypeScript, no framework. Two panels: CodeMirror 6 editor on the left, findings + diagram on the right.
+
+The core new piece is `mermaid-generator.ts` — a pure function that converts a `StateGraph` + config object into a mermaid `stateDiagram-v2` string. It has no DOM dependencies and could be extracted to a CLI or server-side tool.
+
+```
+editor.ts       → CodeMirror 6 wrapper
+evaluator.ts    → new Function() eval + shape validation
+mermaid-generator.ts → StateGraph → mermaid string (pure)
+diagram.ts      → mermaid.render() → SVG in DOM
+report.ts       → findings → DOM (XSS-safe)
+export.ts       → clipboard + PNG download
+main.ts         → wires everything together
+```
+
+## Key pattern: eval → inspect → diagram
+
+```ts
+// Evaluate the pasted config string
+const evalResult = evaluateConfig(source);
+
+// Build the state graph IR (used by both inspect and diagram generator)
+const graph = buildStateGraph(evalResult.config);
+
+// Run all structural checks
+const findings = inspectGraph(graph);
+
+// Generate mermaid source from the graph + config
+const mermaidSource = generateMermaid(graph, config, { handlerNotes: true });
+
+// Render the mermaid string as an SVG
+await renderDiagram(container, mermaidSource);
+```
+
+The graph is built once and stored. The handler notes toggle only re-runs `generateMermaid()` and `renderDiagram()` — eval and inspect don't run again.
+
+## Source
+
+[examples/machina-explorer/](https://github.com/ifandelse/machina.js/tree/master/examples/machina-explorer)
