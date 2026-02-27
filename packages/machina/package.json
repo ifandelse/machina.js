@@ -4,9 +4,27 @@
     "description": "Focused finite state machines for JavaScript and TypeScript. States in, states out.",
     "author": "Jim Cowart (http://ifandelse.com)",
     "license": "MIT",
+    "homepage": "https://machina-js.org/",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/ifandelse/machina.js.git"
+    },
+    "bugs": {
+        "url": "http://github.com/ifandelse/machina.js/issues"
+    },
     "publishConfig": {
         "access": "public"
     },
+    "licenses": [
+        {
+            "type": "MIT",
+            "url": "http://opensource.org/licenses/MIT"
+        },
+        {
+            "type": "GPL",
+            "url": "http://opensource.org/licenses/GPL-2.0"
+        }
+    ],
     "main": "dist/index.cjs",
     "module": "dist/index.mjs",
     "types": "dist/index.d.mts",
