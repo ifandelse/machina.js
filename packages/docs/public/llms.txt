@@ -25,6 +25,12 @@ machina v6 is a ground-up TypeScript rewrite. Handlers receive `{ ctx, inputName
 - [Dungeon Critters](https://machina-js.org/examples/dungeon-critters/): BehavioralFsm with 100+ independent game entities sharing one FSM definition
 - [Shopping Cart](https://machina-js.org/examples/shopping-cart/): Deferred input patterns — targeted defer across multiple transitions, error recovery with catch-all defer
 - [React Integration](https://machina-js.org/examples/with-react/): useReducer pattern, event subscriptions in effects, per-component FSM instances
+- [machina-explorer](https://machina-js.org/examples/machina-explorer/): Interactive FSM inspector and state diagram visualizer — paste a config, run structural checks, render a mermaid stateDiagram-v2
+
+## Tools
+
+- [machina-inspect](https://machina-js.org/tools/machina-inspect/): Static analysis for FSM configs — builds a directed graph IR, runs structural checks (unreachable states, _onEnter loops, missing handlers), exports graph for downstream tools
+- [ESLint Plugin](https://machina-js.org/tools/eslint-plugin/): eslint-plugin-machina — surfaces machina-inspect findings inline in your editor via ESLint 9 flat config. Three rules: unreachable-state (warn), onenter-loop (error), missing-handler (off)
 
 ## Migration
 

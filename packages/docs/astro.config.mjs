@@ -99,6 +99,10 @@ export default defineConfig({
                     ],
                 },
                 {
+                    label: "Tools",
+                    items: [{ slug: "tools/machina-inspect" }, { slug: "tools/eslint-plugin" }],
+                },
+                {
                     label: "Migration",
                     items: [{ slug: "migration/v5-to-v6" }],
                 },

@@ -4,7 +4,7 @@ Focused finite state machines for JavaScript and TypeScript. States in, states o
 
 **v6 is active.** The API has been substantially redesigned — cleaner handler signatures, TypeScript-first, and a BehavioralFsm that tracks state per-client instead of stamping properties on your objects.
 
-- [Documentation](https://ifandelse.github.io/machina.js/)
+- [Documentation](https://machina-js.org)
 - [npm](https://www.npmjs.com/package/machina)
 - [GitHub](https://github.com/ifandelse/machina.js)
 
@@ -150,6 +150,16 @@ connFsm.handle(connB, "failed"); // connB: "disconnected", retries: 1
 
 ---
 
+## Companion Tools
+
+**[machina-inspect](./packages/machina-inspect/)** — Static analysis for FSM configs. Parses configs into a directed graph IR and runs structural checks (unreachable states, `_onEnter` loops, missing handlers). Use it programmatically or as the engine behind the tools below.
+
+**[eslint-plugin-machina](./packages/eslint-plugin-machina/)** — ESLint plugin that surfaces machina-inspect findings inline in your editor. Three rules, one import to set up.
+
+**[machina-explorer](./examples/machina-explorer/)** — Browser-based paste-and-analyze tool. Paste an FSM config, run checks, and render a mermaid state diagram. No install required.
+
+---
+
 ## How does machina differ from other state machine libraries?
 
 Machina was originally inspired by the `gen_fsm` behavior module for Erlang/OTP. While TypeScript/JavaScript are a very different landscape than Erlang, machina seeks to preserve some of the same qualities: pragmatic, focused, minimal ceremony, and straightforward to reason about.
@@ -163,14 +173,17 @@ Other options exist — most notably [XState](https://xstate.js.org/). XState is
 ```
 machina.js/
   packages/
-    machina/          # core library (what you install from npm)
-    docs/             # Astro Starlight documentation site
+    machina/              # core library (npm: "machina")
+    machina-inspect/      # static analysis for FSM configs
+    eslint-plugin-machina/ # ESLint plugin wrapping machina-inspect
+    docs/                 # Astro Starlight documentation site
   examples/
-    connectivity/     # network connectivity monitor (createFsm)
+    connectivity/         # network connectivity monitor (createFsm)
     traffic-intersection/ # hierarchical FSM with child states
-    dungeon-critters/ # createBehavioralFsm example
-    shopping-cart/    # defer() showcase
-    with-react/       # React integration example
+    dungeon-critters/     # createBehavioralFsm example
+    shopping-cart/        # defer() showcase
+    with-react/           # React integration example
+    machina-explorer/     # interactive FSM inspector + diagram visualizer
 ```
 
 ---

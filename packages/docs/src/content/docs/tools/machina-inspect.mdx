@@ -1,0 +1,117 @@
+---
+title: machina-inspect
+description: Static analysis and structural inspection for machina FSM configs.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+machina-inspect parses your FSM config (or a live instance) into a directed graph IR, then runs structural checks against it. It's the engine behind both the [ESLint plugin](/tools/eslint-plugin/) and [machina-explorer](/examples/machina-explorer/) — but it's also a standalone tool you can use programmatically.
+
+## Install
+
+```bash
+npm install machina-inspect
+# or
+pnpm add machina-inspect
+```
+
+`machina` >= 6.0.0 is a peer dependency.
+
+## Quick start
+
+```ts
+import { inspect } from "machina-inspect";
+
+const findings = inspect({
+    id: "traffic-light",
+    initialState: "green",
+    states: {
+        green: { timeout: "yellow" },
+        yellow: { timeout: "red" },
+        red: { timeout: "green" },
+        broken: {}, // unreachable — no transitions lead here
+    },
+});
+
+// findings: [{ type: "unreachable-state", states: ["broken"], ... }]
+```
+
+Pass a config object or a live `Fsm` / `BehavioralFsm` instance — both work.
+
+## Checks
+
+machina-inspect runs three structural checks:
+
+### Unreachable states
+
+BFS from `initialState`. Any state with no inbound path is reported. Both `"definite"` and `"possible"` edges count — if there's any path at all, the state is considered reachable.
+
+### `_onEnter` loops
+
+DFS cycle detection on the subgraph of `_onEnter` transitions. Only reports cycles where **every** edge is unconditional. Conditional bounces like `if (ctx.error) return "failed"` are intentional patterns, not bugs.
+
+### Missing handlers
+
+Collects the union of all input names across all states, then flags states that don't handle inputs present elsewhere. States with a `*` catch-all are excluded. This check is best-effort — only inputs visible as graph edges are included.
+
+<Aside type="tip">
+    The missing-handler check intentionally produces noise on FSMs with asymmetric state handlers.
+    That's why the [ESLint plugin](/tools/eslint-plugin/) ships it as `"off"` by default.
+</Aside>
+
+## Two-step usage
+
+When you need the graph IR for other purposes (visualization, custom analysis), build it once and run checks separately:
+
+```ts
+import { buildStateGraph, inspectGraph } from "machina-inspect";
+
+const graph = buildStateGraph(config);
+
+// Use the graph for diagram generation, export, etc.
+// Then run checks against it
+const findings = inspectGraph(graph);
+```
+
+This is the pattern [machina-explorer](/examples/machina-explorer/) uses — build the graph once, then feed it to both the check runner and the mermaid diagram generator.
+
+## Graph IR
+
+The `StateGraph` is the intermediate representation downstream tools consume:
+
+```ts
+interface StateGraph {
+    fsmId: string;
+    initialState: string;
+    nodes: Record<string, StateNode>;
+    children: Record<string, StateGraph>;
+}
+
+interface StateNode {
+    name: string;
+    edges: TransitionEdge[];
+}
+
+interface TransitionEdge {
+    inputName: string;
+    from: string;
+    to: string;
+    confidence: "definite" | "possible";
+}
+```
+
+### Confidence levels
+
+- **`"definite"`** — Unconditional. String shorthands (`timeout: "yellow"`) and functions with a single top-level return.
+- **`"possible"`** — Conditional. Returns inside `if`, `switch`, ternary, logical expressions, or `try` blocks.
+
+Handler functions are analyzed via acorn AST parsing of `handler.toString()`. Non-string returns, template literals, and variable references are ignored — the analysis is best-effort, not exhaustive.
+
+## Child FSMs
+
+`_child` declarations are followed recursively. Child graphs appear in `StateGraph.children`, keyed by the parent state name. Each child is analyzed independently with its own `initialState` and reachability scope.
+
+## See also
+
+- [ESLint plugin](/tools/eslint-plugin/) — get these checks inline in your editor
+- [machina-explorer](/examples/machina-explorer/) — paste-and-analyze browser UI

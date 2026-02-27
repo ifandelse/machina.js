@@ -755,3 +755,119 @@ waiting: {
 ### Transition Depth Limit
 
 machina caps transition depth at 20 to prevent infinite `_onEnter → return "nextState"` loops. If you hit this, you have a cycle in your bounce logic.
+
+---
+
+## Companion Tools
+
+machina ships with two companion packages for catching structural issues in FSM configs at dev time.
+
+### machina-inspect
+
+Static analysis library. Parses FSM configs (or live instances) into a directed graph IR, then runs structural checks against it. The graph is a first-class export for downstream tools.
+
+```bash
+npm install machina-inspect
+```
+
+**Quick start:**
+
+```ts
+import { inspect } from "machina-inspect";
+
+const findings = inspect({
+    id: "traffic-light",
+    initialState: "green",
+    states: {
+        green: { timeout: "yellow" },
+        yellow: { timeout: "red" },
+        red: { timeout: "green" },
+        broken: {},
+    },
+});
+// [{ type: "unreachable-state", states: ["broken"], ... }]
+```
+
+**Checks:**
+
+| Check | What it detects |
+| ----- | --------------- |
+| `unreachable-state` | States with no inbound path from `initialState` |
+| `onenter-loop` | Unconditional `_onEnter` transition cycles (infinite loops) |
+| `missing-handler` | States missing handlers for inputs other states handle |
+
+**Two-step usage** (build graph once, use for both checks and visualization):
+
+```ts
+import { buildStateGraph, inspectGraph } from "machina-inspect";
+
+const graph = buildStateGraph(config);
+const findings = inspectGraph(graph);
+// use `graph` for diagram generation, etc.
+```
+
+**Graph IR types:**
+
+```ts
+interface StateGraph {
+    fsmId: string;
+    initialState: string;
+    nodes: Record<string, StateNode>;
+    children: Record<string, StateGraph>;
+}
+
+interface TransitionEdge {
+    inputName: string;
+    from: string;
+    to: string;
+    confidence: "definite" | "possible";
+}
+```
+
+**Confidence levels:** `"definite"` = unconditional (string shorthand, single return). `"possible"` = conditional (inside if/switch/ternary/try, multiple returns).
+
+**Findings** are a discriminated union: `UnreachableFinding | OnEnterLoopFinding | MissingHandlerFinding`. `MissingHandlerFinding` includes an `inputs: string[]` field listing the missing input names.
+
+- npm: https://www.npmjs.com/package/machina-inspect
+- Docs: https://machina-js.org/tools/machina-inspect/
+
+### eslint-plugin-machina
+
+ESLint plugin that surfaces machina-inspect findings inline in your editor. ESLint 9 flat config only.
+
+```bash
+npm install --save-dev eslint-plugin-machina
+```
+
+**Setup:**
+
+```js
+// eslint.config.mjs
+import machina from "eslint-plugin-machina";
+
+export default [
+    machina.configs.recommended,
+];
+```
+
+For TypeScript files, also install `@typescript-eslint/parser`.
+
+**Rules:**
+
+| Rule | Default | Type | Description |
+| ---- | ------- | ---- | ----------- |
+| `machina/unreachable-state` | `"warn"` | problem | Dead states with no inbound path |
+| `machina/onenter-loop` | `"error"` | problem | Unconditional `_onEnter` infinite loops |
+| `machina/missing-handler` | `"off"` | suggestion | Asymmetric handler coverage across states |
+
+The plugin listens for `createFsm()` and `createBehavioralFsm()` call expressions, builds a `StateGraph` from the AST, and runs the checks. `_child` references are resolved when they're inline calls or `const` references in the same module.
+
+- npm: https://www.npmjs.com/package/eslint-plugin-machina
+- Docs: https://machina-js.org/tools/eslint-plugin/
+
+### machina-explorer
+
+Browser-based paste-and-analyze tool built on machina-inspect. Paste an FSM config object, click Analyze, and the app runs structural checks and renders a mermaid `stateDiagram-v2` diagram. Supports hierarchical FSMs with nested `_child` configs. No install required.
+
+- Live: https://machina-js.org/demos/machina-explorer/
+- Docs: https://machina-js.org/examples/machina-explorer/

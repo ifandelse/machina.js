@@ -31,6 +31,14 @@ machina is for when you want a state machine (or a hierarchy of them) and nothin
 - **`dispose()`**: permanent teardown that cascades to child FSMs by default. All post-dispose calls are silent no-ops. Pass `{ preserveChildren: true }` to leave child FSMs running.
 - **String shorthand**: `timeout: "red"` handles simple always-transition cases without a function.
 
+## Companion tools
+
+machina ships with two companion packages for catching structural issues in your FSM configs:
+
+- **[machina-inspect](/tools/machina-inspect/)** — static analysis that parses your config into a graph IR and runs structural checks (unreachable states, `_onEnter` loops, missing handlers). Use it programmatically or as the engine behind the tools below.
+- **[eslint-plugin-machina](/tools/eslint-plugin/)** — surfaces machina-inspect findings inline in your editor via ESLint. Three rules, one import to set up.
+- **[machina-explorer](/examples/machina-explorer/)** — a browser-based paste-and-analyze tool that runs checks and renders a mermaid state diagram. No install required — [try it live](/demos/machina-explorer/).
+
 ## Next steps
 
-Ready to build? Head to [Getting Started](/machina.js/guide/getting-started/).
+Ready to build? Head to [Getting Started](/guide/getting-started/).

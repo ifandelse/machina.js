@@ -3,9 +3,15 @@ title: machina-explorer
 description: Interactive FSM inspector and state diagram visualizer.
 ---
 
-import { LinkCard } from "@astrojs/starlight/components";
+import { LinkCard, Aside } from "@astrojs/starlight/components";
 
-machina-explorer is a browser-based tool for validating FSM configs and visualizing their state graphs. Paste a config object, click **Analyze**, and the app runs machina-inspect checks and renders a mermaid state diagram — no build step, no backend.
+machina-explorer is an experimental browser-based UI on top of [machina-inspect](/tools/machina-inspect/). Paste a config object, click **Analyze**, and the app runs structural checks and renders a mermaid state diagram — no build step, no backend.
+
+<Aside type="note">
+    machina-explorer is a visual, ad-hoc analysis tool. For automated checking on every save, use
+    [eslint-plugin-machina](/tools/eslint-plugin/) — it runs the same structural checks inline in
+    your editor.
+</Aside>
 
 <LinkCard title="Open machina-explorer" href="/demos/machina-explorer/" target="_blank" />
 

@@ -1,0 +1,125 @@
+---
+title: ESLint Plugin
+description: Lint machina FSM configs for structural issues in your editor.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+eslint-plugin-machina surfaces [machina-inspect](/tools/machina-inspect/) findings inline in your editor. Three rules, one import to set up. ESLint 9 flat config only.
+
+## Install
+
+```bash
+npm install --save-dev eslint-plugin-machina
+# or
+pnpm add -D eslint-plugin-machina
+```
+
+`machina-inspect` is pulled in automatically. For TypeScript files, you also need `@typescript-eslint/parser`:
+
+```bash
+npm install --save-dev @typescript-eslint/parser
+```
+
+## Setup
+
+### Recommended preset
+
+```js
+// eslint.config.mjs
+import machina from "eslint-plugin-machina";
+
+export default [machina.configs.recommended];
+```
+
+### With TypeScript
+
+```js
+// eslint.config.mjs
+import tsParser from "@typescript-eslint/parser";
+import machina from "eslint-plugin-machina";
+
+export default [
+    {
+        files: ["src/**/*.ts"],
+        languageOptions: { parser: tsParser },
+    },
+    machina.configs.recommended,
+];
+```
+
+## Rules
+
+| Rule                        | Default   | Type       | Description                                            |
+| --------------------------- | --------- | ---------- | ------------------------------------------------------ |
+| `machina/unreachable-state` | `"warn"`  | problem    | States with no inbound path from `initialState`        |
+| `machina/onenter-loop`      | `"error"` | problem    | Unconditional `_onEnter` transition cycles             |
+| `machina/missing-handler`   | `"off"`   | suggestion | States missing handlers for inputs other states handle |
+
+### `machina/unreachable-state`
+
+Detects dead states — states that no transition leads to.
+
+```ts
+createFsm({
+    id: "traffic-light",
+    initialState: "green",
+    states: {
+        green: { timeout: "yellow" },
+        yellow: { timeout: "red" },
+        red: { timeout: "green" },
+        broken: {}, // warning: unreachable from "green"
+    },
+});
+```
+
+### `machina/onenter-loop`
+
+Detects unconditional `_onEnter` transition cycles that will infinite-loop the runtime. Conditional bounces are intentional patterns and are not flagged.
+
+```ts
+createFsm({
+    id: "bouncy",
+    initialState: "a",
+    states: {
+        a: { _onEnter: () => "b" },
+        b: { _onEnter: () => "a" }, // error: a -> b -> a
+    },
+});
+```
+
+### `machina/missing-handler`
+
+Flags states that don't handle inputs handled by other states. Off by default because many FSMs have asymmetric handlers by design. States with a `*` catch-all are excluded.
+
+```ts
+createFsm({
+    id: "player",
+    initialState: "idle",
+    states: {
+        idle: { start: "running" },
+        running: { stop: "idle", pause: "paused" },
+        paused: { resume: "running", stop: "idle" },
+        // idle is missing "stop" and "pause"
+    },
+});
+```
+
+<Aside type="tip">
+    Enable this rule selectively on files where comprehensive handler coverage matters. For FSMs
+    with intentionally sparse terminal or initialization states, leave it off or use
+    `eslint-disable` per-file.
+</Aside>
+
+## How it works
+
+The plugin listens for `createFsm()` and `createBehavioralFsm()` call expressions, builds a `StateGraph` from the ESLint AST using machina-inspect's graph IR, then runs the structural checks. Findings are reported as ESLint diagnostics at the call site.
+
+### `_child` resolution
+
+Child FSM references are resolved when they're inline `createFsm()` calls or `const` identifier references to such calls in the same module. Cross-module imports and `let`/`var` bindings are silently skipped — no false positives, just no analysis for those cases.
+
+## See also
+
+- [machina-inspect](/tools/machina-inspect/) — programmatic API for the same checks
+- [machina-explorer](/examples/machina-explorer/) — paste-and-analyze browser UI

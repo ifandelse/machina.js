@@ -1,8 +1,8 @@
 # machina-inspect
 
-Static analysis for [machina](https://machina-js.org) FSM configs. Catches structural bugs — unreachable states, infinite `_onEnter` loops — without running the machine.
+Static analysis for [machina](https://machina-js.org) FSM configs. Catches structural bugs — unreachable states, infinite `_onEnter` loops, missing handlers — without running the machine.
 
-Parses your FSM config (or a live instance) into a directed graph IR, then runs checks against it. The graph is a first-class export, so other tools (diagram generators, linters) can build on the same representation.
+Parses your FSM config (or a live instance) into a directed graph IR, then runs checks against it. The graph is a first-class export, so other tools (diagram generators, linters, [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina)) can build on the same representation.
 
 ## Install
 
@@ -54,7 +54,7 @@ Build a state graph and run all checks. Returns an array of findings — empty m
 
 Build the graph IR without running checks. Use this when you want the graph for other purposes (visualization, custom analysis) and want to avoid building it twice.
 
-### `inspectGraph(graph): StateGraph`
+### `inspectGraph(graph): Finding[]`
 
 Run all checks against a pre-built `StateGraph`. Pair with `buildStateGraph()` when you need both the graph and the findings.
 
@@ -64,6 +64,33 @@ import { buildStateGraph, inspectGraph } from "machina-inspect";
 const graph = buildStateGraph(config);
 // use `graph` for diagram export, etc.
 const findings = inspectGraph(graph);
+```
+
+### `analyzeHandler(handler): HandlerTarget[]`
+
+Parse a handler function for transition targets via acorn AST analysis of `handler.toString()`. Returns `{ target, confidence }` pairs.
+
+```ts
+import { analyzeHandler } from "machina-inspect";
+
+const targets = analyzeHandler(({ ctx }) => {
+    if (ctx.ready) {
+        return "active";
+    }
+});
+// [{ target: "active", confidence: "possible" }]
+```
+
+### `walkHandlerAst(node): HandlerTarget[]`
+
+Walk a pre-parsed ESTree/acorn function AST node to extract transition targets. This is the shared core used by both the runtime path (`analyzeHandler`) and the ESLint plugin. Accepts `AstFunctionNode` — a union of `FunctionDeclaration`, `FunctionExpression`, and `ArrowFunctionExpression`.
+
+```ts
+import { walkHandlerAst } from "machina-inspect";
+import type { AstFunctionNode } from "machina-inspect";
+
+// Use with a pre-parsed AST node (e.g., from ESLint or acorn)
+const targets = walkHandlerAst(functionNode as AstFunctionNode);
 ```
 
 ## Checks
@@ -77,6 +104,12 @@ BFS from `initialState`. Any state with no inbound path is reported. Both `"defi
 DFS cycle detection on the subgraph of `_onEnter` transitions. Only reports cycles where **every** edge is `"definite"` (unconditional). Conditional bounces like `if (ctx.error) return "failed"` are intentional patterns, not bugs.
 
 Same-state self-loops are excluded — the machina runtime ignores same-state transitions, so they're no-ops.
+
+### Missing Handlers
+
+Collects the union of all input names across all states in the FSM. States that don't handle inputs present elsewhere are flagged. This is a best-effort check — only inputs visible as graph edges (string shorthand or statically extractable function returns) are included.
+
+States with a `*` catch-all handler are excluded (they implicitly handle everything). `_onEnter`, `_onExit`, and `*` are excluded from the input union. Child graphs are checked independently with their own input sets.
 
 ## Graph IR
 
@@ -116,15 +149,36 @@ Function handlers are analyzed via [acorn](https://github.com/acornjs/acorn) (AS
 
 ## Findings
 
+Findings are a discriminated union — narrow on `finding.type` to access type-specific fields.
+
 ```ts
-interface Finding {
-    type: "unreachable-state" | "onenter-loop";
+interface BaseFinding {
     message: string;
     fsmId: string;
-    states: string[]; // affected state(s)
+    states: string[];
     parentState?: string; // set for child FSM findings
 }
+
+interface UnreachableFinding extends BaseFinding {
+    type: "unreachable-state";
+}
+
+interface OnEnterLoopFinding extends BaseFinding {
+    type: "onenter-loop";
+}
+
+interface MissingHandlerFinding extends BaseFinding {
+    type: "missing-handler";
+    inputs: string[]; // the input names this state is missing
+}
+
+type Finding = UnreachableFinding | OnEnterLoopFinding | MissingHandlerFinding;
 ```
+
+## See also
+
+- [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina) — get these checks inline in your editor via ESLint
+- [machina-explorer](https://machina-js.org/examples/machina-explorer/) — browser-based paste-and-analyze UI built on machina-inspect
 
 ## License
 

@@ -267,9 +267,14 @@ fsm.dispose(); // also disposes child FSMs
 fsm.dispose({ preserveChildren: true }); // leave child FSMs running
 ```
 
+## Companion tools
+
+- [machina-inspect](https://www.npmjs.com/package/machina-inspect) — static analysis for FSM configs: unreachable states, `_onEnter` loops, missing handlers.
+- [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina) — ESLint plugin wrapping machina-inspect for inline editor feedback.
+
 ## Full documentation
 
-https://ifandelse.github.io/machina.js/
+https://machina-js.org
 
 ## License
 
