@@ -1,0 +1,78 @@
+{
+    "name": "machina-test",
+    "version": "0.1.0",
+    "description": "Jest/Vitest custom matchers for testing machina FSMs.",
+    "author": "Jim Cowart (http://ifandelse.com)",
+    "license": "MIT",
+    "homepage": "https://machina-js.org/",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/ifandelse/machina.js.git"
+    },
+    "bugs": {
+        "url": "http://github.com/ifandelse/machina.js/issues"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "licenses": [
+        {
+            "type": "MIT",
+            "url": "http://opensource.org/licenses/MIT"
+        },
+        {
+            "type": "GPL",
+            "url": "http://opensource.org/licenses/GPL-2.0"
+        }
+    ],
+    "main": "dist/index.cjs",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.mts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.mts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=22.22"
+    },
+    "sideEffects": true,
+    "scripts": {
+        "dev": "tsdown --watch",
+        "build": "tsdown",
+        "test": "jest --passWithNoTests",
+        "test:watch": "jest --watch",
+        "lint": "ESLINT_USE_FLAT_CONFIG=false eslint --config ../../.eslintrc.js 'src/**/*.{ts,tsx}'"
+    },
+    "dependencies": {
+        "machina-inspect": "workspace:*"
+    },
+    "peerDependencies": {
+        "machina": ">=6.1.0",
+        "jest": ">=29",
+        "vitest": ">=1"
+    },
+    "peerDependenciesMeta": {
+        "jest": {
+            "optional": true
+        },
+        "vitest": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@types/jest": "^30.0.0",
+        "eslint": "^9.39.2",
+        "jest": "^30.2.0",
+        "machina": "workspace:*",
+        "ts-jest": "^29.4.6",
+        "tsdown": "^0.20.3",
+        "typescript": "^5.9.3"
+    }
+}

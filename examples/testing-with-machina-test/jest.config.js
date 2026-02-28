@@ -1,0 +1,15 @@
+const path = require("path");
+
+module.exports = {
+    preset: "ts-jest",
+    testEnvironment: "node",
+    roots: ["<rootDir>/src"],
+    transform: {
+        "^.+\\.tsx?$": ["ts-jest", { tsconfig: path.resolve(__dirname, "tsconfig.test.json") }],
+    },
+    moduleNameMapper: {
+        "^machina$": path.resolve(__dirname, "node_modules/machina/dist/index.cjs"),
+        "^machina-test$": path.resolve(__dirname, "node_modules/machina-test/dist/index.cjs"),
+    },
+    transformIgnorePatterns: ["/node_modules/(?!machina)"],
+};

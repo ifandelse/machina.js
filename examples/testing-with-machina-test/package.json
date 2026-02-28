@@ -1,0 +1,19 @@
+{
+    "name": "@machina-examples/testing-with-machina-test",
+    "version": "0.0.1",
+    "private": true,
+    "description": "machina-test usage examples — custom Jest matchers for FSM graph assertions",
+    "scripts": {
+        "test": "jest --config jest.config.js"
+    },
+    "dependencies": {
+        "machina": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/jest": "^30.0.0",
+        "jest": "^30.2.0",
+        "machina-test": "workspace:*",
+        "ts-jest": "^29.4.6",
+        "typescript": "^5.9.3"
+    }
+}
