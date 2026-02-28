@@ -80,6 +80,7 @@ export function createShoppingCartFsm(getSpeedMultiplier: () => number = () => 1
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let instance: any;
 
+    // eslint-disable-next-line prefer-const
     instance = createFsm({
         id: "shopping-cart",
         initialState: "browsing",

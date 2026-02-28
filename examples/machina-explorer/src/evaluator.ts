@@ -53,12 +53,13 @@ export function evaluateConfig(source: string): EvalResult {
     // Try wrapping in return (...) so bare object literals work
     try {
         value = new Function("return (" + source + ")")();
-    } catch (_wrappedErr) {
+    } catch {
         // Fallback: try evaluating the source as-is (user may have written `return {...}`)
         try {
             value = new Function(source)();
-        } catch (rawErr) {
-            const message = rawErr instanceof Error ? rawErr.message : String(rawErr);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (error_: any) {
+            const message = error_ instanceof Error ? error_.message : String(error_);
             return { ok: false, error: "Syntax error: " + message };
         }
     }

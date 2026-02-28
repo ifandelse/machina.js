@@ -4,13 +4,15 @@
     "private": true,
     "description": "machina-test usage examples — custom Jest matchers for FSM graph assertions",
     "scripts": {
-        "test": "jest --config jest.config.js"
+        "test": "jest --config jest.config.js",
+        "lint": "eslint 'src/**/*.{ts,tsx}'"
     },
     "dependencies": {
         "machina": "workspace:*"
     },
     "devDependencies": {
         "@types/jest": "^30.0.0",
+        "eslint": "^9.39.2",
         "jest": "^30.2.0",
         "machina-test": "workspace:*",
         "ts-jest": "^29.4.6",

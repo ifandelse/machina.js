@@ -7,7 +7,8 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
-        "test": "jest --config jest.config.js"
+        "test": "jest --config jest.config.js",
+        "lint": "eslint 'src/**/*.{ts,tsx}'"
     },
     "dependencies": {
         "machina": "workspace:*",
@@ -19,6 +20,7 @@
         "@types/react": "^19.1.0",
         "@types/react-dom": "^19.1.0",
         "@vitejs/plugin-react": "^4.5.2",
+        "eslint": "^9.39.2",
         "jest": "^30.2.0",
         "ts-jest": "^29.4.6",
         "typescript": "^5.9.3",

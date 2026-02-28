@@ -1089,6 +1089,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         describe("across many patrol entries, waypoints should stay within territory", () => {
             it("should always produce waypoints within territory (100 samples)", () => {
                 // Use a fresh FSM so we can re-enter patrol many times
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
                 const mod = require("./fsm");
                 const testFsm = mod.createCritterBehavior();
 

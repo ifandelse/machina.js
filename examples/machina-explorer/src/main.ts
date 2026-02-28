@@ -16,8 +16,7 @@ import { renderFindings, renderError, renderClean } from "./report";
 import { generateMermaid } from "./mermaid-generator";
 import { renderDiagram } from "./diagram";
 import { copyMermaidSource, downloadSvg } from "./export";
-import { buildStateGraph, inspectGraph } from "machina-inspect";
-import type { StateGraph } from "machina-inspect";
+import { buildStateGraph, inspectGraph, type StateGraph } from "machina-inspect";
 
 // ---------------------------------------------------------------------------
 // DOM elements — all required, will throw if missing (hard fail is intentional)
@@ -167,7 +166,7 @@ copyMermaidBtn.addEventListener("click", async () => {
     try {
         await copyMermaidSource(currentMermaidSource);
         copyMermaidBtn.textContent = "Copied!";
-    } catch (_err) {
+    } catch {
         copyMermaidBtn.textContent = "Copy failed";
     }
 

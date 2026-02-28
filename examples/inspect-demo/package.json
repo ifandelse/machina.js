@@ -4,13 +4,15 @@
     "private": true,
     "description": "machina-inspect demo — exercises the inspect API against intentionally buggy FSM configs",
     "scripts": {
-        "demo": "tsx demo.ts"
+        "demo": "tsx demo.ts",
+        "lint": "eslint '*.ts'"
     },
     "dependencies": {
         "machina": "workspace:*",
         "machina-inspect": "workspace:*"
     },
     "devDependencies": {
+        "eslint": "^9.39.2",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3"
     }

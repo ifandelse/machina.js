@@ -18,7 +18,7 @@ const STRUCTURAL_KEYS = new Set(["_child"]);
 // Mermaid identifiers can't contain spaces, brackets, or special chars without quoting.
 // We use the id form `state "Label" as identifier` when a name contains special chars,
 // but for the diagram edges we just need safe identifiers.
-const MERMAID_UNSAFE = /[\s\-.()\[\]{}:,#"'`]/;
+const MERMAID_UNSAFE = /[\s\-.()[\]{}:,#"'`]/;
 
 /**
  * Escape a state name to a safe mermaid identifier.
@@ -29,7 +29,7 @@ function safeName(name: string): string {
     if (!MERMAID_UNSAFE.test(name)) {
         return name;
     }
-    return name.replace(/[\s\-.()\[\]{}:,#"'`]/g, "_");
+    return name.replace(/[\s\-.()[\]{}:,#"'`]/g, "_");
 }
 
 /**

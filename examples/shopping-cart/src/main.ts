@@ -21,7 +21,6 @@ import {
     renderStateDiagram,
     setActiveState,
     addDeferredItem,
-    removeDeferredItem,
     updateDeferredItemTarget,
     clearDeferredQueue,
     showTooltip,
@@ -158,7 +157,7 @@ let itemCount = 0;
 // FSM event subscriptions
 // -----------------------------------------------------------------------------
 
-fsm.on("transitioned", ({ fromState, toState }) => {
+fsm.on("transitioned", ({ fromState, toState }: { fromState: string; toState: string }) => {
     setActiveState(toState as CartState);
 
     // Confirm button is only meaningful in the checkout state
@@ -172,7 +171,7 @@ fsm.on("transitioned", ({ fromState, toState }) => {
 });
 
 // Custom events emitted by FSM handlers via emit()
-fsm.on("*", (eventName, data) => {
+fsm.on("*", (eventName: string, data: unknown) => {
     if (eventName === "itemAdded") {
         const payload = data as { itemCount: number } | undefined;
         if (payload) {
@@ -194,16 +193,16 @@ fsm.on("*", (eventName, data) => {
 
 // "deferred" fires when a handler calls defer(). Reconstruct untilState from
 // our knowledge of the FSM matrix (the event payload only includes inputName).
-fsm.on("deferred", ({ inputName }) => {
+fsm.on("deferred", ({ inputName }: { inputName: string }) => {
     const currentState = fsm.currentState();
     const stateMap = DEFER_TARGET_MAP[currentState] ?? {};
-    const untilState = stateMap[inputName] !== undefined ? stateMap[inputName] : null;
+    const untilState = stateMap[inputName] ?? null;
 
     // If this input is being replayed from the queue and the handler re-deferred
     // it, don't add a duplicate entry — update the existing one's target instead.
     // Move the re-deferred item to the end of the tracking array so ids[0] is
     // correct for the next replay (machina re-queues re-deferred inputs at the back).
-    if (handlingDeferSnapshot && handlingDeferSnapshot.inputName === inputName) {
+    if (handlingDeferSnapshot?.inputName === inputName) {
         wasRedeferredDuringHandling = true;
         const ids = deferredByInput.get(inputName);
         if (ids && ids.length > 0) {
@@ -241,7 +240,7 @@ fsm.on("handling", ({ inputName }: { inputName: string }) => {
 // "handled" fires AFTER the handler runs. Resolve the deferred entry unless
 // the handler re-deferred it (flagged by wasRedeferredDuringHandling).
 fsm.on("handled", ({ inputName }: { inputName: string }) => {
-    if (!handlingDeferSnapshot || handlingDeferSnapshot.inputName !== inputName) {
+    if (handlingDeferSnapshot?.inputName !== inputName) {
         return;
     }
 
@@ -331,7 +330,7 @@ if (buttons) {
 const speedSlider = document.getElementById("speed-slider") as HTMLInputElement | null;
 if (speedSlider) {
     speedSlider.addEventListener("input", () => {
-        updateSpeedLabel(parseFloat(speedSlider.value));
+        updateSpeedLabel(Number.parseFloat(speedSlider.value));
     });
 }
 

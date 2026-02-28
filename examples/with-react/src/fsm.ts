@@ -89,9 +89,9 @@ function createCheckoutFsm() {
     // the assignment below has completed and `fsmInstance` points to the right FSM.
     // This is intentionally scoped to the factory call — each CheckoutProvider
     // gets its own closure, so the callback always dispatches to the correct instance.
-    // eslint-disable-next-line prefer-const
     let fsmInstance: ReturnType<typeof createFsm>;
 
+    // eslint-disable-next-line prefer-const
     fsmInstance = createFsm({
         id: "checkout",
         initialState: "start",

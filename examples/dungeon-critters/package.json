@@ -7,12 +7,14 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
-        "test": "jest --config jest.config.js"
+        "test": "jest --config jest.config.js",
+        "lint": "eslint 'src/**/*.{ts,tsx}'"
     },
     "dependencies": {
         "machina": "workspace:*"
     },
     "devDependencies": {
+        "eslint": "^9.39.2",
         "typescript": "^5.9.3",
         "vite": "^6.3.5"
     }

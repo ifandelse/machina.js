@@ -74,6 +74,7 @@ describe("createCheckoutFsm (fsm.ts)", () => {
         jest.resetModules();
         jest.useFakeTimers();
 
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const mod = require("./fsm");
         const result = mod.createCheckoutFsm();
         fsm = result.fsm;
@@ -938,6 +939,7 @@ describe("createCheckoutFsm (fsm.ts)", () => {
             let fsmA: any, contextA: any, fsmB: any, contextB: any;
 
             beforeEach(() => {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
                 const mod = require("./fsm");
                 const resultA = mod.createCheckoutFsm();
                 const resultB = mod.createCheckoutFsm();

@@ -45,7 +45,7 @@
         "build": "tsdown",
         "test": "jest --passWithNoTests",
         "test:watch": "jest --watch",
-        "lint": "ESLINT_USE_FLAT_CONFIG=false eslint --config ../../.eslintrc.js 'src/**/*.{ts,tsx}'"
+        "lint": "eslint 'src/**/*.{ts,tsx}'"
     },
     "peerDependencies": {
         "eslint": ">=9.0.0"
