@@ -1,6 +1,6 @@
 {
     "name": "machina-inspect",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Static analysis and structural inspection for machina FSM configs.",
     "author": "Jim Cowart (http://ifandelse.com)",
     "license": "MIT",
@@ -54,7 +54,7 @@
         "acorn": "^8.14.1"
     },
     "peerDependencies": {
-        "machina": ">=6.1.0"
+        "machina": ">=6.2.0"
     },
     "devDependencies": {
         "eslint": "^9.39.2",

@@ -1,6 +1,6 @@
 {
     "name": "@machina-examples/testing-with-machina-test",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "private": true,
     "description": "machina-test usage examples — custom Jest matchers for FSM graph assertions",
     "scripts": {
