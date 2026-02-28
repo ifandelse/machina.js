@@ -1,13 +1,16 @@
 ---
 title: machina-test
-description: Jest/Vitest custom matchers for testing machina FSM graph topology.
+description: Jest/Vitest matchers for FSM graph topology and walkAll for property-based runtime testing.
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-machina-test provides three custom matchers for Jest and Vitest that let you assert FSM graph topology directly in your test suite. No mocking internals or elaborate setup choreography — just `import "machina-test"` and write assertions.
+machina-test gives you two things:
 
-Built on [machina-inspect](/tools/machina-inspect/). The matchers build a `StateGraph` from your FSM instance and run BFS-based reachability checks against it.
+1. **Graph matchers** — `toAlwaysReach`, `toNeverReach`, `toHaveNoUnreachableStates`. These check the FSM's _topology_: does a path exist from A to B?
+2. **`walkAll`** — property-based runtime testing. Feeds randomized inputs into a live FSM and checks a rule you define after every transition.
+
+The matchers answer "is the wiring right?" `walkAll` answers "does it actually work when things happen in a random order?"
 
 ## Install
 
@@ -159,7 +162,235 @@ Consider a parent with state `"checkout"` and a child with state `"processing"`.
 
 By keeping reachability matchers top-level-only, the answer is always unambiguous: you're asking about the states in the graph you passed to `expect()`.
 
+---
+
+## walkAll — Runtime Testing
+
+The matchers above check **graph topology** — they look at the map. `walkAll` actually **runs the FSM** with random inputs and checks that a rule you define holds true after every single transition. If the rule breaks, you get the exact sequence of inputs that caused it, plus a magic number that lets you replay the failure on demand.
+
+This matters because graph matchers can't see conditional logic. If a handler has an `if` statement that decides where to go next, the matchers see _both_ branches as possible. They can't tell you whether the branch logic is actually correct. `walkAll` can.
+
+### Key concepts
+
+Before diving into the API, here's what the terminology means in plain language:
+
+**Factory function** — A function that creates a fresh FSM every time it's called. `walkAll` calls your factory once per walk so each walk starts clean. If you passed a single instance instead, mutations from walk #1 would bleed into walk #2 and your test results would be meaningless.
+
+**Invariant** — A rule that must _always_ be true, no matter what state the FSM is in. "Balance must never go negative." "User must not be in state `admin` without a role." You write it as a function — if the rule is violated, throw an error (or return `false`). `walkAll` runs your invariant after every transition.
+
+**Walk** — One complete run through the FSM. Create a fresh FSM, fire a sequence of random inputs, check the invariant after each transition. A single `walkAll` call runs many walks (default: 100).
+
+**Step** — One `handle()` call within a walk. If `maxSteps` is 20, each walk fires up to 20 random inputs before moving on to the next walk.
+
+**Seed** — A number that makes "random" repeatable. Computers can't actually generate random numbers — they use a formula that _looks_ random but always produces the same sequence from the same starting number. That starting number is the seed. Same seed = same sequence of input names picked each step. This is what makes failures reproducible.
+
+<Aside type="caution">
+    The seed controls which **input name** is picked each step. It does NOT control what your
+    payload generators return. If your generators use `Math.random()`, the payloads will differ
+    across runs even with the same seed. That's fine for tests that should always pass — but for
+    failure replay, your generators must be deterministic too.
+</Aside>
+
+**Payload generator** — A function that produces data to pass along with a specific input. Without generators, inputs fire with no payload — which is fine for inputs like `reset` but useless for inputs like `begin` that expect a transfer amount. You configure generators per input name.
+
+### Basic usage
+
+```ts
+import { walkAll } from "machina-test";
+import { createAccountTransfer } from "./account-transfer";
+
+const result = walkAll(
+    // Factory: each walk gets a fresh FSM
+    () => createAccountTransfer(1000),
+    {
+        walks: 200, // run 200 independent walks
+        maxSteps: 20, // up to 20 handle() calls per walk
+        seed: 42, // deterministic — same sequence every run
+        invariant({ ctx }) {
+            const { balance } = ctx as { balance: number };
+            if (balance < 0) {
+                throw new Error(`balance went negative: ${balance}`);
+            }
+        },
+    }
+);
+
+// On success: result.seed and result.walksCompleted
+expect(result.walksCompleted).toBe(200);
+```
+
+That's the minimal case. `walkAll` auto-extracts all input names from your FSM's `states` config (skipping reserved keys like `_onEnter`, `_onExit`, `_child`, and `*`), picks one at random each step, fires it via `handle()`, and runs your invariant after every transition.
+
+### Payload generators
+
+Without generators, every input fires with no arguments. If your handler expects data (a transfer amount, a user ID, a payload object), you need to tell `walkAll` how to generate it.
+
+```ts
+walkAll(() => createAccountTransfer(500), {
+    walks: 300,
+    maxSteps: 30,
+    seed: 7,
+    inputs: {
+        // "begin" gets a random transfer amount between 0 and 200.
+        // "reset" doesn't need a payload — omit it.
+        begin: () => Math.floor(Math.random() * 200),
+    },
+    invariant({ ctx }) {
+        const { balance } = ctx as { balance: number };
+        if (balance < 0) {
+            throw new Error(`balance went negative: ${balance}`);
+        }
+    },
+});
+```
+
+Only inputs that need payloads get generators. Everything else fires with no arguments.
+
+<Aside type="tip">
+    Using `Math.random()` in a generator is fine when the test should pass regardless of the payload
+    value — the FSM's logic handles all values correctly. But if you need to replay a specific
+    failure, use a deterministic generator instead (a fixed value, or your own seeded PRNG).
+</Aside>
+
+### Filtering inputs
+
+By default, `walkAll` fires every input it finds. You can narrow the set with `include` or `exclude` (mutually exclusive):
+
+```ts
+// Only fire these two inputs
+walkAll(factory, {
+    include: ["begin", "reset"],
+    invariant,
+});
+
+// Fire everything except "admin-override"
+walkAll(factory, {
+    exclude: ["admin-override"],
+    invariant,
+});
+```
+
+Unknown names in `include` throw immediately — catches typos before the walk even starts.
+
+### Seed replay
+
+The killer feature. When an invariant violation occurs, `walkAll` throws a `WalkFailureError` that carries the seed, the step number, and the full input sequence. Pass that seed back to `walkAll` and you get the exact same walk — same inputs, same order, same failure.
+
+```ts
+import { walkAll, WalkFailureError } from "machina-test";
+
+try {
+    walkAll(createBuggyFsm, { seed: 1, invariant });
+} catch (err) {
+    if (err instanceof WalkFailureError) {
+        console.log(err.seed); // the seed that found the bug
+        console.log(err.step); // which handle() call broke it (1-indexed)
+        console.log(err.state); // state at the time of violation
+        console.log(err.inputSequence); // full sequence: [{ input, payload }, ...]
+
+        // Replay the exact same walk:
+        walkAll(createBuggyFsm, { seed: err.seed, invariant });
+        // Same failure, same step, same state.
+    }
+}
+```
+
+This is particularly useful in CI — a test fails, you grab the seed from the error output, paste it into your test, and you have a deterministic reproduction. No more "works on my machine."
+
+### BehavioralFsm support
+
+`walkAll` detects `BehavioralFsm` instances automatically. Pass a `client` factory to create a fresh client per walk:
+
+```ts
+walkAll(
+    () =>
+        createBehavioralFsm({
+            /* ... */
+        }),
+    {
+        client: () => ({ balance: 1000, transferAmount: 0 }),
+        invariant({ ctx }) {
+            // ctx is the client object for BehavioralFsm walks
+        },
+    }
+);
+```
+
+If you don't provide a `client` factory, `walkAll` uses an empty object `{}`.
+
+### WalkFailureError
+
+Thrown when the invariant fails. All properties are readonly:
+
+| Property         | Type                        | Description                                                     |
+| ---------------- | --------------------------- | --------------------------------------------------------------- |
+| `seed`           | `number`                    | The seed that produced this walk                                |
+| `step`           | `number`                    | Which `handle()` call caused the violation (1-indexed)          |
+| `state`          | `string`                    | State the FSM was in when the invariant broke                   |
+| `previousState`  | `string`                    | State before the violating transition                           |
+| `compositeState` | `string`                    | Full dot-delimited state path (includes child states)           |
+| `ctx`            | `unknown`                   | The FSM context (or client for BehavioralFsm) at violation time |
+| `inputSequence`  | `Array<{ input, payload }>` | Every input fired up to and including the failing step          |
+
+The error message itself is human-readable and includes the seed, states, cause, and full input sequence — designed for CI log output.
+
+### Configuration reference
+
+```ts
+interface WalkConfig<TClient extends object = object> {
+    /** How many independent walks to run. Default: 100 */
+    walks?: number;
+
+    /** Max handle() calls per walk. Default: 50 */
+    maxSteps?: number;
+
+    /** Seed for deterministic input selection. Default: random */
+    seed?: number;
+
+    /** Only fire these inputs. Mutually exclusive with exclude. */
+    include?: string[];
+
+    /** Don't fire these inputs. Mutually exclusive with include. */
+    exclude?: string[];
+
+    /** Payload generators keyed by input name. */
+    inputs?: Record<string, () => unknown>;
+
+    /** BehavioralFsm client factory. Omit for Fsm walks. */
+    client?: () => TClient;
+
+    /** Checked after every transition. Throw or return false to fail. */
+    invariant: (args: InvariantArgs) => boolean | void;
+}
+```
+
+The `InvariantArgs` object passed to your invariant:
+
+| Property         | Type      | Description                                                |
+| ---------------- | --------- | ---------------------------------------------------------- |
+| `state`          | `string`  | State the FSM just transitioned TO                         |
+| `previousState`  | `string`  | State the FSM transitioned FROM                            |
+| `compositeState` | `string`  | Dot-delimited composite state path                         |
+| `ctx`            | `unknown` | The FSM context or BehavioralFsm client                    |
+| `input`          | `string`  | The input name that triggered this transition              |
+| `payload`        | `unknown` | The payload from the generator, or `undefined`             |
+| `step`           | `number`  | Which `handle()` call produced this transition (1-indexed) |
+
+---
+
+## When to use what
+
+| Question                                                       | Tool                             |
+| -------------------------------------------------------------- | -------------------------------- |
+| Is every state reachable?                                      | `toHaveNoUnreachableStates()`    |
+| Can state A reach state B?                                     | `toAlwaysReach` / `toNeverReach` |
+| Does the FSM behave correctly under random inputs?             | `walkAll`                        |
+| Is there a conditional logic bug the graph can't see?          | `walkAll`                        |
+| Will the guard in `_onEnter` actually prevent bad transitions? | `walkAll`                        |
+
+The matchers and `walkAll` are complementary. Use matchers for fast structural sanity checks. Use `walkAll` when your FSM has handler logic (conditionals, context mutations, guards) that matters.
+
 ## See also
 
-- [machina-inspect](/tools/machina-inspect/) — the graph analysis engine these matchers are built on
+- [machina-inspect](/tools/machina-inspect/) — the graph analysis engine the matchers are built on
 - [ESLint plugin](/tools/eslint-plugin/) — catch structural issues at lint time in your editor

@@ -833,30 +833,55 @@ interface TransitionEdge {
 
 ### machina-test
 
-Jest/Vitest custom matchers for testing FSM graph topology. Built on machina-inspect. Zero ceremony beyond `import "machina-test"`.
+Testing tools for machina FSMs — graph topology matchers and property-based runtime testing.
 
 ```bash
 npm install --save-dev machina-test
 ```
 
-**Three matchers:**
+**Graph matchers** — check FSM wiring via BFS reachability:
 
 ```ts
 import "machina-test";
 
-// Assert every state is reachable from initialState
 expect(fsm).toHaveNoUnreachableStates();
-
-// Assert a path exists from A to B (graph topology, not runtime certainty)
 expect(fsm).toAlwaysReach("delivered", { from: "placed" });
-
-// Assert no path exists from A to B
 expect(fsm).toNeverReach("shipped", { from: "cancelled" });
 ```
 
-`toAlwaysReach` and `toNeverReach` operate on the top-level graph only — they don't traverse into `_child` FSMs. To test a child FSM, pass it directly to `expect()`. `toHaveNoUnreachableStates` does recurse into children via `inspectGraph()`.
+`toAlwaysReach` and `toNeverReach` operate on the top-level graph only — they don't traverse into `_child` FSMs. To test a child FSM, pass it directly to `expect()`. `toHaveNoUnreachableStates` does recurse into children via `inspectGraph()`. Invalid state names produce clean test failures with available state lists.
 
-Invalid state names produce clean test failures with available state lists, not thrown exceptions.
+**`walkAll`** — property-based runtime testing. Feeds randomized inputs into a live FSM and checks a user-supplied invariant after every transition. Catches bugs in handler logic (conditional transitions, context mutations, guards) that graph matchers can't see.
+
+```ts
+import { walkAll, WalkFailureError } from "machina-test";
+
+const result = walkAll(
+    () => createMyFsm(),  // factory: fresh FSM per walk
+    {
+        walks: 200,       // independent walks
+        maxSteps: 20,     // handle() calls per walk
+        seed: 42,         // deterministic input selection
+        inputs: {         // payload generators per input name
+            begin: () => randomAmount(),
+        },
+        invariant({ ctx, state, previousState, input, step }) {
+            // checked after every transition — throw or return false to fail
+        },
+    }
+);
+```
+
+Key concepts:
+- **Factory function**: Each walk gets a fresh FSM instance. Prevents context bleed between walks.
+- **Seed**: Controls which input name is picked each step (deterministic PRNG). Same seed = same input sequence. Does NOT control payload generators.
+- **Invariant**: A rule checked after every transition. Receives state, previousState, compositeState, ctx, input, payload, step. Throw or return false to signal violation.
+- **Payload generators**: Functions keyed by input name that produce data for handle(). Inputs without generators fire with no payload.
+- **WalkFailureError**: Thrown on invariant violation. Carries seed, step (1-indexed), state, previousState, compositeState, ctx, and inputSequence for deterministic replay.
+- **Input filtering**: `include` (whitelist) or `exclude` (blacklist) to narrow which inputs are fired.
+- **BehavioralFsm support**: Auto-detected. Pass `client: () => ({...})` to create fresh clients per walk.
+
+Seed replay: catch WalkFailureError, pass `err.seed` back to walkAll — same inputs, same order, same failure.
 
 - npm: https://www.npmjs.com/package/machina-test
 - Docs: https://machina-js.org/tools/machina-test/

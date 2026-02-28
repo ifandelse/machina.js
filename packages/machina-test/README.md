@@ -1,16 +1,25 @@
 # machina-test
 
-Jest/Vitest custom matchers for testing [machina](https://machina-js.org) FSM topology. Assert reachability, catch dead states, and verify structural invariants — all from your existing test suite.
+Testing tools for [machina](https://machina-js.org) FSMs — graph topology matchers and property-based runtime testing.
 
 ```ts
 import "machina-test";
+import { walkAll } from "machina-test";
 
+// Graph matchers — does the wiring look right?
 expect(fsm).toHaveNoUnreachableStates();
 expect(fsm).toAlwaysReach("delivered", { from: "placed" });
 expect(fsm).toNeverReach("shipped", { from: "cancelled" });
+
+// Runtime testing — does it actually work?
+walkAll(() => createMyFsm(), {
+    invariant({ ctx }) {
+        /* assert a rule that must always hold */
+    },
+});
 ```
 
-Built on [machina-inspect](https://www.npmjs.com/package/machina-inspect). Zero ceremony beyond the import.
+Graph matchers are built on [machina-inspect](https://www.npmjs.com/package/machina-inspect). `walkAll` runs the FSM live with randomized inputs.
 
 ## Install
 
@@ -99,11 +108,52 @@ expect(payment).toNeverReach("entering-details", { from: "authorized" });
 
 **The one exception**: `toHaveNoUnreachableStates()` _does_ recurse into children via `inspectGraph()`. An orphaned state in a child surfaces as a failure when called on the parent.
 
+## walkAll — Runtime Testing
+
+The matchers check graph topology — does a path exist? `walkAll` checks runtime behavior — does the FSM actually work when you feed it random inputs?
+
+```ts
+import { walkAll, WalkFailureError } from "machina-test";
+
+const result = walkAll(
+    () => createMyFsm(), // factory: fresh FSM per walk
+    {
+        walks: 200, // 200 independent walks
+        maxSteps: 20, // up to 20 handle() calls per walk
+        seed: 42, // deterministic — same sequence every run
+        inputs: {
+            begin: () => Math.floor(Math.random() * 200),
+        },
+        invariant({ ctx }) {
+            // checked after every transition — throw to fail
+            if ((ctx as any).balance < 0) {
+                throw new Error("balance went negative");
+            }
+        },
+    }
+);
+```
+
+On failure, `WalkFailureError` carries the seed, step number, and full input sequence. Pass the seed back to replay the exact walk that failed:
+
+```ts
+try {
+    walkAll(factory, config);
+} catch (err) {
+    if (err instanceof WalkFailureError) {
+        // err.seed, err.step, err.state, err.inputSequence
+        // Replay: walkAll(factory, { ...config, seed: err.seed })
+    }
+}
+```
+
+Both `Fsm` and `BehavioralFsm` are supported. See the [docs](https://machina-js.org/tools/machina-test/) for full configuration reference, payload generators, input filtering, and BehavioralFsm client factories.
+
 ## See also
 
-- [machina-inspect](https://www.npmjs.com/package/machina-inspect) — the graph analysis engine these matchers are built on
+- [machina-inspect](https://www.npmjs.com/package/machina-inspect) — the graph analysis engine the matchers are built on
 - [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina) — catch structural issues at lint time in your editor
-- [testing-with-machina-test example](../../examples/testing-with-machina-test/) — full working example with flat and hierarchical FSMs
+- [testing-with-machina-test example](../../examples/testing-with-machina-test/) — full working example with matchers and walkAll
 
 ## License
 

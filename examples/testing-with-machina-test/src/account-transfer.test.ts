@@ -58,6 +58,13 @@ describe("walkAll — minimal usage", () => {
 // the "begin" handler always gets amount=0. That's boring. The `inputs`
 // config lets you supply a generator per input name so randomized payloads
 // exercise the real code paths.
+//
+// ⚠️ Important: the seed controls which INPUT NAME is picked each step,
+// NOT what payload generators return. If you use Math.random() in a
+// generator (like below), payloads will differ across runs even with the
+// same seed. That's fine for a test that should always pass — but if you
+// need to replay a failure exactly, your generators must be deterministic
+// too (see the seed replay example below for the right pattern).
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("walkAll — payload generators", () => {
@@ -68,6 +75,8 @@ describe("walkAll — payload generators", () => {
             seed: 7,
             // "begin" gets a random transfer amount between 0 and 200.
             // "reset" doesn't need a payload — omit it.
+            // Using Math.random() here is fine because this test should always
+            // pass regardless of amounts — the guard prevents overdraft.
             inputs: {
                 begin: () => Math.floor(Math.random() * 200),
             },

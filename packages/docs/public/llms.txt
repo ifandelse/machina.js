@@ -30,7 +30,7 @@ machina v6 is a ground-up TypeScript rewrite. Handlers receive `{ ctx, inputName
 ## Tools
 
 - [machina-inspect](https://machina-js.org/tools/machina-inspect/): Static analysis for FSM configs — builds a directed graph IR, runs structural checks (unreachable states, _onEnter loops, missing handlers), exports graph for downstream tools
-- [machina-test](https://machina-js.org/tools/machina-test/): Jest/Vitest custom matchers for testing FSM graph topology — toHaveNoUnreachableStates, toAlwaysReach(target, { from }), toNeverReach(target, { from }). Built on machina-inspect. Zero ceremony beyond `import "machina-test"`
+- [machina-test](https://machina-js.org/tools/machina-test/): Jest/Vitest testing tools — graph topology matchers (toHaveNoUnreachableStates, toAlwaysReach, toNeverReach) and `walkAll` for property-based runtime testing with randomized inputs, seeded PRNG for deterministic replay, payload generators, and invariant checking after every transition
 - [ESLint Plugin](https://machina-js.org/tools/eslint-plugin/): eslint-plugin-machina — surfaces machina-inspect findings inline in your editor via ESLint 9 flat config. Three rules: unreachable-state (warn), onenter-loop (error), missing-handler (off)
 
 ## Migration
