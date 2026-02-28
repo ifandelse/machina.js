@@ -481,18 +481,28 @@ describe("Fsm", () => {
     // =========================================================================
 
     describe("context", () => {
-        describe("when a handler mutates ctx", () => {
+        describe("when accessed via fsm.context before any handle calls", () => {
+            let result: any;
+
+            beforeEach(() => {
+                result = fsm.context;
+            });
+
+            it("should return the initial context object", () => {
+                expect(result).toEqual({ ticks: 0, entered: "green", exited: "" });
+            });
+        });
+
+        describe("when a handler mutates ctx and fsm.context is read afterward", () => {
             beforeEach(() => {
                 fsm.handle("tick");
                 fsm.handle("tick");
                 fsm.handle("tick");
             });
 
-            it("should persist mutations across handle calls", () => {
-                // 3 ticks → ticks should be 3
-                // (We can't directly access context, but we can verify via
-                // another handler that reads it, or just trust the mutation.)
-                // The handler increments ctx.ticks, so after 3 calls it's 3.
+            it("should reflect the mutations on fsm.context", () => {
+                // tick increments ctx.ticks each call — context is same object reference
+                expect(fsm.context.ticks).toBe(3);
             });
         });
 

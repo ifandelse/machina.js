@@ -42,7 +42,11 @@ export class Fsm<TCtx extends object, TStateNames extends string, TInputNames ex
     // so ChildLink wrapping done by wrapChildLinks() is reflected automatically.
     readonly states: Record<string, Record<string, unknown>>;
     private readonly bfsm: BehavioralFsm<TCtx, TStateNames, TInputNames>;
-    private readonly context: TCtx;
+    // Public readonly so external tooling (and walkAll's invariant) can read
+    // context without needing to plumb it through every call site. The context
+    // is already visible inside handlers via ctx — this just makes it accessible
+    // from outside the FSM instance too.
+    readonly context: TCtx;
     // FsmEventMap is an interface, which lacks the implicit index signature
     // that Emitter's Record<string, unknown> constraint needs. The mapped type
     // BehavioralFsmEventMap doesn't have this issue. Intersect with Record to

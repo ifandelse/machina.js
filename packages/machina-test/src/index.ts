@@ -17,3 +17,9 @@ expect.extend({ toHaveNoUnreachableStates, toAlwaysReach, toNeverReach });
 
 // Re-export the options type so consumers can import it alongside the package
 export type { ReachabilityOptions } from "./types";
+
+// walkAll is a standalone function — no side-effect registration needed.
+// Import it directly: import { walkAll } from "machina-test"
+export { walkAll } from "./walk";
+export type { WalkConfig, InvariantArgs, WalkResult } from "./walk";
+export { WalkFailureError } from "./walk";
