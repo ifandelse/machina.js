@@ -154,6 +154,8 @@ connFsm.handle(connB, "failed"); // connB: "disconnected", retries: 1
 
 **[machina-inspect](./packages/machina-inspect/)** — Static analysis for FSM configs. Parses configs into a directed graph IR and runs structural checks (unreachable states, `_onEnter` loops, missing handlers). Use it programmatically or as the engine behind the tools below.
 
+**[machina-test](./packages/machina-test/)** — Jest/Vitest custom matchers for testing FSM graph topology. Assert reachability, catch dead states, and verify structural invariants from your test suite. Zero ceremony beyond `import "machina-test"`.
+
 **[eslint-plugin-machina](./packages/eslint-plugin-machina/)** — ESLint plugin that surfaces machina-inspect findings inline in your editor. Three rules, one import to set up.
 
 **[machina-explorer](./examples/machina-explorer/)** — Browser-based paste-and-analyze tool. Paste an FSM config, run checks, and render a mermaid state diagram. No install required.
@@ -175,6 +177,7 @@ machina.js/
   packages/
     machina/              # core library (npm: "machina")
     machina-inspect/      # static analysis for FSM configs
+    machina-test/         # Jest/Vitest custom matchers for FSM testing
     eslint-plugin-machina/ # ESLint plugin wrapping machina-inspect
     docs/                 # Astro Starlight documentation site
   examples/
@@ -184,6 +187,7 @@ machina.js/
     shopping-cart/        # defer() showcase
     with-react/           # React integration example
     machina-explorer/     # interactive FSM inspector + diagram visualizer
+    testing-with-machina-test/ # machina-test matcher usage examples
 ```
 
 ---

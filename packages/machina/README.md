@@ -270,6 +270,7 @@ fsm.dispose({ preserveChildren: true }); // leave child FSMs running
 ## Companion tools
 
 - [machina-inspect](https://www.npmjs.com/package/machina-inspect) — static analysis for FSM configs: unreachable states, `_onEnter` loops, missing handlers.
+- [machina-test](https://www.npmjs.com/package/machina-test) — Jest/Vitest custom matchers for testing FSM graph topology. Assert reachability and catch dead states from your test suite.
 - [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina) — ESLint plugin wrapping machina-inspect for inline editor feedback.
 
 ## Full documentation

@@ -100,7 +100,11 @@ export default defineConfig({
                 },
                 {
                     label: "Tools",
-                    items: [{ slug: "tools/machina-inspect" }, { slug: "tools/eslint-plugin" }],
+                    items: [
+                        { slug: "tools/machina-inspect" },
+                        { slug: "tools/machina-test" },
+                        { slug: "tools/eslint-plugin" },
+                    ],
                 },
                 {
                     label: "Migration",

@@ -760,7 +760,7 @@ machina caps transition depth at 20 to prevent infinite `_onEnter → return "ne
 
 ## Companion Tools
 
-machina ships with two companion packages for catching structural issues in FSM configs at dev time.
+machina ships with companion packages for catching structural issues in FSM configs at dev time and testing graph topology in your test suite.
 
 ### machina-inspect
 
@@ -830,6 +830,36 @@ interface TransitionEdge {
 
 - npm: https://www.npmjs.com/package/machina-inspect
 - Docs: https://machina-js.org/tools/machina-inspect/
+
+### machina-test
+
+Jest/Vitest custom matchers for testing FSM graph topology. Built on machina-inspect. Zero ceremony beyond `import "machina-test"`.
+
+```bash
+npm install --save-dev machina-test
+```
+
+**Three matchers:**
+
+```ts
+import "machina-test";
+
+// Assert every state is reachable from initialState
+expect(fsm).toHaveNoUnreachableStates();
+
+// Assert a path exists from A to B (graph topology, not runtime certainty)
+expect(fsm).toAlwaysReach("delivered", { from: "placed" });
+
+// Assert no path exists from A to B
+expect(fsm).toNeverReach("shipped", { from: "cancelled" });
+```
+
+`toAlwaysReach` and `toNeverReach` operate on the top-level graph only — they don't traverse into `_child` FSMs. To test a child FSM, pass it directly to `expect()`. `toHaveNoUnreachableStates` does recurse into children via `inspectGraph()`.
+
+Invalid state names produce clean test failures with available state lists, not thrown exceptions.
+
+- npm: https://www.npmjs.com/package/machina-test
+- Docs: https://machina-js.org/tools/machina-test/
 
 ### eslint-plugin-machina
 

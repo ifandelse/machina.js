@@ -3,7 +3,7 @@ title: Examples Overview
 description: Runnable example applications demonstrating machina patterns.
 ---
 
-machina ships with six runnable example apps covering real-world patterns — from async health checks to React integration. Each one is a self-contained app you can run locally, and on the deployed docs site they're live at their own routes.
+machina ships with seven runnable examples covering real-world patterns — from async health checks to React integration to test suite patterns. Each one is a self-contained app you can run locally, and on the deployed docs site they're live at their own routes.
 
 ## Examples
 
@@ -15,6 +15,7 @@ machina ships with six runnable example apps covering real-world patterns — fr
 | [Shopping Cart](/examples/shopping-cart/)               | Checkout flow with deferred operations                        | `createFsm`, `defer()`, `defer({ until })`, lifecycle hooks                             |
 | [With React](/examples/with-react/)                     | React integration for a todo app                              | `createFsm`, `useSyncExternalStore`, framework integration                              |
 | [machina-explorer](/examples/machina-explorer/)         | Interactive FSM inspector and state diagram visualizer        | `buildStateGraph`, `inspectGraph`, mermaid `stateDiagram-v2`, CodeMirror 6              |
+| Testing with machina-test                               | machina-test matcher usage and hierarchical FSM testing       | `machina-test` matchers, `toAlwaysReach`, `toNeverReach`, `toHaveNoUnreachableStates`   |
 
 ## Try them live
 
@@ -32,4 +33,6 @@ pnpm --filter @machina-examples/connectivity dev
 cd examples/connectivity && pnpm dev
 ```
 
-Swap `connectivity` for any of the example names: `traffic-intersection`, `dungeon-critters`, `shopping-cart`, `with-react`, or `machina-explorer`.
+Swap `connectivity` for any of the example names: `traffic-intersection`, `dungeon-critters`, `shopping-cart`, `with-react`, `machina-explorer`, or `testing-with-machina-test`.
+
+The `testing-with-machina-test` example is test-only (no Vite dev server) — run it with `pnpm --filter @machina-examples/testing-with-machina-test test`.

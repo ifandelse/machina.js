@@ -177,6 +177,7 @@ type Finding = UnreachableFinding | OnEnterLoopFinding | MissingHandlerFinding;
 
 ## See also
 
+- [machina-test](https://www.npmjs.com/package/machina-test) — Jest/Vitest custom matchers built on machina-inspect's graph analysis
 - [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina) — get these checks inline in your editor via ESLint
 - [machina-explorer](https://machina-js.org/examples/machina-explorer/) — browser-based paste-and-analyze UI built on machina-inspect
 

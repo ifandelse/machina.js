@@ -21,8 +21,11 @@ packages/
       behavioral-fsm.ts # BehavioralFsm class + createBehavioralFsm factory
       emitter.ts        # Minimal event emitter
       *.test.ts         # Tests live alongside source
+  machina-inspect/  # Static analysis — graph IR + structural checks
+  machina-test/     # Jest/Vitest custom matchers for FSM testing
+  eslint-plugin-machina/ # ESLint plugin wrapping machina-inspect
   docs/             # Astro Starlight documentation site
-examples/           # 5 working examples (connectivity, dungeon-critters, etc.)
+examples/           # Working examples (connectivity, dungeon-critters, etc.)
 ```
 
 The core library is ~1000 lines of TypeScript across 5 files.

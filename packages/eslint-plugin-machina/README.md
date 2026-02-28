@@ -138,6 +138,12 @@ Child FSM references on `_child` are resolved when they're:
 
 Cross-module imports and `let`/`var` bindings are silently skipped — no false positives, just no analysis for those cases.
 
+## See also
+
+- [machina-inspect](https://www.npmjs.com/package/machina-inspect) — programmatic API for the same structural checks
+- [machina-test](https://www.npmjs.com/package/machina-test) — Jest/Vitest custom matchers for graph-level assertions in your test suite
+- [machina-explorer](https://machina-js.org/examples/machina-explorer/) — browser-based paste-and-analyze UI
+
 ## License
 
 MIT

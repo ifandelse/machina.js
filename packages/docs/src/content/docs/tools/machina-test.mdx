@@ -1,0 +1,165 @@
+---
+title: machina-test
+description: Jest/Vitest custom matchers for testing machina FSM graph topology.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+machina-test provides three custom matchers for Jest and Vitest that let you assert FSM graph topology directly in your test suite. No mocking internals or elaborate setup choreography — just `import "machina-test"` and write assertions.
+
+Built on [machina-inspect](/tools/machina-inspect/). The matchers build a `StateGraph` from your FSM instance and run BFS-based reachability checks against it.
+
+## Install
+
+```bash
+npm install --save-dev machina-test
+# or
+pnpm add -D machina-test
+```
+
+`machina` >= 6.1.0 is a peer dependency. Either `jest` or `vitest` must be available as the host test runner.
+
+## Setup
+
+Import `machina-test` in your test files. The import registers the matchers via `expect.extend()` as a side effect:
+
+```ts
+import "machina-test";
+```
+
+Or add it to your test runner's setup file (`jest.setup.ts` / `vitest.setup.ts`) to make the matchers available everywhere.
+
+TypeScript users get autocomplete automatically — the package ships ambient type augmentation for both `jest.Matchers` and Vitest's `Assertion<T>`.
+
+## Matchers
+
+### `toHaveNoUnreachableStates()`
+
+Asserts that every state in the FSM is reachable from `initialState`.
+
+```ts
+import "machina-test";
+import { createFsm } from "machina";
+
+const fsm = createFsm({
+    id: "traffic-light",
+    initialState: "green",
+    states: {
+        green: { timeout: "yellow" },
+        yellow: { timeout: "red" },
+        red: { timeout: "green" },
+    },
+});
+
+expect(fsm).toHaveNoUnreachableStates(); // passes
+```
+
+This matcher delegates to `inspectGraph()` and filters for `unreachable-state` findings. It **recurses into child FSM graphs** — an orphaned state in a `_child` FSM surfaces as a failure when called on the parent.
+
+### `toAlwaysReach(targetState, { from })`
+
+Asserts that a path exists from `from` to `targetState` in the FSM's top-level graph.
+
+```ts
+expect(fsm).toAlwaysReach("delivered", { from: "placed" });
+```
+
+BFS follows all edges — both `"definite"` (string shorthand, single return) and `"possible"` (conditional returns). The question is "does the plumbing exist?", not "will this path definitely execute at runtime?"
+
+<Aside type="note">
+    "Always" refers to graph topology, not runtime certainty. A pass means a path exists in the
+    graph. Whether it executes depends on which handlers fire and what conditions they evaluate.
+</Aside>
+
+### `toNeverReach(targetState, { from })`
+
+Asserts that **no** path exists from `from` to `targetState`. The logical inverse of `toAlwaysReach`.
+
+```ts
+// Terminal states should stay terminal
+expect(fsm).toNeverReach("shipped", { from: "cancelled" });
+```
+
+### `.not` variants
+
+Standard Jest/Vitest negation works as expected:
+
+```ts
+expect(fsm).not.toAlwaysReach("shipped", { from: "cancelled" }); // no path exists
+expect(fsm).not.toNeverReach("delivered", { from: "placed" }); // a path does exist
+```
+
+### Invalid state names
+
+Typos in state names produce clean test failures (not thrown exceptions) with actionable messages listing available states:
+
+```
+State 'shiped' does not exist in FSM 'order-workflow'.
+Available states: placed, validating, processing, shipped, delivered, cancelled, refunded.
+```
+
+## Testing hierarchical FSMs
+
+`toAlwaysReach` and `toNeverReach` operate on the **top-level graph only**. They do not traverse into `_child` FSMs.
+
+The pattern: test parent and child independently by passing each to `expect()` separately.
+
+```ts
+import "machina-test";
+import { createFsm } from "machina";
+
+// Create the child FSM
+const paymentFsm = createFsm({
+    id: "payment",
+    initialState: "entering-details",
+    context: {},
+    states: {
+        "entering-details": { "submit-payment": "processing" },
+        processing: { success: "authorized", failure: "declined" },
+        authorized: {},
+        declined: { retry: "entering-details" },
+    },
+});
+
+// Create the parent FSM with the child
+const checkoutFsm = createFsm({
+    id: "checkout",
+    initialState: "browsing",
+    context: {},
+    states: {
+        browsing: { "begin-checkout": "checkout" },
+        checkout: {
+            _child: paymentFsm,
+            "order-placed": "confirmation",
+            abandon: "browsing",
+        },
+        confirmation: { "new-order": "browsing" },
+    },
+});
+
+// Test the PARENT — only sees browsing, checkout, confirmation
+expect(checkoutFsm).toAlwaysReach("confirmation", { from: "browsing" });
+
+// Test the CHILD — only sees entering-details, processing, authorized, declined
+expect(paymentFsm).toAlwaysReach("authorized", { from: "entering-details" });
+expect(paymentFsm).toNeverReach("entering-details", { from: "authorized" });
+```
+
+<Aside type="tip">
+    `toHaveNoUnreachableStates()` is the one matcher that **does** recurse into children. Calling it
+    on the parent validates both the parent and child graphs in a single assertion.
+</Aside>
+
+### Why top-level only?
+
+Consider a parent with state `"checkout"` and a child with state `"processing"`. What would `toAlwaysReach("processing", { from: "browsing" })` mean?
+
+- "Can the parent reach a state called `processing`?" — No, it doesn't have one. But the child does.
+- "Can `browsing` eventually lead to the child's `processing`?" — That's a composite-state question, not a graph-topology question.
+
+By keeping reachability matchers top-level-only, the answer is always unambiguous: you're asking about the states in the graph you passed to `expect()`.
+
+## See also
+
+- [machina-inspect](/tools/machina-inspect/) — the graph analysis engine these matchers are built on
+- [ESLint plugin](/tools/eslint-plugin/) — catch structural issues at lint time in your editor
