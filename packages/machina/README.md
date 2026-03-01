@@ -2,6 +2,10 @@
 
 Focused finite state machines for JavaScript and TypeScript. States in, states out.
 
+## Full documentation
+
+https://machina-js.org
+
 ## Install
 
 ```
@@ -273,10 +277,6 @@ fsm.dispose({ preserveChildren: true }); // leave child FSMs running
 - [machina-test](https://www.npmjs.com/package/machina-test) — Jest/Vitest custom matchers for testing FSM graph topology. Assert reachability and catch dead states from your test suite.
 - [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina) — ESLint plugin wrapping machina-inspect for inline editor feedback.
 
-## Full documentation
-
-https://machina-js.org
-
 ## License
 
-MIT
+MIT + GPL-2.0

@@ -70,6 +70,11 @@ export default defineConfig({
                     label: "GitHub",
                     href: "https://github.com/ifandelse/machina.js",
                 },
+                {
+                    icon: "npm",
+                    label: "npm",
+                    href: "https://www.npmjs.com/package/machina",
+                },
             ],
             sidebar: [
                 {
