@@ -96,7 +96,7 @@ function createPhaseController(id: string) {
 
     const controller = createFsm({
         id,
-        initialState: "green",
+        initialState: "red",
         context: {
             greenTimer: null,
             interruptibleTimer: null,
