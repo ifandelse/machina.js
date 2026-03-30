@@ -29,6 +29,9 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 
+# pnpm store (devcontainer fallback)
+.pnpm-store/
+
 # misc
 .DS_Store
 *.pem
