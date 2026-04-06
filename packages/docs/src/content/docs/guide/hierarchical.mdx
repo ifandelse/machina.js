@@ -93,7 +93,7 @@ uploader.handle("start");
 uploader.compositeState(); // "active.preparing" — fresh start
 ```
 
-Re-entering a parent state always starts the child fresh. There is no way to "resume" a child mid-way — if you need that, model it explicitly in your state machine.
+Re-entering a parent state always starts the child fresh. To restore a client at a specific point in a child hierarchy without triggering lifecycle hooks, use [`rehydrate()`](/guide/behavioral-fsm/#rehydrating-persisted-clients) with a composite dot-path — e.g. `fsm.rehydrate(client, "active.uploading")`.
 
 ## Disposal
 

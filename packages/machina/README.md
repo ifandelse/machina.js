@@ -124,7 +124,23 @@ connFsm.currentState(connA); // "connecting"
 connFsm.currentState(connB); // "disconnected"
 ```
 
-`BehavioralFsm` has the same API as `Fsm`, except every method takes the client object as its first argument.
+`BehavioralFsm` has the same API as `Fsm`, except every method takes the client object as its first argument. It also adds `rehydrate(client, compositeState)` for restoring previously-serialized clients without triggering lifecycle hooks or events.
+
+### Rehydrating persisted clients
+
+`rehydrate()` places a client at a known state with no lifecycle activity — no `_onEnter`, no events. It accepts the same dot-path format that `compositeState()` produces, enabling cold-resume workflows where clients are serialized to external storage and later restored.
+
+```ts
+// Persist
+const snapshot = { client: connA, state: connFsm.compositeState(connA) };
+
+// Restore (possibly a different process)
+const { client, state } = JSON.parse(stored);
+connFsm.rehydrate(client, state); // silent — no _onEnter, no events
+connFsm.handle(client, "retry"); // proceeds from restored state
+```
+
+For hierarchical FSMs, pass the dot-delimited path: `fsm.rehydrate(client, "active.uploading.retrying")`. Throws on invalid states or structural mismatches.
 
 ## Hierarchical states
 
