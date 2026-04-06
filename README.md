@@ -185,6 +185,7 @@ machina.js/
     traffic-intersection/ # hierarchical FSM with child states
     dungeon-critters/     # createBehavioralFsm example
     shopping-cart/        # defer() showcase
+    job-queue/            # BehavioralFsm rehydrate() persist/restore pattern
     with-react/           # React integration example
     machina-explorer/     # interactive FSM inspector + diagram visualizer
     testing-with-machina-test/ # machina-test matcher usage examples

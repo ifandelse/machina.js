@@ -53,10 +53,10 @@ export const STEP_DURATION_MS = 2000;
 
 /**
  * Probability (0–1) that a tick results in a random failure.
- * 0.15 = 15% per tick — enough to show the failed → retry cycle
- * without making every job fail immediately.
+ * 0.05 = 5% per tick — enough to occasionally show the failed → retry
+ * cycle without making every other job fail.
  */
-export const FAILURE_CHANCE = 0.15;
+export const FAILURE_CHANCE = 0.05;
 
 // -----------------------------------------------------------------------------
 // Job limits

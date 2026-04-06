@@ -271,32 +271,6 @@ describe("Job Queue FSM (fsm.ts)", () => {
     });
 
     // =========================================================================
-    // timer cleared on _onExit from processing
-    // =========================================================================
-
-    describe("processing state — timer cleanup on exit", () => {
-        describe("when the job pauses (exiting processing)", () => {
-            let job: any;
-
-            beforeEach(() => {
-                jest.spyOn(Math, "random").mockReturnValue(0.9);
-                job = makeJob();
-                fsm.handle(job, "initialize");
-                fsm.handle(job, "start");
-
-                // Confirm timer is running
-                expect(job.timer).not.toBeNull();
-
-                fsm.handle(job, "pause");
-            });
-
-            it("should clear the timer via _onExit", () => {
-                expect(job.timer).toBeNull();
-            });
-        });
-    });
-
-    // =========================================================================
     // rehydrate() — silent state restoration
     // =========================================================================
 
@@ -416,6 +390,242 @@ describe("Job Queue FSM (fsm.ts)", () => {
 
             it("should not fail when random equals FAILURE_CHANCE exactly", () => {
                 expect(fsm.currentState(job)).toBe("processing");
+            });
+        });
+    });
+
+    // =========================================================================
+    // rehydrate() — all remaining persisted states
+    // =========================================================================
+
+    describe("rehydrate() into paused state", () => {
+        describe("when a client is rehydrated into paused", () => {
+            let job: any;
+            let transitionedEvents: any[];
+
+            beforeEach(() => {
+                job = makeJob();
+                transitionedEvents = [];
+                fsm.on("transitioned", (data: any) => transitionedEvents.push(data));
+                fsm.rehydrate(job, "paused");
+            });
+
+            it("should place client in paused state", () => {
+                expect(fsm.currentState(job)).toBe("paused");
+            });
+
+            it("should not emit transitioned events", () => {
+                expect(transitionedEvents).toHaveLength(0);
+            });
+
+            it("should not start a timer", () => {
+                expect(job.timer).toBeNull();
+            });
+        });
+
+        describe("when resume is dispatched after rehydrating into paused", () => {
+            let job: any;
+
+            beforeEach(() => {
+                jest.spyOn(Math, "random").mockReturnValue(0.9);
+                job = makeJob();
+                fsm.rehydrate(job, "paused");
+                fsm.handle(job, "resume");
+            });
+
+            it("should transition to processing", () => {
+                expect(fsm.currentState(job)).toBe("processing");
+            });
+
+            it("should start the tick timer via _onEnter", () => {
+                expect(job.timer).not.toBeNull();
+            });
+        });
+    });
+
+    describe("rehydrate() into failed state", () => {
+        describe("when a client is rehydrated into failed", () => {
+            let job: any;
+            let handlingEvents: any[];
+
+            beforeEach(() => {
+                job = makeJob({ currentStep: 3 });
+                handlingEvents = [];
+                fsm.on("handling", (data: any) => handlingEvents.push(data));
+                fsm.rehydrate(job, "failed");
+            });
+
+            it("should place client in failed state", () => {
+                expect(fsm.currentState(job)).toBe("failed");
+            });
+
+            it("should not emit handling events", () => {
+                expect(handlingEvents).toHaveLength(0);
+            });
+
+            it("should not modify currentStep", () => {
+                expect(job.currentStep).toBe(3);
+            });
+        });
+
+        describe("when retry is dispatched after rehydrating into failed", () => {
+            let job: any;
+
+            beforeEach(() => {
+                jest.spyOn(Math, "random").mockReturnValue(0.9);
+                job = makeJob({ currentStep: 3 });
+                fsm.rehydrate(job, "failed");
+                fsm.handle(job, "retry");
+            });
+
+            it("should reset currentStep to 0", () => {
+                expect(job.currentStep).toBe(0);
+            });
+
+            it("should transition to processing", () => {
+                expect(fsm.currentState(job)).toBe("processing");
+            });
+        });
+    });
+
+    // =========================================================================
+    // startTicker guard — timer already running when startTicker is called
+    // =========================================================================
+
+    describe("startTicker guard — existing timer cleared before restart", () => {
+        describe("when resume is dispatched while already in processing with an active timer", () => {
+            let job: any;
+            let timerBeforeResume: any;
+
+            beforeEach(() => {
+                jest.spyOn(Math, "random").mockReturnValue(0.9);
+                job = makeJob();
+                fsm.handle(job, "initialize");
+                fsm.handle(job, "start");
+                // Timer is running. Capture the handle to verify it gets replaced.
+                timerBeforeResume = job.timer;
+                fsm.handle(job, "resume");
+            });
+
+            it("should remain in processing", () => {
+                expect(fsm.currentState(job)).toBe("processing");
+            });
+
+            it("should replace the old timer with a new one", () => {
+                expect(job.timer).not.toBeNull();
+                expect(job.timer).not.toBe(timerBeforeResume);
+            });
+        });
+    });
+
+    // =========================================================================
+    // Boundary: job with currentStep already at totalSteps when tick fires
+    // =========================================================================
+
+    describe("tick handler — currentStep already at totalSteps when tick fires", () => {
+        describe("when a job starts with currentStep equal to totalSteps", () => {
+            let job: any;
+
+            beforeEach(() => {
+                jest.spyOn(Math, "random").mockReturnValue(0.9);
+                job = makeJob({ currentStep: TOTAL_STEPS });
+                fsm.handle(job, "initialize");
+                fsm.handle(job, "start");
+                jest.advanceTimersByTime(STEP_DURATION_MS);
+            });
+
+            it("should complete on the first tick", () => {
+                expect(fsm.currentState(job)).toBe("completed");
+            });
+
+            it("should clear the timer on completion", () => {
+                expect(job.timer).toBeNull();
+            });
+        });
+    });
+
+    // =========================================================================
+    // Multiple jobs — independent state tracking via WeakMap
+    // =========================================================================
+
+    describe("multiple jobs — independent state tracking", () => {
+        describe("when two jobs are processed concurrently and one fails", () => {
+            let jobA: any;
+            let jobB: any;
+            let mockRandom: any;
+
+            beforeEach(() => {
+                mockRandom = jest.spyOn(Math, "random");
+                jobA = makeJob({ id: 1, name: "Ghostbusters Job" });
+                jobB = makeJob({ id: 2, name: "Ferris Bueller Job" });
+
+                // Both start in processing
+                fsm.handle(jobA, "initialize");
+                fsm.handle(jobB, "initialize");
+                fsm.handle(jobA, "start");
+                fsm.handle(jobB, "start");
+
+                // On next tick, jobA fails, jobB succeeds
+                // We need to control which job's tick calls get which random value.
+                // The tick handler calls Math.random() once per tick, so we alternate.
+                let callCount = 0;
+                mockRandom.mockImplementation(() => {
+                    callCount++;
+                    // jobA ticks first (it was started first), jobB ticks second
+                    return callCount % 2 === 1 ? 0 : 0.9;
+                });
+
+                jest.advanceTimersByTime(STEP_DURATION_MS);
+            });
+
+            it("should fail jobA", () => {
+                expect(fsm.currentState(jobA)).toBe("failed");
+            });
+
+            it("should keep jobB in processing", () => {
+                expect(fsm.currentState(jobB)).toBe("processing");
+            });
+
+            it("should clear jobA timer and keep jobB timer active", () => {
+                expect(jobA.timer).toBeNull();
+                expect(jobB.timer).not.toBeNull();
+            });
+        });
+    });
+
+    // =========================================================================
+    // Multiple rapid pause/resume cycles
+    // =========================================================================
+
+    describe("multiple rapid pause/resume cycles", () => {
+        describe("when a job is paused and resumed three times in succession", () => {
+            let job: any;
+
+            beforeEach(() => {
+                jest.spyOn(Math, "random").mockReturnValue(0.9);
+                job = makeJob();
+                fsm.handle(job, "initialize");
+                fsm.handle(job, "start");
+
+                fsm.handle(job, "pause");
+                fsm.handle(job, "resume");
+                fsm.handle(job, "pause");
+                fsm.handle(job, "resume");
+                fsm.handle(job, "pause");
+                fsm.handle(job, "resume");
+            });
+
+            it("should end up in processing after the final resume", () => {
+                expect(fsm.currentState(job)).toBe("processing");
+            });
+
+            it("should have an active timer after the final resume", () => {
+                expect(job.timer).not.toBeNull();
+            });
+
+            it("should still advance currentStep when ticks fire", () => {
+                jest.advanceTimersByTime(STEP_DURATION_MS);
+                expect(job.currentStep).toBe(1);
             });
         });
     });

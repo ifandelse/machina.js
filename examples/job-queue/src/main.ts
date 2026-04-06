@@ -28,9 +28,11 @@
 // =============================================================================
 
 import {
+    INPUT_TICK,
     MAX_JOBS,
     STORAGE_KEY,
     STATE_PROCESSING,
+    STATE_QUEUED,
     TOTAL_STEPS,
     type JobClient,
     type JobState,
@@ -197,23 +199,50 @@ const init = (): (() => void) => {
     // FSM event subscriptions
     // -------------------------------------------------------------------------
 
-    // `transitioned` fires after every state change. This is where we:
-    //   1. Update jobStates map so the UI stays in sync.
-    //   2. Update the affected job's card.
-    //   3. Persist all jobs to localStorage.
-    const transitionedSub = fsm.on("transitioned", (data: unknown) => {
-        const { client, toState } = data as { client: JobClient; toState: JobState };
-        jobStates.set(client.id, toState);
-        updateJobCard(client, toState, handleJobAction);
-        persistJobs();
-    });
+    // Extracted so clear-storage can re-wire after creating a new FSM instance
+    // and the cleanup function always references the live subscription handles.
+    let transitionedSub: { off: () => void };
+    let handledSub: { off: () => void };
+    let handlingSub: { off: () => void };
 
-    // `handling` subscription for debugging — logs which input is being processed.
-    // Matches the pattern in shopping-cart and connectivity examples.
-    const handlingSub = fsm.on("handling", (data: unknown) => {
-        const { inputName, client } = data as { inputName: string; client: JobClient | undefined };
-        console.debug(`[job-queue] handling "${inputName}" for job #${client?.id}`);
-    });
+    const wireFsmSubscriptions = (): void => {
+        // `transitioned` fires after every state change. This is where we:
+        //   1. Update jobStates map so the UI stays in sync.
+        //   2. Update the affected job's card.
+        //   3. Persist all jobs to localStorage.
+        transitionedSub = fsm.on("transitioned", (data: unknown) => {
+            const { client, toState } = data as { client: JobClient; toState: JobState };
+            jobStates.set(client.id, toState);
+            updateJobCard(client, toState, handleJobAction);
+            persistJobs();
+        });
+
+        // `handled` fires after every input — including ticks that stay in
+        // processing. Without this, the progress bar only updates when the
+        // job transitions to a different state (completed/failed/paused).
+        handledSub = fsm.on("handled", (data: unknown) => {
+            const { client, inputName } = data as { client: JobClient; inputName: string };
+            if (inputName === INPUT_TICK) {
+                const state = jobStates.get(client.id);
+                if (state) {
+                    updateJobCard(client, state, handleJobAction);
+                    persistJobs();
+                }
+            }
+        });
+
+        // `handling` subscription for debugging — logs which input is being processed.
+        // Matches the pattern in shopping-cart and connectivity examples.
+        handlingSub = fsm.on("handling", (data: unknown) => {
+            const { inputName, client } = data as {
+                inputName: string;
+                client: JobClient | undefined;
+            };
+            console.debug(`[job-queue] handling "${inputName}" for job #${client?.id}`);
+        });
+    };
+
+    wireFsmSubscriptions();
 
     // -------------------------------------------------------------------------
     // DOM event wiring
@@ -240,7 +269,7 @@ const init = (): (() => void) => {
         fsm.handle(job, "initialize");
 
         jobs.push(job);
-        jobStates.set(job.id, "queued");
+        jobStates.set(job.id, STATE_QUEUED);
         persistJobs();
 
         // Re-render the full list — simpler than trying to insert one card
@@ -264,21 +293,7 @@ const init = (): (() => void) => {
         renderEmptyState();
         setAddJobEnabled(true);
 
-        // Re-wire FSM subscriptions on the new instance
-        fsm.on("transitioned", (data: unknown) => {
-            const { client, toState } = data as { client: JobClient; toState: JobState };
-            jobStates.set(client.id, toState);
-            updateJobCard(client, toState, handleJobAction);
-            persistJobs();
-        });
-
-        fsm.on("handling", (data: unknown) => {
-            const { inputName, client } = data as {
-                inputName: string;
-                client: JobClient | undefined;
-            };
-            console.debug(`[job-queue] handling "${inputName}" for job #${client?.id}`);
-        });
+        wireFsmSubscriptions();
     });
 
     // -------------------------------------------------------------------------
@@ -299,6 +314,7 @@ const init = (): (() => void) => {
 
     return () => {
         transitionedSub.off();
+        handledSub.off();
         handlingSub.off();
         removeAddJob();
         removeClearStorage();
