@@ -1,6 +1,6 @@
 {
     "name": "@machina-examples/machina-explorer",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "private": true,
     "description": "machina-explorer — paste an FSM config, inspect it, and visualize the state graph",
     "scripts": {

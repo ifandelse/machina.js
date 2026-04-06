@@ -1,5 +1,11 @@
 # machina
 
+## 6.3.0
+
+### Minor Changes
+
+- Added BehavioralFsm.rehydrate
+
 ## 6.2.0
 
 ### Minor Changes

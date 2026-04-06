@@ -1,5 +1,11 @@
 # eslint-plugin-machina
 
+## 0.1.3
+
+### Patch Changes
+
+- machina-inspect@3.0.0
+
 ## 0.1.2
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @machina-examples/machina-explorer
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies
+    - machina@6.3.0
+    - machina-inspect@3.0.0
+
 ## 0.0.3
 
 ### Patch Changes

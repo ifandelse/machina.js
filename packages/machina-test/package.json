@@ -1,6 +1,6 @@
 {
     "name": "machina-test",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Jest/Vitest custom matchers for testing machina FSMs.",
     "author": "Jim Cowart (http://ifandelse.com)",
     "license": "MIT",
@@ -55,7 +55,7 @@
     },
     "peerDependencies": {
         "jest": ">=29",
-        "machina": ">=6.2.0",
+        "machina": ">=6.3.0",
         "vitest": ">=1"
     },
     "peerDependenciesMeta": {

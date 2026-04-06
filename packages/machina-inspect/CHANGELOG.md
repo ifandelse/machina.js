@@ -1,5 +1,12 @@
 # machina-inspect
 
+## 3.0.0
+
+### Patch Changes
+
+- Updated dependencies
+    - machina@6.3.0
+
 ## 2.0.0
 
 ### Patch Changes
