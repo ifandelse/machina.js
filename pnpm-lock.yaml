@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@apogeelabs/the-agency':
-        specifier: 0.4.0
-        version: 0.4.0
+        specifier: 0.11.0
+        version: 0.11.0
       '@changesets/cli':
         specifier: ^2.30.0
         version: 2.30.0(@types/node@25.2.3)
@@ -128,6 +128,31 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+
+  examples/job-queue:
+    dependencies:
+      machina:
+        specifier: workspace:*
+        version: link:../../packages/machina
+    devDependencies:
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      eslint:
+        specifier: ^9.39.4
+        version: 9.39.4
+      jest:
+        specifier: ^30.3.0
+        version: 30.3.0(@types/node@25.2.3)(ts-node@10.9.2(@types/node@25.2.3)(typescript@5.9.3))
+      ts-jest:
+        specifier: ^29.4.6
+        version: 29.4.6(@babel/core@7.29.0)(@jest/transform@30.3.0)(@jest/types@30.3.0)(babel-jest@30.3.0(@babel/core@7.29.0))(jest-util@30.3.0)(jest@30.3.0(@types/node@25.2.3)(ts-node@10.9.2(@types/node@25.2.3)(typescript@5.9.3)))(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^6.3.5
+        version: 6.4.1(@types/node@25.2.3)(tsx@4.21.0)(yaml@2.8.2)
 
   examples/machina-explorer:
     dependencies:
@@ -418,8 +443,8 @@ packages:
   '@antfu/install-pkg@1.1.0':
     resolution: {integrity: sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ==}
 
-  '@apogeelabs/the-agency@0.4.0':
-    resolution: {integrity: sha512-CfzV2rsGNHNKGLB5rI0xN3sneZKQ8G/AWGznNQV+MuYYZ3nppHu5/qJylgM9iCgFrklHCwcJ2DLQbZ/c5wRNlQ==}
+  '@apogeelabs/the-agency@0.11.0':
+    resolution: {integrity: sha512-k8KHrBaeX66ZdbN2kcdehAxhEghxmCz2cUgA8rK8PND9Ol9nlvL6GW20jAcOAd00bG7RirTq9nEtxra2Qia44Q==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -5721,7 +5746,7 @@ snapshots:
       package-manager-detector: 1.6.0
       tinyexec: 1.0.2
 
-  '@apogeelabs/the-agency@0.4.0':
+  '@apogeelabs/the-agency@0.11.0':
     dependencies:
       prompts: 2.4.2
 

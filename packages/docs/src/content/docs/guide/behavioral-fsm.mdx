@@ -100,6 +100,12 @@ parentFsm.rehydrate(client, "active.uploading.retrying");
     grab the state value to persist with your client, use the latter to restore.
 </Aside>
 
+<Aside type="note">
+    The [Job Queue example](/examples/job-queue/) demonstrates the full persist/restore cycle —
+    serializing state to localStorage on every transition and cold-resuming jobs via `rehydrate()`
+    after a page reload.
+</Aside>
+
 ## Events
 
 `BehavioralFsm` emits the same lifecycle events as `Fsm`. The difference is every payload includes a `client` field so you can identify which client the event pertains to:

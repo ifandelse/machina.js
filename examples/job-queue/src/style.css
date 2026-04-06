@@ -1,0 +1,408 @@
+/* =============================================================================
+   style.css — Job Queue demo
+   Conference-talk quality: clear at 1280px, readable on a projector.
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Custom properties — state colors + base palette
+   ----------------------------------------------------------------------------- */
+
+:root {
+    --color-queued: #6b7280;
+    --color-processing: #2563eb;
+    --color-paused: #d97706;
+    --color-failed: #dc2626;
+    --color-completed: #16a34a;
+
+    --color-bg: #f9fafb;
+    --color-surface: #ffffff;
+    --color-border: #e5e7eb;
+    --color-text: #111827;
+    --color-text-muted: #6b7280;
+
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+
+    font-family:
+        system-ui,
+        -apple-system,
+        sans-serif;
+}
+
+/* -----------------------------------------------------------------------------
+   Reset
+   ----------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* -----------------------------------------------------------------------------
+   Page layout
+   ----------------------------------------------------------------------------- */
+
+.page-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Header
+   ----------------------------------------------------------------------------- */
+
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.page-subtitle {
+    font-size: 0.95rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.page-intro {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    max-width: 65ch;
+    line-height: 1.6;
+}
+
+/* -----------------------------------------------------------------------------
+   Controls bar — Add Job + Clear Storage buttons
+   ----------------------------------------------------------------------------- */
+
+.controls-bar {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition:
+        opacity 0.15s,
+        background 0.15s;
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn--primary {
+    background: #1d4ed8;
+    color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) {
+    background: #1e40af;
+}
+
+.btn--secondary {
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.btn--secondary:hover:not(:disabled) {
+    background: #f3f4f6;
+}
+
+/* -----------------------------------------------------------------------------
+   Restored banner
+   ----------------------------------------------------------------------------- */
+
+.restored-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+    color: #1e40af;
+    cursor: pointer;
+}
+
+.restored-banner[hidden] {
+    display: none;
+}
+
+.restored-banner__icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   Job list
+   ----------------------------------------------------------------------------- */
+
+#job-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Job cards
+   ----------------------------------------------------------------------------- */
+
+.job-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    box-shadow: var(--shadow);
+    border-left: 4px solid var(--color-queued);
+    transition: border-color 0.25s;
+}
+
+.job-card--queued {
+    border-left-color: var(--color-queued);
+}
+.job-card--processing {
+    border-left-color: var(--color-processing);
+}
+.job-card--paused {
+    border-left-color: var(--color-paused);
+}
+.job-card--failed {
+    border-left-color: var(--color-failed);
+}
+.job-card--completed {
+    border-left-color: var(--color-completed);
+}
+
+.job-card__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.job-card__name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.job-card__restored-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    /* Fade out after a few seconds — the badge is a hint, not a permanent label */
+    animation: badge-fade 8s forwards;
+}
+
+@keyframes badge-fade {
+    0% {
+        opacity: 1;
+    }
+    70% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.2;
+    }
+}
+
+.job-card__state-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.job-card__state-desc {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+/* -----------------------------------------------------------------------------
+   State badges
+   ----------------------------------------------------------------------------- */
+
+.badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    letter-spacing: 0.03em;
+    transition:
+        background 0.25s,
+        color 0.25s;
+}
+
+.badge--queued {
+    background: #f3f4f6;
+    color: var(--color-queued);
+}
+.badge--processing {
+    background: #dbeafe;
+    color: var(--color-processing);
+}
+.badge--paused {
+    background: #fef3c7;
+    color: var(--color-paused);
+}
+.badge--failed {
+    background: #fee2e2;
+    color: var(--color-failed);
+}
+.badge--completed {
+    background: #dcfce7;
+    color: var(--color-completed);
+}
+
+/* -----------------------------------------------------------------------------
+   Progress bar
+   ----------------------------------------------------------------------------- */
+
+.job-card__progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.job-card__progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #dbeafe;
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+}
+
+.job-card__progress-bar::after {
+    content: "";
+    display: block;
+    height: 100%;
+    width: inherit;
+    background: var(--color-processing);
+    border-radius: 999px;
+    transition: width 0.4s ease;
+}
+
+/* Width is driven by inline style on the element itself — the ::after pseudo
+   inherits it via width: inherit. */
+.job-card__progress-bar {
+    width: 100%; /* container fills available space */
+}
+
+.job-card__progress-bar[style] {
+    width: 100%; /* reset: the bar background is always 100% wide */
+}
+
+/* The actual fill. We drive progress via a data attribute instead of inline
+   style on the ::after, because ::after can't have its own inline styles.
+   We use a CSS custom property set on the parent instead. */
+
+/* Revisited: use a real child element for the fill (simpler, no pseudo tricks) */
+.job-card__progress-fill {
+    height: 6px;
+    background: var(--color-processing);
+    border-radius: 999px;
+    transition: width 0.4s ease;
+    min-width: 0;
+}
+
+.job-card__progress-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    min-width: 3rem;
+    text-align: right;
+}
+
+/* -----------------------------------------------------------------------------
+   Action buttons (inside job cards)
+   ----------------------------------------------------------------------------- */
+
+.job-action-btn {
+    margin-top: 0.25rem;
+    padding: 0.35rem 0.875rem;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    transition: background 0.15s;
+}
+
+.job-action-btn:hover {
+    background: #f3f4f6;
+}
+
+/* -----------------------------------------------------------------------------
+   Empty state
+   ----------------------------------------------------------------------------- */
+
+.empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+}
+
+.empty-state__message {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state__hint {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    opacity: 0.7;
+}
+
+/* -----------------------------------------------------------------------------
+   Responsive tweaks
+   ----------------------------------------------------------------------------- */
+
+@media (max-width: 600px) {
+    .page-wrapper {
+        padding: 1rem;
+    }
+
+    .controls-bar {
+        flex-wrap: wrap;
+    }
+}

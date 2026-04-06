@@ -99,6 +99,7 @@ export default defineConfig({
                         { slug: "examples/traffic-intersection" },
                         { slug: "examples/dungeon-critters" },
                         { slug: "examples/shopping-cart" },
+                        { slug: "examples/job-queue" },
                         { slug: "examples/with-react" },
                         { slug: "examples/machina-explorer" },
                     ],
