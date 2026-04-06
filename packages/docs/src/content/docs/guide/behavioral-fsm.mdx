@@ -45,6 +45,7 @@ Every method takes the client object as its first argument. The rest of the API 
 | `reset(client)`                      | Transition the client back to `initialState`                            |
 | `currentState(client)`               | Returns the client's current state, or `undefined` if never initialized |
 | `compositeState(client)`             | Dot-delimited path including active child FSM states                    |
+| `rehydrate(client, compositeState)`  | Silently place a client at a state — no lifecycle hooks or events       |
 | `on(eventName, callback)`            | Subscribe to a lifecycle event — returns `{ off() }`                    |
 | `emit(eventName, data?)`             | Emit a custom event to subscribers                                      |
 | `dispose(client, options?)`          | Dispose a single client's state entry                                   |
@@ -61,6 +62,43 @@ Every method takes the client object as its first argument. The rest of the API 
 Client state is tracked in a `WeakMap<TClient, ClientMeta>` inside the FSM instance — no properties are added to the client object. When a client is garbage collected, its state entry goes with it automatically. You don't need to clean up.
 
 First contact with a new client (via `handle()`, `transition()`, or `reset()`) runs the full initialization: transitions into `initialState`, fires `_onEnter`, emits lifecycle events. A client the FSM has never seen is transparently initialized on the first call.
+
+## Rehydrating persisted clients
+
+The behavioral pattern naturally supports a cold-resume workflow: serialize the client, store it externally (database, file, message queue), and later feed it back to the FSM. The client is just data — the FSM behavior is stateless.
+
+The problem is placement. When a new process tries to use a deserialized client, `handle()` and `transition()` both trigger initialization at `initialState` first — `_onEnter` fires, events emit, handlers run for states the client should never visit during resume.
+
+`rehydrate()` solves this. It writes the client directly into the FSM's internal tracking at the specified state with no lifecycle activity — no `_onEnter`, no `_onExit`, no events.
+
+```ts
+// ---- Persist ----
+const snapshot = {
+    client: theClient,
+    state: connFsm.compositeState(theClient), // "connecting"
+};
+await db.save(JSON.stringify(snapshot));
+
+// ---- Restore (possibly a different process) ----
+const { client, state } = JSON.parse(await db.load());
+connFsm.rehydrate(client, state); // silent placement
+connFsm.handle(client, "retry"); // proceeds from "connecting"
+```
+
+For hierarchical FSMs, pass the full dot-delimited path from `compositeState()`. `rehydrate()` walks the `_child` chain and places the client at each level:
+
+```ts
+parentFsm.rehydrate(client, "active.uploading.retrying");
+// Parent at "active", child at "uploading", grandchild at "retrying"
+// No _onEnter at any level. No events.
+```
+
+`rehydrate()` throws synchronously on invalid state names or structural mismatches (missing `_child`, Fsm children). Writes are atomic — if validation fails at any level of a composite path, no state is written at any level.
+
+<Aside type="tip">
+    `compositeState()` produces the dot-path string that `rehydrate()` consumes. Use the former to
+    grab the state value to persist with your client, use the latter to restore.
+</Aside>
 
 ## Events
 

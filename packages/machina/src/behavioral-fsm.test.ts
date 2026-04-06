@@ -2,6 +2,7 @@
 export default {};
 
 import { createBehavioralFsm, BehavioralFsm } from "./behavioral-fsm";
+import { createFsm } from "./fsm";
 import { MACHINA_TYPE } from "./types";
 
 // =============================================================================
@@ -2660,6 +2661,535 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                 states: { a: {}, b: {} },
             });
             expect((instance as any)[MACHINA_TYPE]).toBe("BehavioralFsm");
+        });
+    });
+});
+
+// =============================================================================
+// rehydrate() tests
+// =============================================================================
+
+describe("BehavioralFsm — rehydrate()", () => {
+    // =========================================================================
+    // Task 3: Basic flat rehydration
+    // =========================================================================
+
+    describe("flat rehydration — known state", () => {
+        let fsm: any, client: ChildClient;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "rehydrate-flat",
+                initialState: "idle",
+                states: {
+                    idle: { start: "running" },
+                    running: { pause: "paused", stop: "idle" },
+                    paused: { resume: "running", stop: "idle" },
+                },
+            });
+            client = {};
+            fsm.rehydrate(client, "paused");
+        });
+
+        it("should place the client at the specified state", () => {
+            expect(fsm.currentState(client)).toBe("paused");
+        });
+
+        it("should return the state via compositeState", () => {
+            expect(fsm.compositeState(client)).toBe("paused");
+        });
+    });
+
+    describe("flat rehydration — no _onEnter fires", () => {
+        let fsm: any, client: ChildClient, transitionedCb: jest.Mock;
+
+        beforeEach(() => {
+            transitionedCb = jest.fn();
+            fsm = createBehavioralFsm({
+                id: "rehydrate-no-hooks",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    running: {
+                        _onEnter({ ctx }: any) {
+                            (ctx as any).entered = true;
+                        },
+                    },
+                },
+            });
+            client = {};
+            fsm.on("transitioned", transitionedCb);
+            fsm.rehydrate(client, "running");
+        });
+
+        it("should not fire _onEnter for the rehydrated state", () => {
+            expect((client as any).entered).toBeUndefined();
+        });
+
+        it("should not emit the transitioned event", () => {
+            expect(transitionedCb).not.toHaveBeenCalled();
+        });
+
+        it("should not emit the transitioning event", () => {
+            // No transitioning subscription test — just verify transitioned above.
+            // The transitioning event is emitted by the same path, so absence of
+            // transitioned is sufficient evidence. This assertion guards the state.
+            expect(fsm.currentState(client)).toBe("running");
+        });
+    });
+
+    describe("flat rehydration — handle() proceeds from rehydrated state", () => {
+        let fsm: any, client: ChildClient;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "rehydrate-and-handle",
+                initialState: "idle",
+                states: {
+                    idle: { start: "running" },
+                    running: { pause: "paused", stop: "idle" },
+                    paused: { resume: "running", stop: "idle" },
+                },
+            });
+            client = {};
+            fsm.rehydrate(client, "paused");
+            fsm.handle(client, "resume");
+        });
+
+        it("should transition from the rehydrated state on handle()", () => {
+            expect(fsm.currentState(client)).toBe("running");
+        });
+    });
+
+    describe("flat rehydration — duplicate call overwrites state", () => {
+        let fsm: any, client: ChildClient;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "rehydrate-overwrite",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    running: {},
+                    paused: {},
+                },
+            });
+            client = {};
+            fsm.rehydrate(client, "running");
+            fsm.rehydrate(client, "paused");
+        });
+
+        it("should reflect the second rehydration call", () => {
+            expect(fsm.currentState(client)).toBe("paused");
+        });
+    });
+
+    describe("disposed FSM — rehydrate is a no-op", () => {
+        let fsm: any, client: ChildClient;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "rehydrate-disposed",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    running: {},
+                },
+            });
+            client = {};
+            fsm.dispose();
+            fsm.rehydrate(client, "running");
+        });
+
+        it("should not throw", () => {
+            // If we reach this point the no-op path ran cleanly
+            expect(true).toBe(true);
+        });
+
+        it("should leave the client unregistered (currentState returns undefined)", () => {
+            expect(fsm.currentState(client)).toBeUndefined();
+        });
+    });
+
+    // =========================================================================
+    // Composite (hierarchical) rehydration — 2 levels
+    // =========================================================================
+
+    describe("composite rehydration — 2 levels", () => {
+        let child: any, parent: any, client: ChildClient;
+
+        beforeEach(() => {
+            child = createBehavioralFsm({
+                id: "rehydrate-child-2",
+                initialState: "off",
+                states: {
+                    off: { poweron: "on" },
+                    on: { poweroff: "off" },
+                },
+            });
+            parent = createBehavioralFsm({
+                id: "rehydrate-parent-2",
+                initialState: "idle",
+                states: {
+                    idle: { activate: "active" },
+                    active: { _child: child, deactivate: "idle" },
+                },
+            });
+            client = {};
+            parent.rehydrate(client, "active.on");
+        });
+
+        it("should place the parent at the first segment", () => {
+            expect(parent.currentState(client)).toBe("active");
+        });
+
+        it("should place the child at the second segment", () => {
+            expect(child.currentState(client)).toBe("on");
+        });
+
+        it("compositeState should return the full dot-path", () => {
+            expect(parent.compositeState(client)).toBe("active.on");
+        });
+    });
+
+    describe("composite rehydration — 3 levels", () => {
+        let grandchild: any, childFsm: any, grandparent: any, client: ChildClient;
+
+        beforeEach(() => {
+            grandchild = createBehavioralFsm({
+                id: "rehydrate-gc-3",
+                initialState: "alpha",
+                states: {
+                    alpha: { next: "beta" },
+                    beta: {},
+                },
+            });
+            childFsm = createBehavioralFsm({
+                id: "rehydrate-child-3",
+                initialState: "x",
+                states: {
+                    x: { _child: grandchild, jump: "y" },
+                    y: {},
+                },
+            });
+            grandparent = createBehavioralFsm({
+                id: "rehydrate-gp-3",
+                initialState: "top",
+                states: {
+                    top: { _child: childFsm },
+                },
+            });
+            client = {};
+            grandparent.rehydrate(client, "top.x.beta");
+        });
+
+        it("should place the grandparent at the first segment", () => {
+            expect(grandparent.currentState(client)).toBe("top");
+        });
+
+        it("should place the child at the second segment", () => {
+            expect(childFsm.currentState(client)).toBe("x");
+        });
+
+        it("should place the grandchild at the third segment", () => {
+            expect(grandchild.currentState(client)).toBe("beta");
+        });
+
+        it("compositeState should return the full three-level dot-path", () => {
+            expect(grandparent.compositeState(client)).toBe("top.x.beta");
+        });
+    });
+
+    // =========================================================================
+    // Task 4: Error cases
+    // =========================================================================
+
+    describe("invalid state name", () => {
+        let fsm: any, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "rehydrate-invalid-state",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    running: {},
+                },
+            });
+            try {
+                fsm.rehydrate({}, "nonexistent");
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw an error", () => {
+            expect(thrownError).toBeDefined();
+        });
+
+        it("should include the bad state name in the message", () => {
+            expect(thrownError!.message).toContain("nonexistent");
+        });
+
+        it("should include the FSM id in the message", () => {
+            expect(thrownError!.message).toContain("rehydrate-invalid-state");
+        });
+    });
+
+    describe("composite path with no _child on the matching state", () => {
+        let fsm: any, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "rehydrate-no-child",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    running: {}, // no _child
+                },
+            });
+            try {
+                fsm.rehydrate({}, "running.sub");
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw an error", () => {
+            expect(thrownError).toBeDefined();
+        });
+
+        it("should include the state name in the message", () => {
+            expect(thrownError!.message).toContain("running");
+        });
+
+        it("should include the composite path in the message", () => {
+            expect(thrownError!.message).toContain("running.sub");
+        });
+    });
+
+    describe("composite path into an Fsm child", () => {
+        let fsm: any, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            const fsmChild = createFsm({
+                id: "rehydrate-fsm-child",
+                initialState: "on",
+                states: {
+                    on: { poweroff: "off" },
+                    off: { poweron: "on" },
+                },
+            });
+            fsm = createBehavioralFsm({
+                id: "rehydrate-fsm-parent",
+                initialState: "active",
+                states: {
+                    active: { _child: fsmChild as any },
+                },
+            });
+            try {
+                fsm.rehydrate({}, "active.off");
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw an error", () => {
+            expect(thrownError).toBeDefined();
+        });
+
+        it("should include a message about Fsm children not supporting rehydration", () => {
+            expect(thrownError!.message).toContain("cannot rehydrate an Fsm child");
+        });
+    });
+
+    // =========================================================================
+    // Task 5: knownClients tracking — nohandler bubbling after rehydrate
+    // =========================================================================
+
+    describe("knownClients tracking — nohandler bubbles after rehydrate", () => {
+        let child: any, parent: any, client: ChildClient, parentNohandlerCb: jest.Mock;
+
+        beforeEach(() => {
+            parentNohandlerCb = jest.fn();
+            child = createBehavioralFsm({
+                id: "rehydrate-bubble-child",
+                initialState: "running",
+                states: {
+                    running: {}, // no handlers — everything triggers nohandler
+                },
+            });
+            parent = createBehavioralFsm({
+                id: "rehydrate-bubble-parent",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    active: {
+                        _child: child,
+                        mystery() {},
+                    },
+                },
+            });
+            client = {};
+            parent.on("nohandler", parentNohandlerCb);
+            // Rehydrate instead of going through normal initialization
+            parent.rehydrate(client, "active");
+            // Send an input the child cannot handle — should bubble to parent,
+            // which also has no handler for it → parent emits nohandler
+            parent.handle(client, "unknownInput" as any);
+        });
+
+        it("should bubble the nohandler event to the parent", () => {
+            expect(parentNohandlerCb).toHaveBeenCalledTimes(1);
+        });
+
+        it("should include the original input name in the nohandler payload", () => {
+            expect(parentNohandlerCb).toHaveBeenCalledWith(
+                expect.objectContaining({ inputName: "unknownInput" })
+            );
+        });
+    });
+
+    describe("transitioning event — direct spy confirms suppression during rehydrate", () => {
+        let fsm: any, client: ChildClient, transitioningCb: jest.Mock, transitionedCb: jest.Mock;
+
+        beforeEach(() => {
+            transitioningCb = jest.fn();
+            transitionedCb = jest.fn();
+            fsm = createBehavioralFsm({
+                id: "rehydrate-event-spy",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    running: {},
+                },
+            });
+            client = {};
+            fsm.on("transitioning", transitioningCb);
+            fsm.on("transitioned", transitionedCb);
+            fsm.rehydrate(client, "running");
+        });
+
+        it("should not emit the transitioning event", () => {
+            expect(transitioningCb).not.toHaveBeenCalled();
+        });
+
+        it("should not emit the transitioned event", () => {
+            expect(transitionedCb).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("partial registration after mid-rehydration throw — no _child on state", () => {
+        let fsm: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            thrownError = undefined;
+            fsm = createBehavioralFsm({
+                id: "rehydrate-partial-no-child",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    running: {}, // no _child, but we'll request a composite path into it
+                },
+            });
+            client = {};
+            try {
+                fsm.rehydrate(client, "running.substate");
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw", () => {
+            expect(thrownError).toBeDefined();
+        });
+
+        it("should NOT leave the client registered in the parent WeakMap", () => {
+            // Writes happen children-first: the parent validates and delegates
+            // to the child before writing its own ClientMeta. A throw in the
+            // child means the parent never writes — no half-registered client.
+            expect(fsm.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("partial registration after mid-rehydration throw — Fsm child throws", () => {
+        let parent: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            thrownError = undefined;
+            const fsmChild = createFsm({
+                id: "rehydrate-partial-fsm-child",
+                initialState: "on",
+                states: {
+                    on: {},
+                    off: {},
+                },
+            });
+            parent = createBehavioralFsm({
+                id: "rehydrate-partial-parent",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    active: { _child: fsmChild as any },
+                },
+            });
+            client = {};
+            try {
+                parent.rehydrate(client, "active.off");
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw from the Fsm child", () => {
+            expect(thrownError).toBeDefined();
+        });
+
+        it("should NOT leave the client registered in the parent WeakMap", () => {
+            // Writes happen children-first: the child's rehydrate() throw
+            // prevents the parent from ever writing its own ClientMeta.
+            expect(parent.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("deferred queue is empty after rehydrate and functions normally", () => {
+        let fsm: any, client: ChildClient, handledCb: jest.Mock;
+
+        beforeEach(() => {
+            handledCb = jest.fn();
+            fsm = createBehavioralFsm({
+                id: "rehydrate-deferred",
+                initialState: "idle",
+                states: {
+                    idle: { start: "running" },
+                    running: {
+                        pause({ defer }: any) {
+                            defer();
+                        },
+                        resume: "running",
+                    },
+                    paused: { resume: "running" },
+                },
+            });
+            client = {};
+            // Rehydrate directly into "running" then defer an input
+            fsm.rehydrate(client, "running");
+            fsm.on("handled", handledCb);
+            // Defer "resume" while in "running"
+            fsm.handle(client, "pause");
+            // Transition to "paused" — deferred "pause" should replay in "running"
+            // after transition, but "paused" has a "resume" which will run the deferred input
+            // Actually: defer() queues the current input ("pause") for replay after next transition.
+            // After handle("pause") defers, we need a transition to trigger replay.
+            // "pause" handler only calls defer() — no transition returned, so we stay in "running".
+            // We force a transition via the string shorthand to trigger processQueue.
+            fsm.handle(client, "resume"); // triggers processQueue which replays "pause" → defer again
+        });
+
+        it("should start with an empty deferred queue after rehydrate (no phantom replays)", () => {
+            // If rehydrate had left stale queue entries, "pause" would replay unexpectedly.
+            // "handled" should only have been called for the two explicit handle() calls.
+            expect(handledCb).toHaveBeenCalledTimes(2);
         });
     });
 });

@@ -277,6 +277,60 @@ export class BehavioralFsm<
     }
 
     /**
+     * Silently place `client` at `compositeState` with no lifecycle activity.
+     * Designed to work with `compositeState()`, which produces the dot-path
+     * string that `rehydrate()` consumes.
+     *
+     * No `_onEnter`, no `_onExit`, no `transitioning`/`transitioned` events.
+     * If `compositeState` is a dot-delimited path (`"active.connecting"`), the client
+     * is placed at each level of the hierarchy in turn. Subsequent `handle()` calls
+     * proceed as if the client had reached that state through normal transitions.
+     *
+     * Throws synchronously for unknown state names, missing `_child` at an inner level,
+     * or Fsm children in the hierarchy (Fsm owns its context; nothing to rehydrate there).
+     *
+     * No-ops silently when disposed.
+     */
+    rehydrate(client: TClient, compositeState: string): void {
+        if (this.disposed) {
+            return;
+        }
+
+        const [state, ...rest] = compositeState.split(".");
+
+        if (!(state in this.states)) {
+            throw new Error(
+                `rehydrate: unknown state "${state}" in FSM "${this.id}". ` +
+                    `Valid states: ${Object.keys(this.states).join(", ")}`
+            );
+        }
+
+        // Validate and delegate to children BEFORE writing to the parent WeakMap.
+        // This ensures a throw mid-hierarchy doesn't leave a half-registered client.
+        if (rest.length > 0) {
+            const childPath = rest.join(".");
+            const stateObj = this.states[state];
+            const childLink = stateObj?._child as ChildLink | undefined;
+
+            if (!childLink) {
+                throw new Error(
+                    `rehydrate: state "${state}" in FSM "${this.id}" has no _child, ` +
+                        `but composite path "${compositeState}" requires one.`
+                );
+            }
+
+            childLink.rehydrate(client, childPath);
+        }
+
+        // Guard knownClients before writing meta — if the client is already tracked,
+        // skip adding another WeakRef to avoid accumulating duplicate live refs.
+        if (!this.clients.has(client)) {
+            this.knownClients.add(new WeakRef(client));
+        }
+        this.clients.set(client, { state: state as TStateNames, deferredQueue: [] });
+    }
+
+    /**
      * Subscribe to a built-in lifecycle event or the wildcard.
      *
      * Named overload: typed payload includes `{ client: TClient }` so you can
@@ -660,6 +714,9 @@ function createChildLink(child: any): ChildLink {
             compositeState(client: object): string {
                 return child.compositeState(client);
             },
+            rehydrate(client: object, compositeState: string): void {
+                child.rehydrate(client, compositeState);
+            },
             dispose(): void {
                 child.dispose();
             },
@@ -683,6 +740,15 @@ function createChildLink(child: any): ChildLink {
             },
             compositeState(_client: object): string {
                 return child.compositeState();
+            },
+            rehydrate(_client: object, _compositeState: string): void {
+                // Fsm owns its context internally — there is no per-client state to restore.
+                // Rehydrating into a BehavioralFsm hierarchy that has Fsm children is a
+                // structural mismatch; throw immediately so the caller gets a clear signal.
+                throw new Error(
+                    `rehydrate: cannot rehydrate an Fsm child. Fsm owns its own context; ` +
+                        `rehydrate is only valid for BehavioralFsm hierarchies.`
+                );
             },
             dispose(): void {
                 child.dispose();

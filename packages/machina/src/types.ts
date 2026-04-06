@@ -419,6 +419,11 @@ export interface ChildLink {
     onAny(callback: (eventName: string, data: unknown) => void): { off(): void };
     /** The child FSM's compositeState for the given client */
     compositeState(client: object): string;
+    /**
+     * Silently place `client` at the given composite state within the child hierarchy.
+     * Throws for Fsm children (no per-client state to rehydrate).
+     */
+    rehydrate(client: object, compositeState: string): void;
     /** Dispose the child FSM */
     dispose(): void;
     /**
