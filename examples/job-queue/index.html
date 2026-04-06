@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Job Queue — machina.js v6 rehydrate() Showcase</title>
+        <meta
+            name="description"
+            content="A job queue demo showing how to serialize BehavioralFsm client state to localStorage and silently restore it with rehydrate() after a page reload."
+        />
+        <link rel="stylesheet" href="/src/style.css" />
+    </head>
+    <body>
+        <div class="page-wrapper">
+            <!-- Header -->
+            <header class="page-header">
+                <h1 class="page-title">Job Queue</h1>
+                <p class="page-subtitle">machina.js v6 — <code>rehydrate()</code> Showcase</p>
+                <p class="page-intro">
+                    Each job is a <code>BehavioralFsm</code> client. State is auto-saved to
+                    <code>localStorage</code> on every transition. Refresh the page — jobs restore
+                    silently via <code>rehydrate()</code>, then in-flight jobs restart their timers
+                    via a <code>resume</code> input. No lifecycle hooks fire during restore.
+                </p>
+            </header>
+
+            <!-- Restored banner — hidden by default, shown if jobs were restored -->
+            <div class="restored-banner" id="restored-banner" hidden>
+                <span class="restored-banner__icon">&#x21BA;</span>
+                <span id="restored-banner-text"></span>
+            </div>
+
+            <!-- Controls bar -->
+            <div class="controls-bar">
+                <button class="btn btn--primary" id="btn-add-job" type="button">
+                    + Add Job
+                </button>
+                <button class="btn btn--secondary" id="btn-clear-storage" type="button">
+                    Clear Storage
+                </button>
+            </div>
+
+            <!-- Job list — populated by ui.ts -->
+            <main id="job-list"></main>
+        </div>
+
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>
