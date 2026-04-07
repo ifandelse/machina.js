@@ -9,7 +9,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 DOCS_DIST="$REPO_ROOT/packages/docs/dist"
-EXAMPLES=(connectivity traffic-intersection dungeon-critters shopping-cart with-react machina-explorer)
+EXAMPLES=(connectivity traffic-intersection dungeon-critters shopping-cart job-queue with-react machina-explorer)
 
 # machina lib and machina-inspect must be built first — examples import from them
 echo "Building machina library..."
