@@ -3,7 +3,13 @@ title: Job Queue
 description: Persist/restore pattern using BehavioralFsm rehydrate() with localStorage.
 ---
 
-import { LinkCard } from "@astrojs/starlight/components";
+import { Aside, LinkCard } from "@astrojs/starlight/components";
+
+<Aside type="tip">
+    Jobs in this demo perform simulated work — nothing is actually processed. The `failed` state is
+    an intentional part of the example, triggered randomly to demonstrate retry logic and the
+    rehydrate recovery pattern.
+</Aside>
 
 A simulated job queue where multiple jobs share a single `BehavioralFsm` definition, state is auto-persisted to localStorage on every transition, and a page refresh restores all jobs via `rehydrate()`. The centerpiece teaching moment: `rehydrate()` is silent — `_onEnter` doesn't fire — so the app must explicitly re-establish side effects (timers) for in-flight jobs.
 
