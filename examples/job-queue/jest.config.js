@@ -10,5 +10,6 @@ module.exports = {
     moduleNameMapper: {
         "^machina$": path.resolve(__dirname, "node_modules/machina/dist/index.cjs"),
     },
+    watchman: false,
     transformIgnorePatterns: ["/node_modules/(?!machina)"],
 };

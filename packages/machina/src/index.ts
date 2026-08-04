@@ -28,6 +28,10 @@ export type {
     MachinaInstance,
     StateNamesOf,
     InputNamesOf,
+    StateNamesOfInstance,
+    InputNamesOfInstance,
+    ContextOf,
+    ClientOf,
     DisposeOptions,
     ChildLink,
 } from "./types";

@@ -11,5 +11,6 @@ module.exports = {
         "^machina$": path.resolve(__dirname, "node_modules/machina/dist/index.cjs"),
         "^machina-inspect$": path.resolve(__dirname, "node_modules/machina-inspect/dist/index.cjs"),
     },
+    watchman: false,
     transformIgnorePatterns: ["/node_modules/(?!(machina|machina-inspect))"],
 };

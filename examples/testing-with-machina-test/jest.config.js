@@ -11,5 +11,6 @@ module.exports = {
         "^machina$": path.resolve(__dirname, "node_modules/machina/dist/index.cjs"),
         "^machina-test$": path.resolve(__dirname, "node_modules/machina-test/dist/index.cjs"),
     },
+    watchman: false,
     transformIgnorePatterns: ["/node_modules/(?!machina)"],
 };

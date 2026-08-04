@@ -61,6 +61,66 @@ export type InputNamesOf<TStates> = Exclude<
     SpecialStateKeys
 >;
 
+/**
+ * Extracts state names from a concrete machina FSM instance.
+ *
+ * Unlike `keyof TFsm`, this reads the class generic that stores user-defined
+ * state names, so adapter signatures stay tied to the configured states
+ * instead of widening to method/property names.
+ */
+export type StateNamesOfInstance<TFsm> = TFsm extends import("./fsm").Fsm<
+    infer _TCtx extends object,
+    infer TStateNames extends string,
+    infer _TInputNames extends string
+>
+    ? TStateNames
+    : TFsm extends import("./behavioral-fsm").BehavioralFsm<
+            infer _TClient extends object,
+            infer TStateNames extends string,
+            infer _TInputNames extends string
+        >
+      ? TStateNames
+      : never;
+
+/**
+ * Extracts input names from a concrete machina FSM instance.
+ */
+export type InputNamesOfInstance<TFsm> = TFsm extends import("./fsm").Fsm<
+    infer _TCtx extends object,
+    infer _TStateNames extends string,
+    infer TInputNames extends string
+>
+    ? TInputNames
+    : TFsm extends import("./behavioral-fsm").BehavioralFsm<
+            infer _TClient extends object,
+            infer _TStateNames extends string,
+            infer TInputNames extends string
+        >
+      ? TInputNames
+      : never;
+
+/**
+ * Extracts the context object type from a concrete single-client FSM instance.
+ */
+export type ContextOf<TFsm> = TFsm extends import("./fsm").Fsm<
+    infer TCtx extends object,
+    infer _TStateNames extends string,
+    infer _TInputNames extends string
+>
+    ? TCtx
+    : never;
+
+/**
+ * Extracts the client object type from a concrete behavioral FSM instance.
+ */
+export type ClientOf<TFsm> = TFsm extends import("./behavioral-fsm").BehavioralFsm<
+    infer TClient extends object,
+    infer _TStateNames extends string,
+    infer _TInputNames extends string
+>
+    ? TClient
+    : never;
+
 // -----------------------------------------------------------------------------
 // Handler argument object
 //

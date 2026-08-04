@@ -1,0 +1,68 @@
+{
+    "name": "machina-react",
+    "version": "0.1.0",
+    "private": true,
+    "description": "React external-store hooks for machina FSM instances.",
+    "author": "Jim Cowart (http://ifandelse.com)",
+    "license": "MIT",
+    "homepage": "https://machina-js.org/",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/ifandelse/machina.js.git"
+    },
+    "bugs": {
+        "url": "http://github.com/ifandelse/machina.js/issues"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "main": "dist/index.cjs",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.mts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.mts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=22.22"
+    },
+    "sideEffects": false,
+    "scripts": {
+        "dev": "tsdown --watch",
+        "build": "tsdown",
+        "test": "jest --passWithNoTests",
+        "test:watch": "jest --watch",
+        "lint": "eslint 'src/**/*.{ts,tsx}'"
+    },
+    "dependencies": {
+        "use-sync-external-store": "^1.6.0"
+    },
+    "peerDependencies": {
+        "machina": ">=6.3.0",
+        "react": ">=18"
+    },
+    "devDependencies": {
+        "@testing-library/react": "^16.3.1",
+        "@types/jest": "^30.0.0",
+        "@types/react": "^19.1.0",
+        "@types/react-dom": "^19.1.0",
+        "@types/use-sync-external-store": "^1.5.0",
+        "eslint": "^9.39.4",
+        "jest": "^30.3.0",
+        "jest-environment-jsdom": "^30.3.0",
+        "jsdom": "^27.4.0",
+        "machina": "workspace:*",
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4",
+        "ts-jest": "^29.4.6",
+        "tsdown": "^0.20.3",
+        "typescript": "^5.9.3"
+    }
+}
