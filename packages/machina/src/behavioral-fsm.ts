@@ -187,7 +187,12 @@ export class BehavioralFsm<
             return;
         }
 
-        if (!(toState in this.states)) {
+        // Object.hasOwn (not `in`) — `in` walks the prototype chain, so
+        // toState: "__proto__" (or "constructor", "toString", ...) would pass
+        // this check via the inherited Object.prototype member even though no
+        // state literally named that was ever declared. Same fix as
+        // planSnapshotWrites() got in #184, applied here for parity.
+        if (!Object.hasOwn(this.states, toState)) {
             this.emitter.emit("invalidstate", { stateName: toState, client });
             return;
         }
@@ -452,7 +457,8 @@ export class BehavioralFsm<
     private rehydrateCompositePath(client: TClient, compositeState: string): void {
         const [state, ...rest] = compositeState.split(".");
 
-        if (!(state in this.states)) {
+        // Object.hasOwn (not `in`) — same rationale as transition()'s check above.
+        if (!Object.hasOwn(this.states, state)) {
             throw new Error(
                 `rehydrate: unknown state "${state}" in FSM "${this.id}". ` +
                     `Valid states: ${Object.keys(this.states).join(", ")}`
@@ -693,20 +699,28 @@ export class BehavioralFsm<
     /**
      * Walks all states at construction time, finds states with _child, and
      * subscribes once to each unique child's wildcard events. Subscriptions are
-     * stored for cleanup in dispose(). We deduplicate by child reference to
-     * avoid double-subscribing when the same child appears in multiple states.
+     * stored for cleanup in dispose(). We deduplicate by `childLink.instance`
+     * (the underlying Fsm/BehavioralFsm instance), not the `ChildLink` wrapper —
+     * `wrapChildLinks()` mints a fresh wrapper per declaring state, so a child
+     * shared across states would otherwise get one subscription PER declaring
+     * state, each independently walking known clients and relaying events. That
+     * silently double-fires client-less relays (Fsm-child events, or a
+     * BehavioralFsm child's custom `emit()` with no `client` in the payload)
+     * whenever two different clients are active on two different declaring
+     * names at once — the same wrapper-vs-instance identity bug
+     * `collectChildSnapshots()` had before its #184 fix.
      */
     private setupChildSubscriptions(): void {
-        const seenChildren = new Set<ChildLink>();
+        const seenInstances = new Set<MachinaInstance>();
 
         for (const stateName of Object.keys(this.states)) {
             const stateObj = this.states[stateName];
             const childLink = stateObj?._child as ChildLink | undefined;
 
-            if (!childLink || seenChildren.has(childLink)) {
+            if (!childLink || seenInstances.has(childLink.instance)) {
                 continue;
             }
-            seenChildren.add(childLink);
+            seenInstances.add(childLink.instance);
 
             // Subscribe to all child events. We use the wildcard so we get
             // every event type in a single listener.
@@ -808,8 +822,17 @@ export class BehavioralFsm<
 
     /**
      * Returns true if the given client is currently in a parent state whose
-     * _child is the specified childLink. Returns false if the client has no
-     * meta (never initialized) or is in a state with a different (or no) child.
+     * _child resolves to the same underlying instance as childLink. Returns
+     * false if the client has no meta (never initialized) or is in a state
+     * with a different (or no) child.
+     *
+     * Compares `.instance`, not the `ChildLink` wrapper itself — setupChildSubscriptions()
+     * dedupes subscriptions by instance and keeps only ONE representative wrapper
+     * per shared child, so the client's actual active declaring state may hold a
+     * DIFFERENT wrapper for that same instance (wrapChildLinks() mints one per
+     * declaring state). Comparing wrappers directly would only ever match the one
+     * declaring state whose wrapper happened to be kept for the subscription,
+     * silently breaking relay for every other declaring name of a shared child.
      */
     private isChildActiveForClient(client: TClient, childLink: ChildLink): boolean {
         const meta = this.clients.get(client);
@@ -817,7 +840,8 @@ export class BehavioralFsm<
             return false;
         }
         const parentStateObj = this.states[meta.state];
-        return parentStateObj?._child === childLink;
+        const activeChildLink = parentStateObj?._child as ChildLink | undefined;
+        return activeChildLink?.instance === childLink.instance;
     }
 
     /**

@@ -70,6 +70,12 @@ cartFsm.handle(cart, "advance"); // proceeds normally; "applyDiscount" replays o
 
 For hierarchical FSMs, the walk is full-fidelity: `dehydrate()` captures every state whose `_child` has ever seen the client, not just the one the client is currently in. A child the parent left mid-flight — powered on, mid-retry, whatever — is captured under its declaring state name and restored the same way. That matters because leaving a child's state isn't the same as resetting it: the child stays exactly where it was until the parent re-enters that state, at which point the reset transition fires the child's stale `_onExit`, then `_onEnter` (skipped if the child was already at its `initialState`), then replays anything still in that child's deferred queue. A restored client reproduces all of that identically — it's indistinguishable from one that never left memory.
 
+<Aside type="note">
+    See it in a working app: the [Job Queue example](/examples/job-queue/) persists every job to
+    `localStorage` as a `dehydrate()` snapshot rather than a bare state string, so a job's pending
+    deferred input survives a page reload and replays correctly after `rehydrate()`.
+</Aside>
+
 <Aside type="caution">
     **Dehydrate at rest, not mid-handler.** Call `dehydrate()` after a `handle()` call returns —
     from your service layer's save step — never from inside a handler. The arguments for a

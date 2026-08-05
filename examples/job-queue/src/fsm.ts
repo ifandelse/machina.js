@@ -99,6 +99,18 @@ export function createJobQueueFsm() {
             // before the user clicks "Start", so main.ts calls handle(job, "initialize")
             // immediately after creating a job. The handler does nothing — the
             // side effect we want is the WeakMap registration.
+            //
+            // `pause` here is a pre-emptive pause: "start this job, but pause it
+            // the moment it begins running." defer({ until: "processing" }) queues
+            // the input rather than handling it immediately — it replays once the
+            // job transitions into `processing`, landing it straight in `paused`.
+            // This is the example's deferred-input teaching moment: a snapshot
+            // taken while this deferral is pending (fsm.dehydrate(job)) carries it
+            // across a page reload, so it still fires after `rehydrate(job, snapshot)`
+            // — see fsm.test.ts's persistence round-trip test and main.ts's restore
+            // path. Not wired to a UI button; demonstrated via the FSM/test layer
+            // to keep the example's UI surface unchanged (see build plan follow-up
+            // notes on scope).
             // ------------------------------------------------------------------
             queued: {
                 initialize() {
@@ -107,6 +119,10 @@ export function createJobQueueFsm() {
 
                 start() {
                     return "processing";
+                },
+
+                pause({ defer }: { defer: (opts?: { until: string }) => void }) {
+                    defer({ until: "processing" });
                 },
             },
 

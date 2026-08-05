@@ -9,10 +9,11 @@
 // ON PAGE LOAD:
 //   1. Read localStorage.
 //   2. For each persisted job, recreate the client object and call:
-//        fsm.rehydrate(job, savedState)
-//      This silently places the client at its previous state. No _onEnter fires.
-//      No events emit. The WeakMap entry is created as if the client had always
-//      been in that state.
+//        fsm.rehydrate(job, snapshot)
+//      This silently places the client at its previous state AND requeues any
+//      pending deferred inputs from that snapshot. No _onEnter fires. No events
+//      emit. The WeakMap entry is created as if the client had always been in
+//      that state, deferred queue included.
 //   3. For any job that was `processing`, call:
 //        fsm.handle(job, "resume")
 //      This triggers the `resume` handler in the `processing` state, which
@@ -22,6 +23,12 @@
 // That two-step pattern — rehydrate() then handle("resume") — is the whole
 // point. rehydrate() is silent by design; the app owns re-establishing
 // side effects. This is the canonical machina rehydration pattern.
+//
+// `snapshot` (from fsm.dehydrate(job)) replaces a bare state string here
+// specifically so pending deferred inputs survive the round trip too — e.g.
+// a `queued` job whose pre-emptive `pause` (see fsm.ts) hasn't replayed yet.
+// A bare state string would silently drop that deferral on reload; the
+// snapshot form carries it across.
 //
 // WIRING ONLY: no business logic here. DOM manipulation goes in ui.ts.
 // FSM state machine logic stays in fsm.ts. This file just connects them.
@@ -67,26 +74,36 @@ const jobStates = new Map<number, JobState>();
 // -----------------------------------------------------------------------------
 
 /**
- * Serialize all active jobs and their current FSM states to localStorage.
+ * Serialize all active jobs and their current FSM snapshots to localStorage.
  * Called on every `transitioned` event to keep storage fresh.
  *
  * `timer` is excluded — setTimeout handles are not serializable.
  * The timer is re-established via fsm.handle(job, "resume") on restore.
+ *
+ * Uses fsm.dehydrate(job) rather than a bare fsm.currentState(job) string so
+ * pending deferred inputs (e.g. a queued job's pre-emptive `pause`) survive
+ * the round trip — the whole reason this example adopted the snapshot form.
  */
 const persistJobs = (): void => {
     const shape: StorageShape = {
         nextId,
-        jobs: jobs.map(job => {
-            const state = fsm.currentState(job) as JobState;
+        jobs: jobs.flatMap(job => {
+            const snapshot = fsm.dehydrate(job);
+            // A job in the `jobs` array has always been through "initialize"
+            // first, so dehydrate() always finds it — this guard is defensive
+            // typing, not an expected runtime path.
+            if (!snapshot) {
+                return [];
+            }
             const persisted: PersistedJob = {
-                state,
+                snapshot,
                 id: job.id,
                 name: job.name,
                 currentStep: job.currentStep,
                 totalSteps: job.totalSteps,
                 createdAt: job.createdAt,
             };
-            return persisted;
+            return [persisted];
         }),
     };
 
@@ -101,8 +118,9 @@ const persistJobs = (): void => {
  * Attempt to restore jobs from localStorage on page load.
  * Returns the number of jobs restored, or -1 if storage was stale/corrupt.
  *
- * Uses try/catch because rehydrate() throws for unknown state names — this
- * handles the case where a schema change makes old data incompatible.
+ * Uses try/catch because rehydrate() throws for unknown state names (or
+ * other snapshot-shape mismatches) — this handles the case where a schema
+ * change makes old data incompatible.
  */
 const restoreFromStorage = (): number => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -138,17 +156,20 @@ const restoreFromStorage = (): number => {
                 restoredFromStorage: true,
             };
 
-            // STEP 1: Silently place the client at its saved state.
-            // rehydrate() does NOT fire _onEnter, so the tick timer does not start.
-            fsm.rehydrate(job, persisted.state);
+            // STEP 1: Silently place the client at its saved state, requeuing
+            // any pending deferred inputs (e.g. a queued job's pre-emptive
+            // "pause") from the snapshot. rehydrate() does NOT fire _onEnter,
+            // so the tick timer does not start.
+            fsm.rehydrate(job, persisted.snapshot);
 
-            jobStates.set(job.id, persisted.state);
+            const restoredState = persisted.snapshot.state as JobState;
+            jobStates.set(job.id, restoredState);
             jobs.push(job);
 
             // STEP 2: If the job was processing, restart its timer.
             // rehydrate() placed it in "processing" but _onEnter didn't fire.
             // The "resume" handler in processing restarts the tick without transitioning.
-            if (persisted.state === STATE_PROCESSING) {
+            if (restoredState === STATE_PROCESSING) {
                 fsm.handle(job, "resume");
             }
         }

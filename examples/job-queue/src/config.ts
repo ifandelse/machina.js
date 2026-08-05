@@ -8,6 +8,8 @@
 // defines the vocabulary that makes the persist/restore cycle work.
 // =============================================================================
 
+import type { ClientSnapshot } from "machina";
+
 // -----------------------------------------------------------------------------
 // State names — the five states in the job queue FSM
 // -----------------------------------------------------------------------------
@@ -125,14 +127,19 @@ export interface JobClient {
 
 /**
  * The shape used to serialize a job to localStorage.
- * Excludes `timer` (not serializable) and includes `state` as a sibling field.
+ * Excludes `timer` (not serializable) and includes `snapshot` as a sibling field.
  *
- * `state` is stored alongside — not inside — the client because rehydrate()
- * takes state as a separate argument. This mirrors the BehavioralFsm model
- * where state lives in the WeakMap, not on the client object.
+ * `snapshot` — a `ClientSnapshot` from `fsm.dehydrate(job)` — is stored
+ * alongside, not inside, the client because `rehydrate()` takes it as a
+ * separate argument. This mirrors the BehavioralFsm model where state (and
+ * any pending deferred inputs) lives in the FSM's own tracking, not on the
+ * client object. Using the snapshot form instead of a bare state string is
+ * what lets a deferred input — like the pre-emptive `pause` a still-`queued`
+ * job can receive (see fsm.ts) — survive a page reload instead of silently
+ * vanishing.
  */
 export interface PersistedJob {
-    state: JobState;
+    snapshot: ClientSnapshot;
     id: number;
     name: string;
     currentStep: number;
