@@ -46,9 +46,10 @@ Every method takes the client object as its first argument. The rest of the API 
 | `currentState(client)`               | Returns the client's current state, or `undefined` if never initialized |
 | `compositeState(client)`             | Dot-delimited path including active child FSM states                    |
 | `rehydrate(client, compositeState)`  | Silently place a client at a state — no lifecycle hooks or events       |
+| `dehydrate(client)`                  | Snapshot everything tracked for a client — state, deferrals, children   |
+| `rehydrate(client, snapshot)`        | Restore a `dehydrate()` snapshot — state and deferred queues, no hooks  |
 | `on(eventName, callback)`            | Subscribe to a lifecycle event — returns `{ off() }`                    |
 | `emit(eventName, data?)`             | Emit a custom event to subscribers                                      |
-| `dispose(client, options?)`          | Dispose a single client's state entry                                   |
 | `dispose()`                          | Permanently shut down the entire FSM; cascades to child FSMs by default |
 
 <Aside type="note">
@@ -96,9 +97,35 @@ parentFsm.rehydrate(client, "active.uploading.retrying");
 `rehydrate()` throws synchronously on invalid state names or structural mismatches (missing `_child`, Fsm children). Writes are atomic — if validation fails at any level of a composite path, no state is written at any level.
 
 <Aside type="tip">
-    `compositeState()` produces the dot-path string that `rehydrate()` consumes. Use the former to
-    grab the state value to persist with your client, use the latter to restore.
+    `compositeState()` produces the dot-path string that this string form of `rehydrate()` consumes.
+    Use the former to grab the state value to persist with your client, use the latter to restore.
 </Aside>
+
+### Snapshots: persisting deferred inputs too
+
+The string form above only captures the composite state — it drops anything sitting in a client's deferred queue. If a client can have pending deferrals when it gets persisted, use `dehydrate()` and the object form of `rehydrate()` instead. `dehydrate()` returns a plain, JSON-serializable snapshot of everything machina tracks for a client — current state, pending deferred inputs (with their args and `until` targets), and the same for every `_child` in the hierarchy, active or not:
+
+```ts
+// ---- Persist ----
+const snapshot = connFsm.dehydrate(theClient);
+// { state: "connecting", deferred: [{ inputName: "retry", args: [], untilState: "online" }] }
+await db.save(JSON.stringify(snapshot));
+
+// ---- Restore (possibly a different process) ----
+const snapshot = JSON.parse(await db.load());
+connFsm.rehydrate(theClient, snapshot); // silent placement, deferrals requeued
+connFsm.handle(theClient, "connected"); // "retry" replays once "online" is reached
+```
+
+`dehydrate()` returns `undefined` for a client the FSM has never seen — it does not trigger initialization, mirroring `currentState()`. It throws if any deferred input's arguments contain something that can't survive a serialization boundary (a function, `undefined`, a `Date`/`Map`/class instance, a symbol, `NaN`/`Infinity`, or a circular reference) — the error names the exact input, its `until` target if any, and the precise path to the offending value.
+
+<Aside type="caution">
+    `dehydrate()` is for a client **at rest** between `handle()` calls, not from inside a handler —
+    the in-flight arguments for a currently-executing input aren't part of the snapshot. Call it
+    after your service layer's `handle()` call returns, right before persisting.
+</Aside>
+
+Both the string and object forms of `rehydrate()` place the client silently — no `_onEnter`, no `_onExit`, no `transitioning`/`transitioned` events — and both validate the entire hierarchy before writing anything, at any level. The object form additionally requeues each level's deferred inputs so they replay exactly as they would have if the client had never left memory. For hierarchical FSMs, `dehydrate()` walks every state's `_child` recursively, including states the client currently isn't in — a child left mid-flight when the parent moved on is captured too, so its pending `_onExit`/`_onEnter` and deferred replay behavior on the parent's next re-entry survives the round trip. See [Persisting clients](/guide/persisting-clients/) for the full repository/service pattern.
 
 <Aside type="note">
     The [Job Queue example](/examples/job-queue/) demonstrates the full persist/restore cycle —

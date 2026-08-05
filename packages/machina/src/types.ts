@@ -484,6 +484,25 @@ export interface ChildLink {
      * Throws for Fsm children (no per-client state to rehydrate).
      */
     rehydrate(client: object, compositeState: string): void;
+    /**
+     * Snapshot everything this child tracks for `client`, recursing into its own
+     * children. `undefined` when the child has never seen this client. Throws for
+     * Fsm children that are on the active path — an Fsm owns its own context, so
+     * there's nothing per-client to snapshot. `isOnActivePath` is threaded down
+     * from the true root's dehydrate() call: it's `false` whenever ANY ancestor
+     * declaring state didn't match its own parent's active state, so a nested
+     * BehavioralFsm child correctly treats every one of its own Fsm children as
+     * off-path once the child itself is off-path, rather than recomputing
+     * reachability from its own (possibly dormant) state alone.
+     */
+    dehydrate(client: object, isOnActivePath: boolean): ClientSnapshot | undefined;
+    /**
+     * Validates `snapshot` against this child's state graph (recursing into its
+     * own children) and returns write thunks to run only once the ENTIRE tree
+     * validates — nothing is written here. Throws for Fsm children, matching
+     * `dehydrate()`.
+     */
+    planRehydrate(client: object, snapshot: ClientSnapshot): Array<() => void>;
     /** Dispose the child FSM */
     dispose(): void;
     /**
@@ -610,4 +629,42 @@ export interface ClientMeta<TStateNames extends string = string> {
      * can snapshot them for later replay. Cleared after dispatch.
      */
     currentActionArgs?: unknown[];
+}
+
+// -----------------------------------------------------------------------------
+// ClientSnapshot — the dehydrate()/rehydrate() persistence contract
+//
+// Everything machina tracks for one client, as plain serializable data.
+// Nested per hierarchy level: each FSM in the `_child` chain contributes its
+// own node, keyed by the PARENT state name that declares it. Deliberately
+// excludes `currentActionArgs` — that field only exists mid-handle() and has
+// no meaning for a client "at rest" between calls.
+// -----------------------------------------------------------------------------
+
+/**
+ * Plain-data snapshot of everything machina tracks for one client at a given
+ * level of the FSM hierarchy. Produced by `dehydrate()`, consumed by the
+ * object-overload of `rehydrate()`.
+ *
+ * `children` covers every state whose `_child` holds tracking data for this
+ * client — active or not. A child the client never reached has no entry
+ * (there's nothing to restore). This full-fidelity walk is what makes a
+ * rehydrated client behaviorally indistinguishable from one that never left
+ * memory: off-path child state and its pending deferrals travel too, and
+ * replay/reset exactly as they would have in-memory on the parent's next
+ * re-entry.
+ */
+export interface ClientSnapshot {
+    /** This level's state name (not the composite dot-path). */
+    state: string;
+
+    /** This level's pending deferred inputs, in FIFO replay order. */
+    deferred: DeferredInput[];
+
+    /**
+     * One entry per state (at this level) whose `_child` has tracking data
+     * for this client, keyed by that state's name. Omitted entirely when no
+     * state's child has ever seen this client.
+     */
+    children?: { [stateName: string]: ClientSnapshot };
 }

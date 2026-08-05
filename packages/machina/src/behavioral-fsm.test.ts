@@ -3193,3 +3193,1664 @@ describe("BehavioralFsm — rehydrate()", () => {
         });
     });
 });
+
+// =============================================================================
+// Exploratory: in-memory reset/replay oracle for off-path children
+//
+// These tests exercise ONLY existing engine behavior (handle/transition) —
+// no dehydrate()/rehydrate() involved. They pin down what happens, purely
+// in-memory, when a parent re-enters a state whose child was left in a
+// non-initial state with a pending deferral. That behavior is the oracle a
+// round-tripped (dehydrate → rehydrate) client must reproduce exactly for
+// "restored is indistinguishable from never-left-memory" to hold.
+//
+// Run/read these BEFORE the dehydrate()/rehydrate(snapshot) suites below.
+// =============================================================================
+
+describe("BehavioralFsm — child reset/replay oracle (exploratory, in-memory only)", () => {
+    describe("when the parent re-enters a state whose child left a non-initial state", () => {
+        let parent: any, child: any, client: ChildClient, childExitedFrom: string;
+
+        beforeEach(() => {
+            childExitedFrom = "";
+            child = createBehavioralFsm({
+                id: "oracle-child",
+                initialState: "off",
+                states: {
+                    off: { poweron: "on" },
+                    on: {
+                        _onExit() {
+                            childExitedFrom = "on";
+                        },
+                        poweroff: "off",
+                    },
+                },
+            });
+            parent = createBehavioralFsm({
+                id: "oracle-parent",
+                initialState: "idle",
+                states: {
+                    idle: { activate: "active" },
+                    active: { _child: child, deactivate: "idle" },
+                },
+            });
+            client = {};
+            parent.handle(client, "activate"); // idle → active, child resets to off (no-op, already off)
+            child.handle(client, "poweron"); // child: off → on
+            parent.handle(client, "deactivate"); // active → idle — child left "on", now off-path
+            parent.handle(client, "activate"); // idle → active again — child reset fires stale on:_onExit
+        });
+
+        it("should fire the stale state's _onExit during the reset transition", () => {
+            expect(childExitedFrom).toBe("on");
+        });
+
+        it("should land the child back at its initialState", () => {
+            expect(child.currentState(client)).toBe("off");
+        });
+    });
+
+    describe("when the off-path child has a deferred input targeting its initialState", () => {
+        let parent: any, child: any, client: ChildClient, pingReplayed: boolean;
+
+        beforeEach(() => {
+            pingReplayed = false;
+            child = createBehavioralFsm({
+                id: "oracle-defer-child",
+                initialState: "off",
+                states: {
+                    off: {
+                        poweron: "on",
+                        ping() {
+                            pingReplayed = true;
+                        },
+                    },
+                    on: {
+                        poweroff: "off",
+                        ping({ defer }: any) {
+                            defer({ until: "off" });
+                        },
+                    },
+                },
+            });
+            parent = createBehavioralFsm({
+                id: "oracle-defer-parent",
+                initialState: "idle",
+                states: {
+                    idle: { activate: "active" },
+                    active: { _child: child, deactivate: "idle" },
+                },
+            });
+            client = {};
+            parent.handle(client, "activate"); // idle → active, child resets to off
+            child.handle(client, "poweron"); // child: off → on
+            child.handle(client, "ping"); // deferred until "off"
+            parent.handle(client, "deactivate"); // active → idle — child left "on" with a pending deferral
+            parent.handle(client, "activate"); // idle → active — child reset (on → off) replays "ping"
+        });
+
+        it("should replay the deferred input on the reset transition", () => {
+            expect(pingReplayed).toBe(true);
+        });
+
+        it("should end up at the child's initialState after replay", () => {
+            expect(child.currentState(client)).toBe("off");
+        });
+    });
+
+    // Same-state reset no-op (skipping _onEnter) is already pinned by the
+    // "child reset when child is already in initialState on re-entry" suite
+    // above — not duplicated here.
+});
+
+// =============================================================================
+// dehydrate() tests
+// =============================================================================
+
+describe("BehavioralFsm — dehydrate()", () => {
+    describe("flat FSM, no deferrals", () => {
+        let fsm: any, client: ChildClient, snapshot: any;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "dehydrate-flat",
+                initialState: "idle",
+                states: {
+                    idle: { start: "running" },
+                    running: {},
+                },
+            });
+            client = {};
+            fsm.handle(client, "start"); // idle → running
+            snapshot = fsm.dehydrate(client);
+        });
+
+        it("should return the state and an empty deferred queue with no children entry", () => {
+            expect(snapshot).toEqual({ state: "running", deferred: [] });
+        });
+    });
+
+    describe("when the client has never been seen", () => {
+        let fsm: any, result: any;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "dehydrate-never-seen",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            result = fsm.dehydrate({});
+        });
+
+        it("should return undefined", () => {
+            expect(result).toBeUndefined();
+        });
+
+        it("should not initialize the client as a side effect", () => {
+            const client = {};
+            fsm.dehydrate(client);
+            expect(fsm.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("pending deferrals — untargeted and targeted", () => {
+        let fsm: any, client: ChildClient, snapshot: any;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "dehydrate-deferred",
+                initialState: "idle",
+                states: {
+                    idle: {
+                        wait({ defer }: any) {
+                            defer();
+                        },
+                        save({ defer }: any) {
+                            defer({ until: "archived" });
+                        },
+                        start: "running",
+                    },
+                    running: {},
+                    archived: {},
+                },
+            });
+            client = {};
+            fsm.handle(client, "wait", "kirk");
+            fsm.handle(client, "save", { id: 8675309 });
+            snapshot = fsm.dehydrate(client);
+        });
+
+        it("should capture both deferred inputs with inputName, args, and untilState", () => {
+            expect(snapshot).toEqual({
+                state: "idle",
+                deferred: [
+                    { inputName: "wait", args: ["kirk"] },
+                    { inputName: "save", args: [{ id: 8675309 }], untilState: "archived" },
+                ],
+            });
+        });
+    });
+
+    describe("non-serializable deferred args", () => {
+        describe("when an untargeted deferred input has a function arg", () => {
+            let fsm: any, client: ChildClient, thrownError: Error | undefined;
+
+            beforeEach(() => {
+                fsm = createBehavioralFsm({
+                    id: "cart",
+                    initialState: "browsing",
+                    states: {
+                        browsing: {
+                            retry({ defer }: any) {
+                                defer();
+                            },
+                        },
+                    },
+                });
+                client = {};
+                fsm.handle(client, "retry", "ignored", { onComplete: () => "boom" });
+                try {
+                    fsm.dehydrate(client);
+                } catch (e: any) {
+                    thrownError = e;
+                }
+            });
+
+            it("should throw naming the input, the FSM id, and the exact value path", () => {
+                expect(thrownError).toBeDefined();
+                expect(thrownError!.message).toBe(
+                    'dehydrate: deferred input "retry" in FSM "cart" has a non-serializable ' +
+                        "value at args[1].onComplete (function)"
+                );
+            });
+        });
+
+        describe("when a targeted deferred input has a circular reference", () => {
+            let fsm: any, client: ChildClient, thrownError: Error | undefined;
+
+            beforeEach(() => {
+                const circular: Record<string, unknown> = { name: "Cal Zone" };
+                circular.self = circular;
+                fsm = createBehavioralFsm({
+                    id: "cart",
+                    initialState: "browsing",
+                    states: {
+                        browsing: {
+                            retry({ defer }: any) {
+                                defer({ until: "connected" });
+                            },
+                        },
+                    },
+                });
+                client = {};
+                fsm.handle(client, "retry", circular);
+                try {
+                    fsm.dehydrate(client);
+                } catch (e: any) {
+                    thrownError = e;
+                }
+            });
+
+            it("should include the until-target in the error message", () => {
+                expect(thrownError).toBeDefined();
+                expect(thrownError!.message).toBe(
+                    'dehydrate: deferred input "retry" (until "connected") in FSM "cart" ' +
+                        "has a non-serializable value at args[0].self (circular reference)"
+                );
+            });
+        });
+    });
+
+    describe("deeply nested plain objects/arrays/null pass the walk", () => {
+        let fsm: any, client: ChildClient, snapshot: any, payload: Record<string, unknown>;
+
+        beforeEach(() => {
+            payload = {
+                name: "Cal Zone",
+                tags: ["geeky", null, "playful"],
+                address: { city: "Springfield", nested: { deep: [1, 2, { ok: true }] } },
+            };
+            fsm = createBehavioralFsm({
+                id: "dehydrate-nested",
+                initialState: "idle",
+                states: {
+                    idle: {
+                        wait({ defer }: any) {
+                            defer();
+                        },
+                    },
+                },
+            });
+            client = {};
+            fsm.handle(client, "wait", payload);
+            snapshot = fsm.dehydrate(client);
+        });
+
+        it("should clone the nested structure without throwing", () => {
+            expect(snapshot.deferred[0].args[0]).toEqual(payload);
+        });
+    });
+
+    describe("hierarchy — nested snapshot across 3 levels", () => {
+        let grandchild: any, childFsm: any, grandparent: any, client: ChildClient, snapshot: any;
+
+        beforeEach(() => {
+            grandchild = createBehavioralFsm({
+                id: "dehydrate-gc",
+                initialState: "alpha",
+                states: {
+                    alpha: { next: "beta" },
+                    beta: {
+                        hold({ defer }: any) {
+                            defer();
+                        },
+                    },
+                },
+            });
+            childFsm = createBehavioralFsm({
+                id: "dehydrate-child",
+                initialState: "x",
+                states: {
+                    x: { _child: grandchild, jump: "y" },
+                    y: {},
+                },
+            });
+            grandparent = createBehavioralFsm({
+                id: "dehydrate-gp",
+                initialState: "top",
+                states: {
+                    top: { _child: childFsm },
+                },
+            });
+            client = {};
+            grandparent.handle(client, "noop" as any); // init cascades: top → x → alpha
+            grandchild.handle(client, "next"); // alpha → beta
+            grandchild.handle(client, "hold"); // defer "hold", untargeted, while in beta
+            snapshot = grandparent.dehydrate(client);
+        });
+
+        it("should produce a fully nested snapshot matching the active hierarchy", () => {
+            expect(snapshot).toEqual({
+                state: "top",
+                deferred: [],
+                children: {
+                    top: {
+                        state: "x",
+                        deferred: [],
+                        children: {
+                            x: {
+                                state: "beta",
+                                deferred: [{ inputName: "hold", args: [] }],
+                            },
+                        },
+                    },
+                },
+            });
+        });
+    });
+
+    describe("off-path child meta", () => {
+        let child: any, parent: any, client: ChildClient, snapshot: any;
+
+        beforeEach(() => {
+            child = createBehavioralFsm({
+                id: "dehydrate-offpath-child",
+                initialState: "off",
+                states: {
+                    off: { poweron: "on" },
+                    on: {
+                        poweroff: "off",
+                        ping({ defer }: any) {
+                            defer({ until: "off" });
+                        },
+                    },
+                },
+            });
+            parent = createBehavioralFsm({
+                id: "dehydrate-offpath-parent",
+                initialState: "idle",
+                states: {
+                    idle: { activate: "active" },
+                    active: { _child: child, deactivate: "idle" },
+                },
+            });
+            client = {};
+            parent.handle(client, "activate"); // idle → active, child resets to off
+            child.handle(client, "poweron"); // child: off → on
+            child.handle(client, "ping"); // deferred until "off"
+            parent.handle(client, "deactivate"); // active → idle — child now off-path
+            snapshot = parent.dehydrate(client);
+        });
+
+        it("should capture the parent's own state as idle with no deferrals", () => {
+            expect(snapshot.state).toBe("idle");
+            expect(snapshot.deferred).toEqual([]);
+        });
+
+        it("should capture the off-path child's state and pending deferral under its declaring state", () => {
+            expect(snapshot.children).toEqual({
+                active: {
+                    state: "on",
+                    deferred: [{ inputName: "ping", args: [], untilState: "off" }],
+                },
+            });
+        });
+    });
+
+    describe("shared child instance under two parent states", () => {
+        let child: any, parent: any, client: ChildClient, snapshot: any, dehydrateSpy: jest.Mock;
+
+        beforeEach(() => {
+            child = createBehavioralFsm({
+                id: "dehydrate-shared-child",
+                initialState: "off",
+                states: {
+                    off: { poweron: "on" },
+                    on: {},
+                },
+            });
+            parent = createBehavioralFsm({
+                id: "dehydrate-shared-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child, switch: "modeB" },
+                    modeB: { _child: child },
+                },
+            });
+            client = {};
+            parent.handle(client, "noop" as any); // init → modeA, child resets to off
+            child.handle(client, "poweron"); // child: off → on
+
+            // Wrap child.dehydrate() (an own-property override, not jest.spyOn —
+            // this codebase doesn't use spyOn) so we can verify the dedup cache
+            // actually prevents a second walk of the shared child's subtree.
+            // Output equality alone can't distinguish "dedup'd" from "walked
+            // twice, got the same answer both times."
+            const originalDehydrate = child.dehydrate.bind(child);
+            dehydrateSpy = jest.fn((c: ChildClient) => originalDehydrate(c));
+            child.dehydrate = dehydrateSpy;
+
+            snapshot = parent.dehydrate(client);
+        });
+
+        it("should emit one identical snapshot under both declaring state names", () => {
+            expect(snapshot.children.modeA).toEqual({ state: "on", deferred: [] });
+            expect(snapshot.children.modeB).toEqual({ state: "on", deferred: [] });
+        });
+
+        it("should dehydrate the shared child instance only once", () => {
+            expect(dehydrateSpy).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe("Fsm child on the active path", () => {
+        let fsm: any, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            const fsmChild = createFsm({
+                id: "dehydrate-fsm-child",
+                initialState: "on",
+                states: {
+                    on: { poweroff: "off" },
+                    off: { poweron: "on" },
+                },
+            });
+            fsm = createBehavioralFsm({
+                id: "dehydrate-fsm-parent",
+                initialState: "active",
+                states: {
+                    active: { _child: fsmChild as any },
+                },
+            });
+            const client = {};
+            fsm.handle(client, "noop" as any); // init
+            try {
+                fsm.dehydrate(client);
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw, consistent with rehydrate()", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("cannot dehydrate an Fsm child");
+        });
+    });
+
+    describe("Fsm child on a never-visited branch", () => {
+        let fsm: any,
+            safeClient: ChildClient,
+            riskyClient: ChildClient,
+            safeSnapshot: any,
+            thrownError: Error | undefined;
+
+        beforeEach(() => {
+            const fsmChild = createFsm({
+                id: "dehydrate-offpath-fsm-child",
+                initialState: "on",
+                states: {
+                    on: { poweroff: "off" },
+                    off: { poweron: "on" },
+                },
+            });
+            fsm = createBehavioralFsm({
+                id: "dehydrate-offpath-fsm-parent",
+                initialState: "idle",
+                states: {
+                    idle: { go: "running", detour: "weird" },
+                    running: {},
+                    weird: { _child: fsmChild as any },
+                },
+            });
+
+            safeClient = {};
+            fsm.handle(safeClient, "go"); // idle → running; "weird" never touched
+
+            riskyClient = {};
+            fsm.handle(riskyClient, "detour"); // idle → weird; Fsm child now on-path
+
+            safeSnapshot = fsm.dehydrate(safeClient);
+            try {
+                fsm.dehydrate(riskyClient);
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should not throw for a client that never touched the Fsm-child branch", () => {
+            expect(safeSnapshot).toEqual({ state: "running", deferred: [] });
+        });
+
+        it("should still throw for a client actually on the Fsm-child branch", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("cannot dehydrate an Fsm child");
+        });
+    });
+
+    describe("Fsm grandchild nested under an off-path BehavioralFsm child", () => {
+        let parent: any, client: ChildClient, snapshot: any, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            const fsmChild = createFsm({
+                id: "dehydrate-nested-fsm-leaf",
+                initialState: "leafA",
+                states: {
+                    leafA: { go: "leafB" },
+                    leafB: {},
+                },
+            });
+            const midChild = createBehavioralFsm({
+                id: "dehydrate-nested-mid",
+                initialState: "midInit",
+                states: {
+                    midInit: { go: "midActive" },
+                    midActive: { _child: fsmChild as any },
+                },
+            });
+            parent = createBehavioralFsm({
+                id: "dehydrate-nested-parent",
+                initialState: "start",
+                states: {
+                    start: { go: "branch" },
+                    branch: { _child: midChild as any, leave: "elsewhere" },
+                    elsewhere: {},
+                },
+            });
+
+            client = {};
+            parent.handle(client, "go"); // start -> branch; mid resets to midInit
+            parent.handle(client, "go"); // delegates to mid: midInit -> midActive (declares the Fsm leaf)
+            parent.handle(client, "leave"); // branch -> elsewhere; mid is now off-path, frozen at midActive
+
+            try {
+                snapshot = parent.dehydrate(client);
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should not throw even though the frozen mid child sits at its Fsm-declaring state", () => {
+            expect(thrownError).toBeUndefined();
+        });
+
+        it("should still capture the off-path mid child's own state", () => {
+            expect(snapshot).toEqual({
+                state: "elsewhere",
+                deferred: [],
+                children: {
+                    branch: {
+                        state: "midActive",
+                        deferred: [],
+                    },
+                },
+            });
+        });
+    });
+
+    describe("Fsm grandchild nested under an actively-traversed BehavioralFsm child", () => {
+        let parent: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            const fsmChild = createFsm({
+                id: "dehydrate-nested-active-fsm-leaf",
+                initialState: "leafA",
+                states: {
+                    leafA: { go: "leafB" },
+                    leafB: {},
+                },
+            });
+            const midChild = createBehavioralFsm({
+                id: "dehydrate-nested-active-mid",
+                initialState: "midInit",
+                states: {
+                    midInit: { go: "midActive" },
+                    midActive: { _child: fsmChild as any },
+                },
+            });
+            parent = createBehavioralFsm({
+                id: "dehydrate-nested-active-parent",
+                initialState: "start",
+                states: {
+                    start: { go: "branch" },
+                    branch: { _child: midChild as any, leave: "elsewhere" },
+                    elsewhere: {},
+                },
+            });
+
+            client = {};
+            parent.handle(client, "go"); // start -> branch; mid resets to midInit
+            parent.handle(client, "go"); // delegates to mid: midInit -> midActive (declares the Fsm leaf)
+            // No "leave" — the client stays on the branch, so mid (and its Fsm leaf) is live.
+
+            try {
+                parent.dehydrate(client);
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should still throw when the branch is actually being traversed", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("cannot dehydrate an Fsm child");
+        });
+    });
+
+    describe("shared BehavioralFsm child declaring an Fsm leaf, non-active declaring name listed first", () => {
+        let parent: any,
+            client: ChildClient,
+            activeComposite: string,
+            thrownError: Error | undefined;
+
+        beforeEach(() => {
+            const leaf = createFsm({
+                id: "dehydrate-shared-order-leaf",
+                initialState: "leafA",
+                states: { leafA: { go: "leafB" }, leafB: {} },
+            });
+            const child = createBehavioralFsm({
+                id: "dehydrate-shared-order-child",
+                initialState: "off",
+                states: {
+                    off: { poweron: "hot" },
+                    hot: { _child: leaf as any },
+                },
+            });
+            // "modeB" (never entered by this client) is declared BEFORE "modeA"
+            // (the client's genuinely active state) in the object literal.
+            parent = createBehavioralFsm({
+                id: "dehydrate-shared-order-parent-b-first",
+                initialState: "modeA",
+                states: {
+                    modeB: { _child: child as any },
+                    modeA: { _child: child as any, leave: "modeB" },
+                },
+            });
+
+            client = {};
+            parent.handle(client, "noop" as any); // init -> modeA
+            child.handle(client, "poweron"); // child: off -> hot (declares the Fsm leaf)
+            activeComposite = parent.compositeState(client);
+
+            try {
+                parent.dehydrate(client);
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should confirm the client is genuinely active on the Fsm-leaf branch", () => {
+            expect(activeComposite).toBe("modeA.hot.leafA");
+        });
+
+        it("should throw for the genuinely active client even though its declaring name iterates second", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("cannot dehydrate an Fsm child");
+        });
+    });
+
+    describe("shared BehavioralFsm child declaring an Fsm leaf, active declaring name listed first", () => {
+        let parent: any,
+            client: ChildClient,
+            activeComposite: string,
+            thrownError: Error | undefined;
+
+        beforeEach(() => {
+            const leaf = createFsm({
+                id: "dehydrate-shared-order-leaf",
+                initialState: "leafA",
+                states: { leafA: { go: "leafB" }, leafB: {} },
+            });
+            const child = createBehavioralFsm({
+                id: "dehydrate-shared-order-child",
+                initialState: "off",
+                states: {
+                    off: { poweron: "hot" },
+                    hot: { _child: leaf as any },
+                },
+            });
+            // "modeA" (the client's genuinely active state) is declared BEFORE
+            // "modeB" (never entered by this client) — the mirror ordering of
+            // the sibling scenario above, guarding against the fix only
+            // happening to work for one iteration order.
+            parent = createBehavioralFsm({
+                id: "dehydrate-shared-order-parent-a-first",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child as any, leave: "modeB" },
+                    modeB: { _child: child as any },
+                },
+            });
+
+            client = {};
+            parent.handle(client, "noop" as any); // init -> modeA
+            child.handle(client, "poweron"); // child: off -> hot (declares the Fsm leaf)
+            activeComposite = parent.compositeState(client);
+
+            try {
+                parent.dehydrate(client);
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should confirm the client is genuinely active on the Fsm-leaf branch", () => {
+            expect(activeComposite).toBe("modeA.hot.leafA");
+        });
+
+        it("should throw for the genuinely active client when its declaring name iterates first", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("cannot dehydrate an Fsm child");
+        });
+    });
+
+    describe("shared BehavioralFsm child declaring an Fsm leaf, client off-path at both declaring states", () => {
+        let snapshot: any, dehydrateSpy: jest.Mock, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            const leaf = createFsm({
+                id: "dehydrate-shared-order-leaf",
+                initialState: "leafA",
+                states: { leafA: { go: "leafB" }, leafB: {} },
+            });
+            const child = createBehavioralFsm({
+                id: "dehydrate-shared-order-child",
+                initialState: "off",
+                states: {
+                    off: { poweron: "hot" },
+                    hot: { _child: leaf as any },
+                },
+            });
+            const parent = createBehavioralFsm({
+                id: "dehydrate-shared-order-parent-offpath",
+                initialState: "modeA",
+                states: {
+                    modeB: { _child: child as any },
+                    modeA: { _child: child as any, leave: "modeC" },
+                    modeC: {},
+                },
+            });
+
+            const client: ChildClient = {};
+            parent.handle(client, "noop" as any); // init -> modeA
+            child.handle(client, "poweron"); // child: off -> hot (declares the Fsm leaf)
+            parent.handle(client, "leave"); // modeA -> modeC; neither declaring name is active anymore
+
+            // Wrap child.dehydrate() the same way the existing dedup test does,
+            // so the call count can't be faked by "walked twice, same answer".
+            const originalDehydrate = child.dehydrate.bind(child);
+            dehydrateSpy = jest.fn((c: ChildClient, onPath?: boolean) =>
+                originalDehydrate(c, onPath)
+            );
+            child.dehydrate = dehydrateSpy;
+
+            try {
+                snapshot = parent.dehydrate(client);
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should not throw even though the shared child sits at its Fsm-declaring state", () => {
+            expect(thrownError).toBeUndefined();
+        });
+
+        it("should capture the shared child's own state under both declaring names, without the off-path Fsm leaf", () => {
+            expect(snapshot).toEqual({
+                state: "modeC",
+                deferred: [],
+                children: {
+                    modeA: { state: "hot", deferred: [] },
+                    modeB: { state: "hot", deferred: [] },
+                },
+            });
+        });
+
+        it("should dehydrate the shared child instance only once", () => {
+            expect(dehydrateSpy).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe("snapshot mutation after dehydrate", () => {
+        let fsm: any, client: ChildClient, snapshot: any, originalPayload: Record<string, unknown>;
+
+        beforeEach(() => {
+            originalPayload = { count: 1 };
+            fsm = createBehavioralFsm({
+                id: "dehydrate-mutation",
+                initialState: "idle",
+                states: {
+                    idle: {
+                        wait({ defer }: any) {
+                            defer();
+                        },
+                    },
+                },
+            });
+            client = {};
+            fsm.handle(client, "wait", originalPayload);
+            snapshot = fsm.dehydrate(client);
+
+            // Mutate the RETURNED snapshot — this must not reach back into the
+            // FSM's internal deferred queue (the walk clones, it doesn't alias).
+            snapshot.deferred[0].args[0].count = 12345;
+        });
+
+        it("should not reflect the snapshot mutation in a fresh dehydrate() call", () => {
+            const freshSnapshot = fsm.dehydrate(client);
+            expect(freshSnapshot.deferred[0].args[0]).toEqual({ count: 1 });
+        });
+    });
+});
+
+// =============================================================================
+// rehydrate(snapshot) — object form
+// =============================================================================
+
+describe("BehavioralFsm — rehydrate(snapshot) object form", () => {
+    describe("flat snapshot with deferred inputs", () => {
+        let fsm: any, client: ChildClient, transitioningCb: jest.Mock, handledCb: jest.Mock;
+
+        beforeEach(() => {
+            transitioningCb = jest.fn();
+            handledCb = jest.fn();
+            fsm = createBehavioralFsm({
+                id: "rehydrate-snapshot-flat",
+                initialState: "idle",
+                states: {
+                    idle: { start: "running" },
+                    running: { advance: "done" },
+                    // Untargeted defer replays against the state entered by the NEXT
+                    // transition, not the one it was queued from — so "ping" lives here.
+                    done: {
+                        ping() {
+                            handledCb();
+                        },
+                    },
+                },
+            });
+            client = {};
+            fsm.on("transitioning", transitioningCb);
+            fsm.rehydrate(client, {
+                state: "running",
+                deferred: [{ inputName: "ping", args: [] }],
+            });
+        });
+
+        it("should place the client at the snapshotted state", () => {
+            expect(fsm.currentState(client)).toBe("running");
+        });
+
+        it("should not fire any lifecycle events during placement", () => {
+            expect(transitioningCb).not.toHaveBeenCalled();
+        });
+
+        it("should replay the requeued deferred input after the next transition", () => {
+            fsm.handle(client, "advance"); // running → done, then replays "ping" in "done"
+            expect(handledCb).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe("mutating the snapshot's nested deferred args after rehydrate() returns", () => {
+        let fsm: any,
+            client: ChildClient,
+            nestedPayload: Record<string, unknown>,
+            snapshotAfterMutation: any,
+            replayedArgs: unknown[];
+
+        beforeEach(() => {
+            nestedPayload = { count: 1 };
+            replayedArgs = [];
+            fsm = createBehavioralFsm({
+                id: "rehydrate-snapshot-alias",
+                initialState: "idle",
+                states: {
+                    idle: { start: "running" },
+                    running: { advance: "done" },
+                    // Targeted defer (until "done") stays queued across the
+                    // "running" state so we can dehydrate() BEFORE it replays.
+                    done: {
+                        ping(_args: any, ...rest: unknown[]) {
+                            replayedArgs = rest;
+                        },
+                    },
+                },
+            });
+            client = {};
+            fsm.rehydrate(client, {
+                state: "running",
+                deferred: [{ inputName: "ping", args: [nestedPayload], untilState: "done" }],
+            });
+
+            // Mutate the CALLER'S object after rehydrate() returns — this must not
+            // reach into the FSM's internal deferred queue (the write must clone,
+            // not alias, item.args).
+            nestedPayload.count = 999;
+
+            snapshotAfterMutation = fsm.dehydrate(client);
+            fsm.handle(client, "advance"); // running → done, replays "ping" (untilState "done")
+        });
+
+        it("should not reflect the post-rehydrate mutation in a fresh dehydrate() snapshot", () => {
+            expect(snapshotAfterMutation.deferred).toEqual([
+                { inputName: "ping", args: [{ count: 1 }], untilState: "done" },
+            ]);
+        });
+
+        it("should replay the deferred input with the original, unmutated args", () => {
+            expect(replayedArgs).toEqual([{ count: 1 }]);
+        });
+    });
+
+    describe("invalid state name at the top level", () => {
+        let fsm: any, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "rehydrate-snapshot-invalid-top",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            try {
+                fsm.rehydrate({}, { state: "nonexistent", deferred: [] });
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw naming the bad state and the FSM id", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("nonexistent");
+            expect(thrownError!.message).toContain("rehydrate-snapshot-invalid-top");
+        });
+    });
+
+    describe("invalid state name at a nested level — atomicity", () => {
+        let child: any, parent: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            child = createBehavioralFsm({
+                id: "rehydrate-snapshot-nested-child",
+                initialState: "off",
+                states: { off: {}, on: {} },
+            });
+            parent = createBehavioralFsm({
+                id: "rehydrate-snapshot-nested-parent",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    active: { _child: child },
+                },
+            });
+            client = {};
+            try {
+                parent.rehydrate(client, {
+                    state: "active",
+                    deferred: [],
+                    children: { active: { state: "bogus", deferred: [] } },
+                });
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw naming the bad nested state", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("bogus");
+        });
+
+        it("should leave the parent unwritten (nothing written anywhere)", () => {
+            expect(parent.currentState(client)).toBeUndefined();
+        });
+
+        it("should leave the child unwritten", () => {
+            expect(child.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("children entry referencing a state with no _child", () => {
+        let fsm: any, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "rehydrate-snapshot-no-child",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            try {
+                fsm.rehydrate(
+                    {},
+                    {
+                        state: "running",
+                        deferred: [],
+                        children: { running: { state: "sub", deferred: [] } },
+                    }
+                );
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw naming the state and the FSM id", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("running");
+            expect(thrownError!.message).toContain("rehydrate-snapshot-no-child");
+        });
+    });
+
+    describe("children entry referencing a stateName that isn't declared at all", () => {
+        let fsm: any, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "rehydrate-snapshot-unknown-child-key",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            try {
+                fsm.rehydrate(
+                    {},
+                    {
+                        state: "running",
+                        deferred: [],
+                        children: { bogusState: { state: "sub", deferred: [] } },
+                    }
+                );
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw naming the unknown state and the FSM id", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("bogusState");
+            expect(thrownError!.message).toContain("rehydrate-snapshot-unknown-child-key");
+        });
+    });
+
+    describe("nested child FSM instance is disposed independently of the parent", () => {
+        let child: any, parent: any, client: ChildClient;
+
+        beforeEach(() => {
+            child = createBehavioralFsm({
+                id: "rehydrate-snapshot-disposed-child",
+                initialState: "off",
+                states: { off: {}, on: {} },
+            });
+            parent = createBehavioralFsm({
+                id: "rehydrate-snapshot-parent-of-disposed-child",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    active: { _child: child },
+                },
+            });
+            client = {};
+            child.dispose();
+            parent.rehydrate(client, {
+                state: "active",
+                deferred: [],
+                children: { active: { state: "on", deferred: [] } },
+            });
+        });
+
+        it("should not throw and should still rehydrate the parent", () => {
+            expect(parent.currentState(client)).toBe("active");
+        });
+
+        it("should silently skip writing to the disposed child", () => {
+            expect(child.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("Fsm child referenced by a snapshot's children entry", () => {
+        let parent: any, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            const fsmChild = createFsm({
+                id: "rehydrate-snapshot-fsm-child",
+                initialState: "on",
+                states: { on: {}, off: {} },
+            });
+            parent = createBehavioralFsm({
+                id: "rehydrate-snapshot-fsm-parent",
+                initialState: "active",
+                states: {
+                    active: { _child: fsmChild as any },
+                },
+            });
+            try {
+                parent.rehydrate(
+                    {},
+                    {
+                        state: "active",
+                        deferred: [],
+                        children: { active: { state: "off", deferred: [] } },
+                    }
+                );
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw, consistent with the string form", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("cannot rehydrate an Fsm child");
+        });
+    });
+
+    describe("shared child instance referenced under two state keys", () => {
+        let child: any, parent: any, client: ChildClient;
+
+        beforeEach(() => {
+            child = createBehavioralFsm({
+                id: "rehydrate-snapshot-shared-child",
+                initialState: "off",
+                states: { off: {}, on: {} },
+            });
+            parent = createBehavioralFsm({
+                id: "rehydrate-snapshot-shared-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child },
+                    modeB: { _child: child },
+                },
+            });
+            client = {};
+            parent.rehydrate(client, {
+                state: "modeA",
+                deferred: [],
+                children: {
+                    modeA: { state: "on", deferred: [] },
+                    modeB: { state: "on", deferred: [] },
+                },
+            });
+        });
+
+        it("should place the shared child idempotently despite two duplicate write thunks", () => {
+            expect(child.currentState(client)).toBe("on");
+        });
+
+        it("should place the parent at the snapshotted state", () => {
+            expect(parent.currentState(client)).toBe("modeA");
+        });
+    });
+
+    describe("disposed FSM", () => {
+        let fsm: any, client: ChildClient;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "rehydrate-snapshot-disposed",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            client = {};
+            fsm.dispose();
+            fsm.rehydrate(client, { state: "running", deferred: [] });
+        });
+
+        it("should be a no-op", () => {
+            expect(fsm.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("equivalence with the string form when deferred is empty", () => {
+        let child: any, parent: any, stringClient: ChildClient, objectClient: ChildClient;
+
+        beforeEach(() => {
+            child = createBehavioralFsm({
+                id: "equivalence-child",
+                initialState: "off",
+                states: { off: { poweron: "on" }, on: { poweroff: "off" } },
+            });
+            parent = createBehavioralFsm({
+                id: "equivalence-parent",
+                initialState: "idle",
+                states: {
+                    idle: {},
+                    active: { _child: child },
+                },
+            });
+            stringClient = {};
+            objectClient = {};
+            parent.rehydrate(stringClient, "active.on");
+            parent.rehydrate(objectClient, {
+                state: "active",
+                deferred: [],
+                children: { active: { state: "on", deferred: [] } },
+            });
+        });
+
+        it("should place both clients in the same parent state", () => {
+            expect(parent.currentState(objectClient)).toBe(parent.currentState(stringClient));
+        });
+
+        it("should place both clients in the same child state", () => {
+            expect(child.currentState(objectClient)).toBe(child.currentState(stringClient));
+        });
+
+        it("should produce the same compositeState for both", () => {
+            expect(parent.compositeState(objectClient)).toBe(parent.compositeState(stringClient));
+        });
+    });
+});
+
+// =============================================================================
+// Full persistence round-trip: dehydrate → JSON round-trip → rehydrate
+// =============================================================================
+
+describe("BehavioralFsm — persistence round-trip", () => {
+    describe("hierarchy with an off-path deferral, restored onto a NEW client object", () => {
+        let child: any,
+            parent: any,
+            originalClient: ChildClient,
+            newClient: ChildClient,
+            pingReplayed: boolean,
+            transitioningCb: jest.Mock;
+
+        beforeEach(() => {
+            pingReplayed = false;
+            transitioningCb = jest.fn();
+            child = createBehavioralFsm({
+                id: "roundtrip-child",
+                initialState: "off",
+                states: {
+                    off: {
+                        poweron: "on",
+                        ping() {
+                            pingReplayed = true;
+                        },
+                    },
+                    on: {
+                        poweroff: "off",
+                        ping({ defer }: any) {
+                            defer({ until: "off" });
+                        },
+                    },
+                },
+            });
+            parent = createBehavioralFsm({
+                id: "roundtrip-parent",
+                initialState: "idle",
+                states: {
+                    idle: { activate: "active" },
+                    active: { _child: child, deactivate: "idle" },
+                },
+            });
+
+            // Build up state on the ORIGINAL client: leave the child off-path,
+            // on, with a deferral pending.
+            originalClient = {};
+            parent.handle(originalClient, "activate"); // idle → active, child resets to off
+            child.handle(originalClient, "poweron"); // child: off → on
+            child.handle(originalClient, "ping"); // deferred until "off"
+            parent.handle(originalClient, "deactivate"); // active → idle — child now off-path
+
+            const snapshot = parent.dehydrate(originalClient);
+            const roundTripped = JSON.parse(JSON.stringify(snapshot));
+
+            newClient = {};
+            parent.on("transitioning", transitioningCb);
+            parent.rehydrate(newClient, roundTripped);
+        });
+
+        it("should not fire any lifecycle events during placement", () => {
+            expect(transitioningCb).not.toHaveBeenCalled();
+        });
+
+        it("should restore the parent's state on the new client", () => {
+            expect(parent.currentState(newClient)).toBe("idle");
+        });
+
+        it("should restore the off-path child's state on the new client", () => {
+            expect(child.currentState(newClient)).toBe("on");
+        });
+
+        describe("when the new client's parent re-enters the child's state", () => {
+            beforeEach(() => {
+                parent.handle(newClient, "activate"); // idle → active: child resets (on → off), replays "ping"
+            });
+
+            it("should replay the restored deferred input, identical to the in-memory oracle", () => {
+                expect(pingReplayed).toBe(true);
+            });
+
+            it("should land the child at its initialState after replay", () => {
+                expect(child.currentState(newClient)).toBe("off");
+            });
+        });
+
+        it("should leave the original client's live state untouched", () => {
+            expect(parent.currentState(originalClient)).toBe("idle");
+            expect(child.currentState(originalClient)).toBe("on");
+        });
+    });
+});
+
+// =============================================================================
+// Hardening: hostile snapshots, deep/diamond hierarchies, and adversarial
+// call timing that the original test suite's happy-path-plus-error-cases
+// coverage doesn't exercise.
+// =============================================================================
+
+describe("BehavioralFsm — persistence hardening", () => {
+    describe("dehydrate() — shared child instance wired in at two different hierarchy depths", () => {
+        let leaf: any, mid: any, root: any, client: ChildClient, snapshot: any;
+
+        beforeEach(() => {
+            // "leaf" is declared directly under root.branchB AND, two levels
+            // deeper, under mid.midActive (mid is itself root.branchA's child).
+            // Diamond, not a cycle: leaf never declares anything that points
+            // back up toward mid or root.
+            leaf = createBehavioralFsm({
+                id: "diamond-leaf",
+                initialState: "off",
+                states: { off: { poweron: "on" }, on: { poweroff: "off" } },
+            });
+            mid = createBehavioralFsm({
+                id: "diamond-mid",
+                initialState: "midIdle",
+                states: {
+                    midIdle: { go: "midActive" },
+                    midActive: { _child: leaf },
+                },
+            });
+            root = createBehavioralFsm({
+                id: "diamond-root",
+                initialState: "start",
+                states: {
+                    start: { go: "branchA" },
+                    branchA: { _child: mid, hop: "branchB" },
+                    branchB: { _child: leaf },
+                },
+            });
+
+            client = {};
+            root.handle(client, "go"); // start -> branchA; mid resets to midIdle
+            root.handle(client, "go"); // delegates to mid: midIdle -> midActive; leaf resets to off
+            leaf.handle(client, "poweron"); // leaf: off -> on
+
+            snapshot = root.dehydrate(client);
+        });
+
+        it("should capture the shared leaf's state under both tree positions without crashing", () => {
+            expect(snapshot).toEqual({
+                state: "branchA",
+                deferred: [],
+                children: {
+                    branchA: {
+                        state: "midActive",
+                        deferred: [],
+                        children: { midActive: { state: "on", deferred: [] } },
+                    },
+                    branchB: { state: "on", deferred: [] },
+                },
+            });
+        });
+    });
+
+    describe("rehydrate(snapshot) — conflicting states for the same shared child under two declaring keys", () => {
+        let child: any, parent: any, client: ChildClient;
+
+        beforeEach(() => {
+            child = createBehavioralFsm({
+                id: "conflict-shared-child",
+                initialState: "off",
+                states: { off: {}, on: {} },
+            });
+            parent = createBehavioralFsm({
+                id: "conflict-shared-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child },
+                    modeB: { _child: child },
+                },
+            });
+            client = {};
+            // A hand-crafted (not dehydrate()-produced) snapshot: the same
+            // child instance is asked to be in two different states at once.
+            // dehydrate() itself can never produce this (its dedup emits one
+            // identical value under every declaring key) — this pins what
+            // happens when the snapshot itself is self-contradictory.
+            parent.rehydrate(client, {
+                state: "modeA",
+                deferred: [],
+                children: {
+                    modeA: { state: "on", deferred: [] },
+                    modeB: { state: "off", deferred: [] },
+                },
+            });
+        });
+
+        it("should resolve to the last-written declaring key's state (modeB, iterated second)", () => {
+            expect(child.currentState(client)).toBe("off");
+        });
+    });
+
+    describe("rehydrate(snapshot) — top-level state name is the inherited '__proto__' accessor", () => {
+        let fsm: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            thrownError = undefined;
+            fsm = createBehavioralFsm({
+                id: "proto-pollution-state",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            client = {};
+            try {
+                fsm.rehydrate(client, { state: "__proto__", deferred: [] });
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        // Regression guard: `state in this.states` was fooled by the inherited
+        // Object.prototype `__proto__` accessor — `"__proto__" in {}` is `true`
+        // even though no state literally named "__proto__" was ever declared
+        // (object-literal syntax can't even create one). planSnapshotWrites()
+        // now uses Object.hasOwn(), which only matches real declared states.
+        it("should throw for the unknown state rather than silently accepting it", () => {
+            expect(thrownError).toBeDefined();
+        });
+    });
+
+    describe("rehydrate(snapshot) — children map key is the inherited '__proto__' accessor", () => {
+        let child: any, fsm: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            thrownError = undefined;
+            child = createBehavioralFsm({
+                id: "proto-pollution-children-child",
+                initialState: "off",
+                states: { off: {}, on: {} },
+            });
+            fsm = createBehavioralFsm({
+                id: "proto-pollution-children-parent",
+                initialState: "idle",
+                states: { idle: {}, active: { _child: child } },
+            });
+            client = {};
+            // Only JSON.parse (not object-literal syntax) can produce a genuine
+            // OWN "__proto__" property to iterate over via Object.keys().
+            const hostileChildren = JSON.parse('{"__proto__":{"state":"on","deferred":[]}}');
+            try {
+                fsm.rehydrate(client, { state: "active", deferred: [], children: hostileChildren });
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw rather than write anything, unlike the top-level state field", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("__proto__");
+        });
+
+        it("should leave the FSM unwritten", () => {
+            expect(fsm.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("rehydrate(snapshot) — deferred untilState references a state absent from the definition", () => {
+        let fsm: any, client: ChildClient, pingHandled: boolean;
+
+        beforeEach(() => {
+            pingHandled = false;
+            fsm = createBehavioralFsm({
+                id: "ghost-until-state",
+                initialState: "idle",
+                states: {
+                    idle: { start: "running" },
+                    running: {
+                        ping() {
+                            pingHandled = true;
+                        },
+                    },
+                },
+            });
+            client = {};
+            fsm.rehydrate(client, {
+                state: "idle",
+                deferred: [{ inputName: "ping", args: [], untilState: "ghostState" }],
+            });
+            fsm.handle(client, "start"); // idle -> running; untilState "ghostState" never matches
+        });
+
+        it("should transition normally without replaying the orphaned deferral", () => {
+            expect(fsm.currentState(client)).toBe("running");
+            expect(pingHandled).toBe(false);
+        });
+
+        it("should leave the orphaned deferral sitting inertly in the queue", () => {
+            expect(fsm.dehydrate(client)).toEqual({
+                state: "running",
+                deferred: [{ inputName: "ping", args: [], untilState: "ghostState" }],
+            });
+        });
+    });
+
+    describe("dehydrate() called synchronously from inside a handler, mid-transition", () => {
+        let fsm: any, client: ChildClient, midHandlerSnapshot: any;
+
+        beforeEach(() => {
+            midHandlerSnapshot = undefined;
+            fsm = createBehavioralFsm({
+                id: "dehydrate-mid-handler",
+                initialState: "idle",
+                states: {
+                    idle: {
+                        weird({ defer }: any) {
+                            defer();
+                            // Called before the transition below has happened —
+                            // meta.state is still "idle" at this point.
+                            midHandlerSnapshot = fsm.dehydrate(client);
+                            return "running";
+                        },
+                    },
+                    running: {},
+                },
+            });
+            client = {};
+            fsm.handle(client, "weird");
+        });
+
+        it("should reflect the pre-transition state and the just-deferred input, excluding in-flight handler args", () => {
+            expect(midHandlerSnapshot).toEqual({
+                state: "idle",
+                deferred: [{ inputName: "weird", args: [] }],
+            });
+        });
+
+        it("should leave the FSM's own transition unaffected by the mid-handler dehydrate() call", () => {
+            expect(fsm.currentState(client)).toBe("running");
+        });
+    });
+
+    describe("rehydrate(snapshot) — 3-level nested hierarchy", () => {
+        let grandchild: any, childFsm: any, grandparent: any, client: ChildClient;
+
+        beforeEach(() => {
+            grandchild = createBehavioralFsm({
+                id: "snapshot-3-level-gc",
+                initialState: "alpha",
+                states: { alpha: { next: "beta" }, beta: {} },
+            });
+            childFsm = createBehavioralFsm({
+                id: "snapshot-3-level-child",
+                initialState: "x",
+                states: { x: { _child: grandchild, jump: "y" }, y: {} },
+            });
+            grandparent = createBehavioralFsm({
+                id: "snapshot-3-level-gp",
+                initialState: "top",
+                states: { top: { _child: childFsm } },
+            });
+            client = {};
+            grandparent.rehydrate(client, {
+                state: "top",
+                deferred: [],
+                children: {
+                    top: {
+                        state: "x",
+                        deferred: [],
+                        children: { x: { state: "beta", deferred: [] } },
+                    },
+                },
+            });
+        });
+
+        it("should place every level at its snapshotted state", () => {
+            expect(grandparent.currentState(client)).toBe("top");
+            expect(childFsm.currentState(client)).toBe("x");
+            expect(grandchild.currentState(client)).toBe("beta");
+        });
+
+        it("should produce the full three-level dot-path via compositeState", () => {
+            expect(grandparent.compositeState(client)).toBe("top.x.beta");
+        });
+    });
+
+    describe("dehydrate() on a disposed FSM", () => {
+        let fsm: any, client: ChildClient, snapshot: any;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "dehydrate-after-dispose",
+                initialState: "idle",
+                states: { idle: { start: "running" }, running: {} },
+            });
+            client = {};
+            fsm.handle(client, "start");
+            fsm.dispose();
+            snapshot = fsm.dehydrate(client);
+        });
+
+        it("should still return the client's last-known snapshot (dehydrate has no disposed guard, by design)", () => {
+            expect(snapshot).toEqual({ state: "running", deferred: [] });
+        });
+    });
+
+    describe("rehydrate(snapshot) — top-level state name legitimately shadows an inherited Object.prototype member", () => {
+        let fsm: any, client: ChildClient;
+
+        beforeEach(() => {
+            // "hasOwnProperty" IS a real, declared own key here (object-literal
+            // syntax creates it same as any other property name — unlike
+            // "__proto__", there's nothing magic about shadowing an inherited
+            // METHOD name). Object.hasOwn(this.states, "hasOwnProperty") must
+            // still return true for it, exactly as `in` always did — the fix
+            // only needed to stop matching names that are NOT own keys.
+            fsm = createBehavioralFsm({
+                id: "legit-inherited-name-state",
+                initialState: "idle",
+                states: { idle: {}, hasOwnProperty: {} },
+            });
+            client = {};
+            fsm.rehydrate(client, { state: "hasOwnProperty", deferred: [] });
+        });
+
+        it("should accept the declared state rather than rejecting it as if it were inherited", () => {
+            expect(fsm.currentState(client)).toBe("hasOwnProperty");
+        });
+    });
+});

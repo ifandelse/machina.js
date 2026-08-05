@@ -9,6 +9,7 @@
 // =============================================================================
 
 import { Emitter, type Subscription } from "./emitter";
+import { cloneDeep, cloneJsonSafe, NonSerializableValueError } from "./json-safe";
 import {
     MACHINA_TYPE,
     type FsmConfig,
@@ -21,6 +22,8 @@ import {
     type DeferredInput,
     type ChildLink,
     type DisposeOptions,
+    type ClientSnapshot,
+    type MachinaInstance,
 } from "./types";
 
 // Safety valve for _onEnter → transition loops. Instance-level counter works
@@ -277,25 +280,176 @@ export class BehavioralFsm<
     }
 
     /**
-     * Silently place `client` at `compositeState` with no lifecycle activity.
+     * Silently place `client` at `compositeState` with no lifecycle activity —
+     * no `_onEnter`, no `_onExit`, no `transitioning`/`transitioned` events.
      * Designed to work with `compositeState()`, which produces the dot-path
-     * string that `rehydrate()` consumes.
+     * string that the string form consumes.
      *
-     * No `_onEnter`, no `_onExit`, no `transitioning`/`transitioned` events.
-     * If `compositeState` is a dot-delimited path (`"active.connecting"`), the client
-     * is placed at each level of the hierarchy in turn. Subsequent `handle()` calls
-     * proceed as if the client had reached that state through normal transitions.
+     * The snapshot form (pass a `ClientSnapshot` from `dehydrate()`) additionally
+     * requeues each level's pending deferred inputs, so a client resumes with the
+     * same replay-on-next-transition behavior it had when dehydrated. Both forms
+     * validate the ENTIRE hierarchy before writing anything — a throw at any level
+     * leaves every level, including this one, unwritten.
      *
-     * Throws synchronously for unknown state names, missing `_child` at an inner level,
-     * or Fsm children in the hierarchy (Fsm owns its context; nothing to rehydrate there).
+     * Throws synchronously for unknown state names, missing `_child` at an inner
+     * level, or Fsm children in the hierarchy (Fsm owns its own context; nothing
+     * per-client to rehydrate there).
      *
      * No-ops silently when disposed.
      */
-    rehydrate(client: TClient, compositeState: string): void {
+    rehydrate(client: TClient, compositeState: string): void;
+    rehydrate(client: TClient, snapshot: ClientSnapshot): void;
+    rehydrate(client: TClient, input: string | ClientSnapshot): void {
         if (this.disposed) {
             return;
         }
 
+        if (typeof input === "string") {
+            this.rehydrateCompositePath(client, input);
+            return;
+        }
+
+        // Object form: collect write thunks for the WHOLE tree first (this level
+        // AND every descendant), then run them only once nothing has thrown.
+        // The string-form's children-first recursion gets atomicity "for free"
+        // because each level writes only after its child already succeeded — but
+        // that couples validation to writing. Here we need every level validated
+        // before ANY level writes, since a leaf failing three levels down must
+        // not leave levels above it holding a stale write.
+        const writes = this.planSnapshotWrites(client, input);
+        for (const write of writes) {
+            write();
+        }
+    }
+
+    /**
+     * Snapshot everything machina tracks for `client`: current state, pending
+     * deferred inputs, and — recursively — the same for every `_child` that has
+     * ever seen this client, active or not. Feed the result to the object form
+     * of `rehydrate()` to restore it later, deferrals included.
+     *
+     * Returns `undefined` for a client this FSM has never seen (mirrors
+     * `currentState()`) — the call does NOT trigger initialization.
+     *
+     * Throws if any deferred input's args contain a non-serializable value
+     * (function, undefined, symbol, bigint, non-finite number, Date/Map/class
+     * instance, or a circular reference) — naming the input, its `until` target
+     * if any, the FSM id, and the exact value path. Throws for an Fsm child
+     * that's on `client`'s active path *relative to the true root* (consistent
+     * with `rehydrate()`'s conditional throw) — an Fsm owns its own context, so
+     * there's nothing per-client to snapshot. An Fsm child declared at a state
+     * `client` never visited, OR nested under a `BehavioralFsm` child that is
+     * itself off-path from the root, is skipped rather than throwing — neither
+     * has any per-client state to lose, so one Fsm child anywhere in the
+     * hierarchy doesn't disable `dehydrate()` for clients that never reach that
+     * branch, no matter how deeply nested the Fsm child is.
+     *
+     * Meant for clients at rest between `handle()` calls — `currentActionArgs`
+     * (the in-flight args mid-handler) has no meaning here and is excluded.
+     *
+     * @param isOnActivePath - @internal Whether this FSM itself is currently
+     * reachable from the true root's active path. Defaults to `true` for the
+     * public entry point (this FSM IS the root from its own perspective); the
+     * `ChildLink` adapter passes `false` down when recursing into a nested
+     * `BehavioralFsm` child that is itself off-path, so that child's own
+     * Fsm-child checks don't recompute reachability from its dormant local
+     * state alone.
+     */
+    dehydrate(client: TClient, isOnActivePath = true): ClientSnapshot | undefined {
+        const meta = this.clients.get(client);
+        if (!meta) {
+            return undefined;
+        }
+
+        const snapshot: ClientSnapshot = {
+            state: meta.state,
+            deferred: meta.deferredQueue.map(item => this.snapshotDeferredInput(item)),
+        };
+
+        const children = this.collectChildSnapshots(client, meta.state, isOnActivePath);
+        if (children) {
+            snapshot.children = children;
+        }
+
+        return snapshot;
+    }
+
+    /**
+     * @internal
+     * Validates `snapshot` against this level's state graph and recurses into
+     * every declared child, returning write thunks to run only once the WHOLE
+     * tree — every level — validates successfully. Nothing is written here.
+     * Called by the object-form of `rehydrate()` and, recursively, by ChildLink
+     * so a nested BehavioralFsm participates in the same validate-then-write
+     * pass. Not part of the public persistence API — call `rehydrate()` instead.
+     */
+    planSnapshotWrites(client: TClient, snapshot: ClientSnapshot): Array<() => void> {
+        if (this.disposed) {
+            // Mirrors the string form: a disposed FSM mid-hierarchy silently
+            // contributes no writes rather than blocking the rest of the tree.
+            return [];
+        }
+
+        const { state, deferred, children } = snapshot;
+
+        // Object.hasOwn (not `in`) — `in` walks the prototype chain, so a
+        // snapshot with state: "__proto__" (or "constructor", "toString", ...)
+        // would pass validation via the inherited Object.prototype member even
+        // though no state literally named that was ever declared.
+        if (!Object.hasOwn(this.states, state)) {
+            throw new Error(
+                `rehydrate: unknown state "${state}" in FSM "${this.id}". ` +
+                    `Valid states: ${Object.keys(this.states).join(", ")}`
+            );
+        }
+
+        const writes: Array<() => void> = [];
+
+        if (children) {
+            for (const stateName of Object.keys(children)) {
+                if (!Object.hasOwn(this.states, stateName)) {
+                    throw new Error(
+                        `rehydrate: unknown state "${stateName}" in FSM "${this.id}" ` +
+                            `referenced by snapshot.children.`
+                    );
+                }
+
+                const childLink = this.states[stateName]?._child as ChildLink | undefined;
+                if (!childLink) {
+                    throw new Error(
+                        `rehydrate: state "${stateName}" in FSM "${this.id}" has no _child, ` +
+                            `but the snapshot has a children["${stateName}"] entry.`
+                    );
+                }
+
+                writes.push(...childLink.planRehydrate(client, children[stateName]));
+            }
+        }
+
+        // Deep-clone args so the caller's snapshot object isn't aliased into live
+        // FSM state — a shallow spread only protects the array itself, not any
+        // nested objects/arrays inside it. cloneDeep() is validation-free (unlike
+        // dehydrate()'s cloneJsonSafe): rehydrate() trusts the snapshot is already
+        // valid data rather than re-validating on the way in.
+        const deferredQueue: DeferredInput[] = deferred.map(item => ({
+            inputName: item.inputName,
+            args: cloneDeep(item.args) as unknown[],
+            ...(item.untilState !== undefined ? { untilState: item.untilState } : {}),
+        }));
+
+        writes.push(() => {
+            // Guard knownClients before writing meta — if the client is already
+            // tracked, skip adding another WeakRef to avoid accumulating duplicates.
+            if (!this.clients.has(client)) {
+                this.knownClients.add(new WeakRef(client));
+            }
+            this.clients.set(client, { state: state as TStateNames, deferredQueue });
+        });
+
+        return writes;
+    }
+
+    private rehydrateCompositePath(client: TClient, compositeState: string): void {
         const [state, ...rest] = compositeState.split(".");
 
         if (!(state in this.states)) {
@@ -328,6 +482,119 @@ export class BehavioralFsm<
             this.knownClients.add(new WeakRef(client));
         }
         this.clients.set(client, { state: state as TStateNames, deferredQueue: [] });
+    }
+
+    /**
+     * Walks every declared state's `_child`, dehydrating each one that has ever
+     * seen `client`. The same child instance can be declared under multiple
+     * state names (shared child) — it's dehydrated once and the result is
+     * reused under every declaring state name, matching how the engine already
+     * treats shared children elsewhere (dispose, event subscriptions).
+     *
+     * Declaring names are grouped by `childLink.instance` (the actual FSM
+     * instance, not the `ChildLink` wrapper — `wrapChildLinks()` mints a fresh
+     * wrapper per declaring state, so grouping by wrapper would never hit for a
+     * shared child) BEFORE any `onPath` is computed or any child is dehydrated.
+     * A shared child's `onPath` is the OR of `stateName === activeState` across
+     * every declaring name in its group: at most one declaring name can ever
+     * equal `activeState`, so this combined flag is correct and, critically,
+     * independent of `Object.keys(this.states)` iteration order — computing
+     * `onPath` per-declaring-name and caching whichever one happened to run
+     * first would silently launder an on-path client's Fsm-child throw through
+     * an unrelated off-path declaring name.
+     *
+     * An off-path Fsm child (declared only at states other than `activeState`,
+     * OR nested anywhere under a `BehavioralFsm` child that is itself off-path
+     * relative to the true root) is skipped entirely rather than dehydrated:
+     * Fsm state isn't tracked per-client to begin with, so an off-path Fsm
+     * child has nothing to lose by being skipped — unlike a BehavioralFsm
+     * child's off-path meta, which is real per-client data. `isOnActivePath`
+     * is the inherited "am I even reachable from the root" flag; combining it
+     * with the group's `stateNames.includes(activeState)` check (rather than
+     * using that check alone) is what keeps a nested Fsm grandchild from
+     * throwing when its immediate BehavioralFsm parent is itself off-path —
+     * the parent's own dormant `activeState` is irrelevant once the parent
+     * isn't reachable. This keeps one Fsm child anywhere in the hierarchy from
+     * disabling `dehydrate()` for every client, only for clients actually on
+     * that branch.
+     */
+    private collectChildSnapshots(
+        client: TClient,
+        activeState: string,
+        isOnActivePath: boolean
+    ): Record<string, ClientSnapshot> | undefined {
+        // Pass 1: group every declaring state name by the child instance it
+        // resolves to, so a shared child's combined onPath can be computed
+        // before dehydrate() is ever called for it.
+        const declaringNamesByInstance = new Map<
+            MachinaInstance,
+            { childLink: ChildLink; stateNames: string[] }
+        >();
+
+        for (const stateName of Object.keys(this.states)) {
+            const childLink = this.states[stateName]?._child as ChildLink | undefined;
+            if (!childLink) {
+                continue;
+            }
+
+            const entry = declaringNamesByInstance.get(childLink.instance);
+            if (entry) {
+                entry.stateNames.push(stateName);
+            } else {
+                declaringNamesByInstance.set(childLink.instance, {
+                    childLink,
+                    stateNames: [stateName],
+                });
+            }
+        }
+
+        // Pass 2: dehydrate each unique instance exactly once, using the
+        // combined onPath, then fan the result out to every declaring name.
+        let children: Record<string, ClientSnapshot> | undefined;
+
+        for (const { childLink, stateNames } of declaringNamesByInstance.values()) {
+            const onPath = isOnActivePath && stateNames.includes(activeState);
+            const isOffPathFsmChild = childLink.instance[MACHINA_TYPE] === "Fsm" && !onPath;
+            if (isOffPathFsmChild) {
+                continue;
+            }
+
+            // Throws for an Fsm child that IS on the active path — propagates
+            // straight through, consistent with rehydrate()'s Fsm-child throw.
+            // `onPath` is passed down so a nested BehavioralFsm child applies
+            // the same root-relative reachability to its own Fsm children.
+            const childSnapshot = childLink.dehydrate(client, onPath);
+            if (childSnapshot) {
+                children ??= {};
+                for (const stateName of stateNames) {
+                    children[stateName] = childSnapshot;
+                }
+            }
+        }
+
+        return children;
+    }
+
+    private snapshotDeferredInput(item: DeferredInput): DeferredInput {
+        let clonedArgs: unknown[];
+        try {
+            clonedArgs = cloneJsonSafe(item.args, "args") as unknown[];
+        } catch (err) {
+            if (!(err instanceof NonSerializableValueError)) {
+                throw err;
+            }
+            const untilPart = item.untilState ? ` (until "${item.untilState}")` : "";
+            throw new Error(
+                `dehydrate: deferred input "${item.inputName}"${untilPart} in FSM "${this.id}" ` +
+                    `has a non-serializable value at ${err.path} (${err.label})`
+            );
+        }
+
+        const snapshot: DeferredInput = { inputName: item.inputName, args: clonedArgs };
+        if (item.untilState !== undefined) {
+            snapshot.untilState = item.untilState;
+        }
+        return snapshot;
     }
 
     /**
@@ -717,6 +984,12 @@ function createChildLink(child: any): ChildLink {
             rehydrate(client: object, compositeState: string): void {
                 child.rehydrate(client, compositeState);
             },
+            dehydrate(client: object, isOnActivePath: boolean): ClientSnapshot | undefined {
+                return child.dehydrate(client, isOnActivePath);
+            },
+            planRehydrate(client: object, snapshot: ClientSnapshot): Array<() => void> {
+                return child.planSnapshotWrites(client, snapshot);
+            },
             dispose(): void {
                 child.dispose();
             },
@@ -745,6 +1018,22 @@ function createChildLink(child: any): ChildLink {
                 // Fsm owns its context internally — there is no per-client state to restore.
                 // Rehydrating into a BehavioralFsm hierarchy that has Fsm children is a
                 // structural mismatch; throw immediately so the caller gets a clear signal.
+                throw new Error(
+                    `rehydrate: cannot rehydrate an Fsm child. Fsm owns its own context; ` +
+                        `rehydrate is only valid for BehavioralFsm hierarchies.`
+                );
+            },
+            dehydrate(_client: object, _isOnActivePath: boolean): ClientSnapshot | undefined {
+                // Fsm owns a single global context shared across every client of the
+                // parent BehavioralFsm — there's no per-client slice of it to snapshot.
+                // collectChildSnapshots() only reaches this call when onPath is true
+                // (it skips the call entirely otherwise), so this always throws.
+                throw new Error(
+                    `dehydrate: cannot dehydrate an Fsm child. Fsm owns its own context; ` +
+                        `dehydrate is only valid for BehavioralFsm hierarchies.`
+                );
+            },
+            planRehydrate(_client: object, _snapshot: ClientSnapshot): Array<() => void> {
                 throw new Error(
                     `rehydrate: cannot rehydrate an Fsm child. Fsm owns its own context; ` +
                         `rehydrate is only valid for BehavioralFsm hierarchies.`
