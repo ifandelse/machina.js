@@ -14,23 +14,24 @@ Keep persistence in one place: a repository that knows how to fetch a client and
 ```ts
 class CartRepository {
     async getCart(id: string): Promise<Cart> {
-        const row = await redis.get(`cart:${id}`);
-        const cart = deserializeCart(row.cart);
-        cartFsm.rehydrate(cart, row.fsm); // silent placement, deferrals requeued
+        const row = await store.carts.get(id); // { cart, fsm } — parsed however your storage parses
+        const cart = deserializeCart(row.cart); // revive YOUR object — Dates, class instances, etc.
+        cartFsm.rehydrate(cart, row.fsm); // silent placement, deferrals requeued — no revival needed
         return cart;
     }
 
     async saveCart(cart: Cart): Promise<void> {
         const fsm = cartFsm.dehydrate(cart); // throws here if defer args can't persist
-        await redis.set(`cart:${cart.id}`, { cart: serializeCart(cart), fsm }); // one atomic write
+        await store.carts.put(cart.id, { cart: serializeCart(cart), fsm }); // one atomic write
     }
 }
 ```
 
-Two things make this work cleanly:
+Three things make this work cleanly:
 
 - **`dehydrate()` throws at save time**, not at some later point during deserialization. If a handler deferred an input with a non-serializable argument, you find out immediately, with an error naming the exact input and value path — not after a restart, staring at corrupted state.
 - **One write, one transaction.** The client's business data and its FSM state are saved together. There's no window where one could be persisted without the other.
+- **`rehydrate()` takes the parsed object.** Whether your driver hands you parsed documents (MongoDB, Postgres `jsonb`) or strings you `JSON.parse` yourself (raw Redis) is your storage layer's concern. The snapshot is guaranteed JSON-safe plain data, so it passes through any of those boundaries unchanged — only _your_ object may need revival, which is what `deserializeCart` stands in for. If your client is plain data too, it collapses to nothing.
 
 ## The service bracket: explicit load → handle → save
 
@@ -81,6 +82,15 @@ For hierarchical FSMs, the walk is full-fidelity: `dehydrate()` captures every s
     serialization — a function, `undefined`, a `Date`/`Map`/class instance, a symbol,
     `NaN`/`Infinity`, or a circular reference. Keep deferred arguments to plain data (strings,
     numbers, booleans, plain objects/arrays, `null`) and this never comes up.
+</Aside>
+
+<Aside type="tip">
+    **Why JSON-safe when your database can store more?** MongoDB's BSON will happily round-trip a
+    `Date` — and `dehydrate()` still throws on one. That's deliberate. The snapshot contract is the
+    lowest common denominator, so a snapshot stays portable across every storage and can never
+    silently lose fidelity on the ones that only speak JSON. Storage-specific rich types would tie
+    persisted state to one backend and reintroduce exactly the silent-mangling problem `dehydrate()`
+    exists to prevent.
 </Aside>
 
 ## What machina doesn't do
