@@ -1,0 +1,94 @@
+---
+title: Persisting clients
+description: A repository pattern for saving and restoring BehavioralFsm client state, deferrals included.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+`BehavioralFsm` tracks per-client state internally in a `WeakMap` — nothing is stamped onto the client object, and the engine is entirely synchronous with no storage concept of its own. That's deliberate: machina doesn't know about your database, and it never performs I/O. `dehydrate()` and `rehydrate()` are the seam — they turn "everything machina knows about a client" into plain data and back, so your application's repository layer can own the actual load and save.
+
+## The repository pattern
+
+Keep persistence in one place: a repository that knows how to fetch a client and its FSM snapshot together, and save them back together in a single atomic write.
+
+```ts
+class CartRepository {
+    async getCart(id: string): Promise<Cart> {
+        const row = await redis.get(`cart:${id}`);
+        const cart = deserializeCart(row.cart);
+        cartFsm.rehydrate(cart, row.fsm); // silent placement, deferrals requeued
+        return cart;
+    }
+
+    async saveCart(cart: Cart): Promise<void> {
+        const fsm = cartFsm.dehydrate(cart); // throws here if defer args can't persist
+        await redis.set(`cart:${cart.id}`, { cart: serializeCart(cart), fsm }); // one atomic write
+    }
+}
+```
+
+Two things make this work cleanly:
+
+- **`dehydrate()` throws at save time**, not at some later point during deserialization. If a handler deferred an input with a non-serializable argument, you find out immediately, with an error naming the exact input and value path — not after a restart, staring at corrupted state.
+- **One write, one transaction.** The client's business data and its FSM state are saved together. There's no window where one could be persisted without the other.
+
+## The service bracket: explicit load → handle → save
+
+Machina's API is entirely synchronous — `handle()` never awaits anything. Async work (fetching, saving) belongs in the layer that calls into the FSM, not inside it. A service method owns the full bracket explicitly:
+
+```ts
+async function checkout(id: string) {
+    const cart = await repo.getCart(id); // load
+    cartFsm.handle(cart, "checkout"); // core API, synchronous, untouched
+    await repo.saveCart(cart); // save
+}
+```
+
+This bracket — load, handle, save — is the whole pattern. There's no hidden middleware, no implicit persistence hook on `transitioned`. You decide exactly when a save happens, which makes the failure modes obvious: if `saveCart` throws, the in-memory `cart` object already reflects the new state, but nothing durable changed. Retry the save, or re-fetch and re-apply, same as any other transactional write.
+
+## Snapshots and deferred inputs
+
+`compositeState()` + the string form of `rehydrate()` cover clients that never defer anything — a state name is the whole story. Once deferred inputs are in play, that's not enough: a deferred input sitting in the queue when a client is saved needs to survive the round trip too, or it silently vanishes on restore.
+
+`dehydrate()` returns everything machina tracks for a client as a plain, nested object — mirroring the FSM hierarchy for clients with child FSMs:
+
+```ts
+const snapshot = cartFsm.dehydrate(cart);
+// {
+//   state: "validating",
+//   deferred: [{ inputName: "applyDiscount", args: ["WELCOME10"], untilState: "checkout" }],
+// }
+```
+
+Restoring is the object form of `rehydrate()` — same silent-placement contract as the string form (no `_onEnter`, no `_onExit`, no events), plus the deferred queue gets requeued at every level:
+
+```ts
+cartFsm.rehydrate(cart, snapshot);
+cartFsm.handle(cart, "advance"); // proceeds normally; "applyDiscount" replays once "checkout" is reached
+```
+
+For hierarchical FSMs, the walk is full-fidelity: `dehydrate()` captures every state whose `_child` has ever seen the client, not just the one the client is currently in. A child the parent left mid-flight — powered on, mid-retry, whatever — is captured under its declaring state name and restored the same way. That matters because leaving a child's state isn't the same as resetting it: the child stays exactly where it was until the parent re-enters that state, at which point the reset transition fires the child's stale `_onExit`, then `_onEnter` (skipped if the child was already at its `initialState`), then replays anything still in that child's deferred queue. A restored client reproduces all of that identically — it's indistinguishable from one that never left memory.
+
+<Aside type="caution">
+    **Dehydrate at rest, not mid-handler.** Call `dehydrate()` after a `handle()` call returns —
+    from your service layer's save step — never from inside a handler. The arguments for a
+    currently-executing input aren't part of a client's persisted state; they only exist for the
+    duration of that one `handle()` call.
+</Aside>
+
+<Aside type="note">
+    `dehydrate()` throws if a deferred input's arguments contain anything that can't survive
+    serialization — a function, `undefined`, a `Date`/`Map`/class instance, a symbol,
+    `NaN`/`Infinity`, or a circular reference. Keep deferred arguments to plain data (strings,
+    numbers, booleans, plain objects/arrays, `null`) and this never comes up.
+</Aside>
+
+## What machina doesn't do
+
+- **No storage I/O.** `dehydrate()`/`rehydrate()` hand you plain data; where it lives — Redis, Postgres, a file, a message queue — is entirely your call.
+- **No identity keying.** Client state is tracked by object reference (`WeakMap`), not by an ID machina manages. The snapshot travels _with_ your client through the repository, so this works correctly under horizontal scaling by construction — there's no server-affinity requirement, no shared session store to keep in sync.
+- **No async API.** `handle()`, `transition()`, `rehydrate()`, and `dehydrate()` are all synchronous. This is load-bearing, not an oversight — it's what keeps the state machine's own logic simple and testable. Async lives in the bracket around it.
+
+## A note on concurrent requests
+
+None of the above prevents two concurrent requests for the _same_ client from racing: both load a snapshot, both handle an input against their own in-memory copy, both save — and the second save silently clobbers the first. Machina has no opinion on this because it's an application architecture problem, not an FSM problem. If a given client can receive concurrent requests, route them through a single-writer discipline — a consistent-hash-routed worker, a per-entity mailbox/actor, a database-level lock on the save — so that `load → handle → save` runs as a serialized sequence for that entity. That discipline lives entirely in your service layer; it has nothing to do with machina's API.

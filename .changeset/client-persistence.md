@@ -1,0 +1,5 @@
+---
+"machina": minor
+---
+
+Add `dehydrate(client)` and a snapshot-aware overload of `rehydrate(client, snapshot)` to `BehavioralFsm`. `dehydrate()` returns a plain, JSON-serializable snapshot of everything machina tracks for a client — current state, pending deferred inputs, and the same for every `_child` in the hierarchy, active or not. The object form of `rehydrate()` restores it, requeuing deferrals at every level with no lifecycle hooks or events, so a restored client behaves identically to one that never left memory. The existing string form of `rehydrate()` (composite-state-only, no deferrals) is unchanged. Throws for an Fsm child on the client's active path (consistent with the existing string-form `rehydrate()` throw) — an off-path Fsm child elsewhere in the hierarchy, no matter how deeply nested under other `BehavioralFsm` children, is skipped rather than blocking `dehydrate()` for clients that never reach it. Also throws for deferred arguments that can't survive a serialization boundary — the error names the exact input, its `until` target, and the offending value's path.

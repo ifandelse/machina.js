@@ -34,6 +34,8 @@ export type {
     ClientOf,
     DisposeOptions,
     ChildLink,
+    DeferredInput,
+    ClientSnapshot,
 } from "./types";
 
 // Runtime values used by inspection tooling
