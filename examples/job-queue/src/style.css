@@ -372,6 +372,32 @@ body {
     background: #f3f4f6;
 }
 
+/* Secondary action — the pre-emptive "Pause on start" on queued cards.
+   Visually quieter than the primary action so "Start" stays the obvious path. */
+.job-action-btn--secondary {
+    margin-left: 0.5rem;
+    border-style: dashed;
+    color: var(--color-text-muted);
+}
+
+/* Replaces the secondary button once the pause is deferred — same pill
+   language as the restored badge, but persistent (no fade): it stays
+   relevant until the job starts. */
+.job-card__pause-pending-badge {
+    display: inline-block;
+    margin-top: 0.25rem;
+    margin-left: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #fefce8;
+    color: #a16207;
+    border: 1px solid #fde68a;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+}
+
 /* -----------------------------------------------------------------------------
    Empty state
    ----------------------------------------------------------------------------- */

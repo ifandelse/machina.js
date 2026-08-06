@@ -35,6 +35,7 @@
 // =============================================================================
 
 import {
+    INPUT_PAUSE,
     INPUT_TICK,
     MAX_JOBS,
     STORAGE_KEY,
@@ -154,6 +155,12 @@ const restoreFromStorage = (): number => {
                 // Mark as restored so the UI can show the "restored" badge.
                 // The FSM has no concept of this — it's purely a UI hint.
                 restoredFromStorage: true,
+                // Re-derive the "will pause on start" UI hint from the
+                // snapshot itself — the deferred queue IS the source of truth,
+                // and it just survived the reload.
+                pausePending: (persisted.snapshot.deferred ?? []).some(
+                    d => d.inputName === INPUT_PAUSE
+                ),
             };
 
             // STEP 1: Silently place the client at its saved state, requeuing
@@ -225,6 +232,7 @@ const init = (): (() => void) => {
     let transitionedSub: { off: () => void };
     let handledSub: { off: () => void };
     let handlingSub: { off: () => void };
+    let deferredSub: { off: () => void };
 
     const wireFsmSubscriptions = (): void => {
         // `transitioned` fires after every state change. This is where we:
@@ -234,7 +242,29 @@ const init = (): (() => void) => {
         transitionedSub = fsm.on("transitioned", (data: unknown) => {
             const { client, toState } = data as { client: JobClient; toState: JobState };
             jobStates.set(client.id, toState);
+            // Any transition away from queued means the pending pause has
+            // replayed (or is mid-replay) — the hint's job is done.
+            if (toState !== STATE_QUEUED) {
+                client.pausePending = false;
+            }
             updateJobCard(client, toState, handleJobAction);
+            persistJobs();
+        });
+
+        // `deferred` fires when a handler queues an input for later replay —
+        // here, only the pre-emptive pause on queued jobs. A deferral does NOT
+        // transition, so without persisting here the deferred pause would sit
+        // only in memory until the next transition — and a reload in that
+        // window would silently drop it, defeating the point of the demo.
+        deferredSub = fsm.on("deferred", (data: unknown) => {
+            const { client, inputName } = data as { client: JobClient; inputName: string };
+            if (inputName === INPUT_PAUSE) {
+                client.pausePending = true;
+            }
+            const state = jobStates.get(client.id);
+            if (state) {
+                updateJobCard(client, state, handleJobAction);
+            }
             persistJobs();
         });
 
@@ -337,6 +367,7 @@ const init = (): (() => void) => {
         transitionedSub.off();
         handledSub.off();
         handlingSub.off();
+        deferredSub.off();
         removeAddJob();
         removeClearStorage();
 

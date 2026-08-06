@@ -108,9 +108,9 @@ export function createJobQueueFsm() {
             // taken while this deferral is pending (fsm.dehydrate(job)) carries it
             // across a page reload, so it still fires after `rehydrate(job, snapshot)`
             // — see fsm.test.ts's persistence round-trip test and main.ts's restore
-            // path. Not wired to a UI button; demonstrated via the FSM/test layer
-            // to keep the example's UI surface unchanged (see build plan follow-up
-            // notes on scope).
+            // path. Wired to the "Pause on start" button on queued cards (ui.ts);
+            // main.ts tracks the pending deferral via the `deferred` event and
+            // persists immediately so a reload can't drop it.
             // ------------------------------------------------------------------
             queued: {
                 initialize() {

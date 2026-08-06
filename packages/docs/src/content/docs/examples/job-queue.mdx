@@ -18,7 +18,7 @@ A simulated job queue where multiple jobs share a single `BehavioralFsm` definit
 ## What it demonstrates
 
 - **`dehydrate()`/`rehydrate(snapshot)` for the full persist/restore cycle** — snapshot everything machina tracks for a job (state, plus any pending deferred input) and restore it later with no `_onEnter`, `_onExit`, or events firing. The WeakMap entry is written as if the client had always been there.
-- **Deferred inputs survive the round trip** — a still-`queued` job can receive a pre-emptive `pause`, deferred until it reaches `processing`. A bare state string can't carry that; the snapshot form does. See [Persisting clients](/guide/persisting-clients/) for the general pattern.
+- **Deferred inputs survive the round trip** — click **Pause on start** on a still-`queued` job to defer a pre-emptive `pause` until it reaches `processing`, then refresh the page and start the job: it still pauses. A bare state string can't carry that; the snapshot form does. See [Persisting clients](/guide/persisting-clients/) for the general pattern.
 - **Two-step restore: rehydrate + resume** — after `rehydrate()` places a job in `processing`, the app dispatches `resume` to restart the tick timer. This is the canonical pattern for recovering side effects after a cold restore.
 - **`createBehavioralFsm` with per-client state** — one FSM definition drives all jobs. Each job is a plain object; state lives in the FSM's internal WeakMap, not on the client.
 - **localStorage persistence on every transition** — the `transitioned` event handler serializes every job's snapshot. The snapshot is stored alongside the client, not on it, matching the `rehydrate()` API's design.
@@ -42,13 +42,13 @@ A simulated job queue where multiple jobs share a single `BehavioralFsm` definit
                         processing
 ```
 
-| State        | What happens                                                                                                                                                                                                  |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `queued`     | Registered but not running. `start` transitions to `processing`. `pause` defers itself until `processing` is reached — a pre-emptive pause, and the deferred input that demonstrates the snapshot round trip. |
-| `processing` | Tick timer advances `currentStep`. Random failure chance on each tick. `pause` stops the timer. `resume` restarts it silently.                                                                                |
-| `paused`     | Timer stopped. `resume` transitions back to `processing`, firing `_onEnter` to restart the timer.                                                                                                             |
-| `failed`     | Something went wrong during a tick. `retry` resets `currentStep` to 0 and transitions to `processing` for a fresh run.                                                                                        |
-| `completed`  | Terminal. Job reached `totalSteps`. No inputs handled.                                                                                                                                                        |
+| State        | What happens                                                                                                                                                                                                                                  |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `queued`     | Registered but not running. `start` transitions to `processing`. `pause` (the **Pause on start** button) defers itself until `processing` is reached — a pre-emptive pause, and the deferred input that demonstrates the snapshot round trip. |
+| `processing` | Tick timer advances `currentStep`. Random failure chance on each tick. `pause` stops the timer. `resume` restarts it silently.                                                                                                                |
+| `paused`     | Timer stopped. `resume` transitions back to `processing`, firing `_onEnter` to restart the timer.                                                                                                                                             |
+| `failed`     | Something went wrong during a tick. `retry` resets `currentStep` to 0 and transitions to `processing` for a fresh run.                                                                                                                        |
+| `completed`  | Terminal. Job reached `totalSteps`. No inputs handled.                                                                                                                                                                                        |
 
 ## The rehydrate pattern
 

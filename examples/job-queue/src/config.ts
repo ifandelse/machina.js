@@ -123,6 +123,15 @@ export interface JobClient {
      * that causes the "restored" badge to appear on job cards.
      */
     restoredFromStorage: boolean;
+    /**
+     * True while a pre-emptive `pause` (deferred from `queued` — see fsm.ts)
+     * is pending. Same deal as `restoredFromStorage`: purely a UI hint. The
+     * authoritative record is the FSM's deferred queue; main.ts keeps this
+     * flag in sync via the `deferred` event, the restore path (derived from
+     * the snapshot's `deferred` array), and clears it on transition. Optional
+     * because it only exists once a user clicks "Pause on start".
+     */
+    pausePending?: boolean;
 }
 
 /**

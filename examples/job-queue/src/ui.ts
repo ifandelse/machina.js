@@ -11,6 +11,7 @@
 // =============================================================================
 
 import {
+    INPUT_PAUSE,
     MAX_JOBS,
     STATE_LABELS,
     STATE_DESCRIPTIONS,
@@ -159,6 +160,29 @@ const createJobCard = (
     const actionBtn = makeActionButton(job, state, onAction);
     if (actionBtn) {
         card.appendChild(actionBtn);
+    }
+
+    // Queued jobs get a second, pre-emptive affordance: "Pause on start"
+    // defers a pause until the job reaches processing — the deferred input
+    // that demonstrates the snapshot round trip (see fsm.ts). Once pending,
+    // the button is replaced by a badge: machina has no un-defer, and a
+    // second click would just queue a redundant deferral.
+    if (state === STATE_QUEUED) {
+        if (job.pausePending) {
+            const pending = document.createElement("span");
+            pending.className = "job-card__pause-pending-badge";
+            pending.textContent = "will pause on start";
+            card.appendChild(pending);
+        } else {
+            const pauseBtn = document.createElement("button");
+            pauseBtn.className = "job-action-btn job-action-btn--secondary";
+            pauseBtn.type = "button";
+            pauseBtn.textContent = "Pause on start";
+            pauseBtn.title =
+                "Defers a pause until the job starts processing — survives a page reload.";
+            pauseBtn.addEventListener("click", () => onAction(job, INPUT_PAUSE));
+            card.appendChild(pauseBtn);
+        }
     }
 
     return card;
