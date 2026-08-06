@@ -85,7 +85,7 @@ export function createJobQueueFsm() {
     let instance: any;
 
     // eslint-disable-next-line prefer-const
-    instance = createBehavioralFsm<JobClient, Record<string, Record<string, unknown>>>({
+    instance = createBehavioralFsm<JobClient>()({
         id: "job-queue",
         initialState: "queued",
 
@@ -121,7 +121,7 @@ export function createJobQueueFsm() {
                     return "processing";
                 },
 
-                pause({ defer }: { defer: (opts?: { until: string }) => void }) {
+                pause({ defer }) {
                     defer({ until: "processing" });
                 },
             },

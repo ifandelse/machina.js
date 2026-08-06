@@ -48,53 +48,53 @@ One FSM definition, created once, drives every critter:
 import { createBehavioralFsm } from "machina";
 
 export function createCritterBehavior() {
-  return createBehavioralFsm<CritterClient, ...>({
-    id: "critter-behavior",
-    initialState: "idle",
+    return createBehavioralFsm<CritterClient>()({
+        id: "critter-behavior",
+        initialState: "idle",
 
-    states: {
-      idle: {
-        // ctx IS the critter — read and write its properties directly
-        _onEnter({ ctx }) {
-          ctx.vx = 0;
-          ctx.vy = 0;
-          ctx.fidgetTime = Date.now();
+        states: {
+            idle: {
+                // ctx IS the critter — read and write its properties directly
+                _onEnter({ ctx }) {
+                    ctx.vx = 0;
+                    ctx.vy = 0;
+                    ctx.fidgetTime = Date.now();
+                },
+
+                tick({ ctx }) {
+                    // Return a state name string to transition
+                    if (Math.random() < 0.4) {
+                        return "patrol";
+                    }
+                },
+
+                // Shorthand: input name → target state string
+                playerDetected: "alert",
+            },
+
+            chase: {
+                tick({ ctx }, payload) {
+                    const { playerX, playerY } = payload as TickPayload;
+                    const dir = directionTo(ctx.x, ctx.y, playerX, playerY);
+                    ctx.vx = dir.dx * CHASE_SPEED;
+                    ctx.vy = dir.dy * CHASE_SPEED;
+                },
+
+                playerLostContact: "alert",
+
+                // Function handler — needed here to capture playerX/playerY before
+                // transitioning, since _onEnter does not receive the triggering args.
+                attacked({ ctx }, payload) {
+                    const { playerX, playerY } = payload as TickPayload;
+                    const dir = directionTo(ctx.x, ctx.y, playerX, playerY);
+                    ctx.fleeDirection = { dx: -dir.dx, dy: -dir.dy };
+                    return "flee";
+                },
+            },
+
+            // ... other states
         },
-
-        tick({ ctx }) {
-          // Return a state name string to transition
-          if (Math.random() < 0.4) {
-            return "patrol";
-          }
-        },
-
-        // Shorthand: input name → target state string
-        playerDetected: "alert",
-      },
-
-      chase: {
-        tick({ ctx }, payload) {
-          const { playerX, playerY } = payload as TickPayload;
-          const dir = directionTo(ctx.x, ctx.y, playerX, playerY);
-          ctx.vx = dir.dx * CHASE_SPEED;
-          ctx.vy = dir.dy * CHASE_SPEED;
-        },
-
-        playerLostContact: "alert",
-
-        // Function handler — needed here to capture playerX/playerY before
-        // transitioning, since _onEnter does not receive the triggering args.
-        attacked({ ctx }, payload) {
-          const { playerX, playerY } = payload as TickPayload;
-          const dir = directionTo(ctx.x, ctx.y, playerX, playerY);
-          ctx.fleeDirection = { dx: -dir.dx, dy: -dir.dy };
-          return "flee";
-        },
-      },
-
-      // ... other states
-    },
-  });
+    });
 }
 ```
 

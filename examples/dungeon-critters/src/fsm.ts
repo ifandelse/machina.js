@@ -135,8 +135,9 @@ function randomWaypointInTerritory(critter: CritterClient): { x: number; y: numb
 // -----------------------------------------------------------------------------
 // FSM definition
 //
-// createBehavioralFsm<CritterClient, ...>() — TClient is CritterClient, so
-// every handler's `ctx` is a CritterClient. No separate context object needed.
+// createBehavioralFsm<CritterClient>()(...) — the curried call fixes TClient
+// as CritterClient, so every handler's `ctx` is a CritterClient. No separate
+// context object needed.
 //
 // -----------------------------------------------------------------------------
 
@@ -146,7 +147,7 @@ function randomWaypointInTerritory(critter: CritterClient): { x: number; y: numb
  * via WeakMap. Call handle(critter, inputName) to drive individual critters.
  */
 export function createCritterBehavior() {
-    return createBehavioralFsm<CritterClient, Record<string, Record<string, unknown>>>({
+    return createBehavioralFsm<CritterClient>()({
         id: "critter-behavior",
         initialState: "idle",
 

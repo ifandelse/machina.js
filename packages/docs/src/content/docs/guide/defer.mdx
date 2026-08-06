@@ -79,7 +79,7 @@ A few things worth knowing before you rely on this in production code:
 Deferred inputs are tracked per-client, not globally. Calling `defer()` inside a `BehavioralFsm` handler queues the input for that specific client only — other clients are unaffected.
 
 ```ts
-const fsm = createBehavioralFsm<MyClient>({
+const fsm = createBehavioralFsm<MyClient>()({
     id: "my-fsm",
     initialState: "loading",
     states: {

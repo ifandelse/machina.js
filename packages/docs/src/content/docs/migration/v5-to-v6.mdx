@@ -30,7 +30,7 @@ var instance = new MyFsm();
 import { createFsm, createBehavioralFsm } from "machina";
 
 const fsm = createFsm({ ... });
-const bfsm = createBehavioralFsm<ClientType>({ ... });
+const bfsm = createBehavioralFsm<ClientType>()({ ... });
 
 // No .extend() — use factory functions instead
 function createMyFsm(options: MyOptions) {
@@ -333,7 +333,7 @@ client.__machina__["connectivity"].state; // "connecting"
 
 ```ts
 // v6
-const bfsm = createBehavioralFsm<Connection>({
+const bfsm = createBehavioralFsm<Connection>()({
     id: "connectivity",
     initialState: "disconnected",
     states: { ... },
@@ -406,7 +406,7 @@ const parentFsm = createFsm({
 | Pattern              | v4                                       | v6                                       |
 | -------------------- | ---------------------------------------- | ---------------------------------------- |
 | Create FSM           | `new machina.Fsm({ namespace, ... })`    | `createFsm({ id, context, ... })`        |
-| Create behavioral    | `new machina.BehavioralFsm({ ... })`     | `createBehavioralFsm<Client>({ ... })`   |
+| Create behavioral    | `new machina.BehavioralFsm({ ... })`     | `createBehavioralFsm<Client>()({ ... })` |
 | Handler context      | `this` (bound to FSM)                    | `{ ctx, inputName, defer, emit }` arg    |
 | Arrow functions      | broken (wrong `this`)                    | work fine                                |
 | Transition (inside)  | `this.transition("state")`               | `return "state"`                         |

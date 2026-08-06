@@ -76,7 +76,7 @@ light.dispose(); // tears down; all subsequent calls are silent no-ops
 
 `createBehavioralFsm` defines behavior once and applies it to any number of independent client objects. Per-client state lives in a `WeakMap` — no properties are stamped onto the client. The client object IS the context; handlers receive it as `ctx`.
 
-The client type is provided as an explicit type parameter since it can't be inferred from the config.
+The client type can't be inferred from the config, so it's provided via a curried call — `createBehavioralFsm<Connection>()` — that fixes the client type before the config (and its literal state/input names) is inferred from the second call.
 
 ```ts
 import { createBehavioralFsm } from "machina";
@@ -86,7 +86,7 @@ interface Connection {
     retries: number;
 }
 
-const connFsm = createBehavioralFsm<Connection>({
+const connFsm = createBehavioralFsm<Connection>()({
     id: "connectivity",
     initialState: "disconnected",
     states: {
