@@ -2942,6 +2942,47 @@ describe("BehavioralFsm — setupChildSubscriptions() shared-child dedup", () =>
 });
 
 // =============================================================================
+// dispose() shared-child cascade dedup
+//
+// Same wrapper-vs-instance identity bug shape as the subscription dedup above,
+// in dispose()'s cascade loop. Double-dispose was harmless (child.dispose() is
+// idempotent), so this pins call-count hygiene, not a behavior fix.
+// =============================================================================
+
+describe("BehavioralFsm — dispose() shared-child cascade dedup", () => {
+    describe("when the same child instance is declared under two parent states", () => {
+        let child: any, disposeSpy: jest.Mock;
+
+        beforeEach(() => {
+            child = makeChildFsm();
+
+            // Own-property-override spy (not jest.spyOn) on child.dispose() —
+            // same rationale as the subscription-count oracle above: "disposed
+            // once" and "disposed twice, second a no-op" are indistinguishable
+            // by observable child state, only by call count.
+            const originalDispose = child.dispose.bind(child);
+            disposeSpy = jest.fn((...args: unknown[]) => originalDispose(...args));
+            child.dispose = disposeSpy;
+
+            const parent = createBehavioralFsm({
+                id: "dispose-dedup-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child, switch: "modeB" },
+                    modeB: { _child: child },
+                },
+            });
+
+            parent.dispose();
+        });
+
+        it("should cascade-dispose the shared child exactly once", () => {
+            expect(disposeSpy).toHaveBeenCalledTimes(1);
+        });
+    });
+});
+
+// =============================================================================
 // rehydrate() tests
 // =============================================================================
 

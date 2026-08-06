@@ -650,13 +650,18 @@ export class BehavioralFsm<
             sub.off();
         }
         // Cascade disposal to child FSMs unless explicitly opted out.
-        // Deduplication via Set handles the same child appearing in multiple states.
+        // Dedup keys on the underlying instance, not the ChildLink wrapper —
+        // wrapChildLinks() mints a fresh wrapper per declaring state, so a
+        // wrapper-keyed Set never matches for a shared child (the same
+        // identity bug setupChildSubscriptions() and collectChildSnapshots()
+        // had). Double-dispose was harmless (dispose() is idempotent), but
+        // one dedup idiom everywhere beats a latent inconsistency.
         if (!options?.preserveChildren) {
-            const seen = new Set<ChildLink>();
+            const seen = new Set<MachinaInstance>();
             for (const stateName of Object.keys(this.states)) {
                 const childLink = this.states[stateName]?._child as ChildLink | undefined;
-                if (childLink && !seen.has(childLink)) {
-                    seen.add(childLink);
+                if (childLink && !seen.has(childLink.instance)) {
+                    seen.add(childLink.instance);
                     childLink.dispose();
                 }
             }
