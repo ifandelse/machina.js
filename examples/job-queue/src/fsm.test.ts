@@ -372,6 +372,231 @@ describe("Job Queue FSM (fsm.ts)", () => {
     });
 
     // =========================================================================
+    // dehydrate() / rehydrate(snapshot) — the snapshot round trip this example
+    // now demonstrates (main.ts's persist/restore path). The `queued.pause`
+    // handler defers until "processing" specifically to give these tests (and
+    // the real localStorage round trip) a pending deferred input to preserve —
+    // something a bare state string can't carry.
+    // =========================================================================
+
+    describe("dehydrate()/rehydrate(snapshot) round trip", () => {
+        describe("when a queued job has a pending pre-emptive pause", () => {
+            let job: any;
+            let snapshot: any;
+
+            beforeEach(() => {
+                job = makeJob();
+                fsm.handle(job, "initialize");
+                fsm.handle(job, "pause"); // deferred until "processing" — stays queued
+                snapshot = fsm.dehydrate(job);
+            });
+
+            it("should still report the queued state", () => {
+                expect(fsm.currentState(job)).toBe("queued");
+            });
+
+            it("should capture the deferred pause targeting processing", () => {
+                expect(snapshot).toEqual({
+                    state: "queued",
+                    deferred: [{ inputName: "pause", args: [], untilState: "processing" }],
+                });
+            });
+        });
+
+        describe("when a snapshot with a pending deferred pause is rehydrated onto a new client and started", () => {
+            let originalJob: any;
+            let restoredJob: any;
+
+            beforeEach(() => {
+                originalJob = makeJob();
+                fsm.handle(originalJob, "initialize");
+                fsm.handle(originalJob, "pause"); // deferred until "processing"
+
+                // Round-trip through JSON, exactly like main.ts's localStorage
+                // write/read — proves the snapshot is plain, serializable data,
+                // not a live reference into the original job's tracking.
+                const snapshot = JSON.parse(JSON.stringify(fsm.dehydrate(originalJob)));
+
+                restoredJob = makeJob({ id: 2, name: "Restored Job" });
+                fsm.rehydrate(restoredJob, snapshot);
+                fsm.handle(restoredJob, "start");
+            });
+
+            it("should replay the deferred pause upon entering processing, landing in paused", () => {
+                expect(fsm.currentState(restoredJob)).toBe("paused");
+            });
+
+            it("should not leave a tick timer running", () => {
+                expect(restoredJob.timer).toBeNull();
+            });
+
+            it("should leave the original job's own state untouched", () => {
+                expect(fsm.currentState(originalJob)).toBe("queued");
+            });
+        });
+    });
+
+    // =========================================================================
+    // rehydrate(snapshot) — pre-migration localStorage compatibility
+    //
+    // STORAGE_KEY was not bumped when PersistedJob switched from a bare
+    // `state` string to a `snapshot` object (config.ts), so a returning
+    // visitor's existing localStorage entry has no `snapshot` field at all —
+    // `persisted.snapshot` reads as `undefined`. This pins that main.ts's
+    // restoreFromStorage() try/catch (main.ts:143-185) actually catches this:
+    // rehydrate() throws, the job is never registered, and the caller's catch
+    // block is what wipes storage and shows the "starting fresh" warning. See
+    // review-report-persistence-follow-ups.md Should-Fix #1 — this currently
+    // works because planSnapshotWrites() crashes destructuring `undefined`,
+    // not because of any deliberate validation, so this test exists to catch
+    // a future "helpful" guard silently changing that failure mode.
+    // =========================================================================
+
+    describe("rehydrate(snapshot) — pre-migration localStorage compatibility", () => {
+        describe("when a persisted job predates the snapshot migration and has no snapshot field", () => {
+            let job: any;
+            let thrownError: Error | null;
+
+            beforeEach(() => {
+                job = makeJob();
+                thrownError = null;
+
+                try {
+                    fsm.rehydrate(job, undefined as any);
+                } catch (err) {
+                    thrownError = err as Error;
+                }
+            });
+
+            it("should throw rather than silently leaving the job in a bad state", () => {
+                expect(thrownError).toBeInstanceOf(TypeError);
+            });
+
+            it("should leave the job unregistered so the caller's catch block can recover", () => {
+                expect(fsm.currentState(job)).toBeUndefined();
+            });
+        });
+    });
+
+    // =========================================================================
+    // dehydrate()/rehydrate(snapshot) round trip through every remaining state
+    //
+    // The queued+deferred-pause case above is the only one the original round
+    // trip test covered. main.ts now uses the snapshot form exclusively for
+    // EVERY job regardless of state, so each remaining state gets its own
+    // round trip here, restoring onto a brand-new client object the same way
+    // main.ts's restoreFromStorage() does.
+    // =========================================================================
+
+    describe("dehydrate()/rehydrate(snapshot) round trip through every remaining state", () => {
+        describe("when a job snapshotted while processing is restored onto a new client and resumed", () => {
+            let restoredJob: any;
+
+            beforeEach(() => {
+                jest.spyOn(Math, "random").mockReturnValue(0.9);
+                const originalJob = makeJob({ currentStep: 2 });
+                fsm.handle(originalJob, "initialize");
+                fsm.handle(originalJob, "start");
+
+                const snapshot = JSON.parse(JSON.stringify(fsm.dehydrate(originalJob)));
+
+                restoredJob = makeJob({ id: 2, name: "Restored Job", currentStep: 2 });
+                fsm.rehydrate(restoredJob, snapshot);
+                fsm.handle(restoredJob, "resume");
+            });
+
+            it("should restore the job into processing", () => {
+                expect(fsm.currentState(restoredJob)).toBe("processing");
+            });
+
+            it("should restart the tick timer", () => {
+                expect(restoredJob.timer).not.toBeNull();
+            });
+
+            it("should keep advancing currentStep from where the snapshot left off", () => {
+                jest.advanceTimersByTime(STEP_DURATION_MS);
+                expect(restoredJob.currentStep).toBe(3);
+            });
+        });
+
+        describe("when a job snapshotted while paused is restored onto a new client", () => {
+            let restoredJob: any;
+
+            beforeEach(() => {
+                jest.spyOn(Math, "random").mockReturnValue(0.9);
+                const originalJob = makeJob();
+                fsm.handle(originalJob, "initialize");
+                fsm.handle(originalJob, "start");
+                fsm.handle(originalJob, "pause");
+
+                const snapshot = JSON.parse(JSON.stringify(fsm.dehydrate(originalJob)));
+
+                restoredJob = makeJob({ id: 2, name: "Restored Job" });
+                fsm.rehydrate(restoredJob, snapshot);
+            });
+
+            it("should restore the job into paused", () => {
+                expect(fsm.currentState(restoredJob)).toBe("paused");
+            });
+
+            it("should not start a tick timer", () => {
+                expect(restoredJob.timer).toBeNull();
+            });
+        });
+
+        describe("when a job snapshotted while failed is restored onto a new client and retried", () => {
+            let restoredJob: any;
+
+            beforeEach(() => {
+                jest.spyOn(Math, "random").mockReturnValue(0); // force failure
+                const originalJob = makeJob({ currentStep: 3 });
+                fsm.handle(originalJob, "initialize");
+                fsm.handle(originalJob, "start");
+                jest.advanceTimersByTime(STEP_DURATION_MS); // processing -> failed
+
+                const snapshot = JSON.parse(JSON.stringify(fsm.dehydrate(originalJob)));
+
+                restoredJob = makeJob({ id: 2, name: "Restored Job", currentStep: 3 });
+                fsm.rehydrate(restoredJob, snapshot);
+                fsm.handle(restoredJob, "retry");
+            });
+
+            it("should reset currentStep to 0", () => {
+                expect(restoredJob.currentStep).toBe(0);
+            });
+
+            it("should transition to processing", () => {
+                expect(fsm.currentState(restoredJob)).toBe("processing");
+            });
+        });
+
+        describe("when a job snapshotted while completed is restored onto a new client", () => {
+            let restoredJob: any;
+
+            beforeEach(() => {
+                jest.spyOn(Math, "random").mockReturnValue(0.9);
+                const originalJob = makeJob({ currentStep: TOTAL_STEPS - 1 });
+                fsm.handle(originalJob, "initialize");
+                fsm.handle(originalJob, "start");
+                jest.advanceTimersByTime(STEP_DURATION_MS); // processing -> completed
+
+                const snapshot = JSON.parse(JSON.stringify(fsm.dehydrate(originalJob)));
+
+                restoredJob = makeJob({ id: 2, name: "Restored Job", currentStep: TOTAL_STEPS });
+                fsm.rehydrate(restoredJob, snapshot);
+            });
+
+            it("should restore the job into completed", () => {
+                expect(fsm.currentState(restoredJob)).toBe("completed");
+            });
+
+            it("should not have a tick timer running", () => {
+                expect(restoredJob.timer).toBeNull();
+            });
+        });
+    });
+
+    // =========================================================================
     // FAILURE_CHANCE boundary — verify it's actually used
     // =========================================================================
 

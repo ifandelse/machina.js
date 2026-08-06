@@ -1,6 +1,6 @@
 ---
 title: Job Queue
-description: Persist/restore pattern using BehavioralFsm rehydrate() with localStorage.
+description: Persist/restore pattern using BehavioralFsm dehydrate()/rehydrate() with localStorage.
 ---
 
 import { Aside, LinkCard } from "@astrojs/starlight/components";
@@ -11,16 +11,17 @@ import { Aside, LinkCard } from "@astrojs/starlight/components";
     rehydrate recovery pattern.
 </Aside>
 
-A simulated job queue where multiple jobs share a single `BehavioralFsm` definition, state is auto-persisted to localStorage on every transition, and a page refresh restores all jobs via `rehydrate()`. The centerpiece teaching moment: `rehydrate()` is silent — `_onEnter` doesn't fire — so the app must explicitly re-establish side effects (timers) for in-flight jobs.
+A simulated job queue where multiple jobs share a single `BehavioralFsm` definition, every job's snapshot (state, plus any pending deferred input) is auto-persisted to localStorage on every transition, and a page refresh restores all jobs via `rehydrate()`. The centerpiece teaching moment: `rehydrate()` is silent — `_onEnter` doesn't fire — so the app must explicitly re-establish side effects (timers) for in-flight jobs.
 
 <LinkCard title="Run the Job Queue" href="/demos/job-queue/" target="_blank" />
 
 ## What it demonstrates
 
-- **`rehydrate()` for silent state restoration** — place a client at a saved state without triggering `_onEnter`, `_onExit`, or any events. The WeakMap entry is written as if the client had always been there.
+- **`dehydrate()`/`rehydrate(snapshot)` for the full persist/restore cycle** — snapshot everything machina tracks for a job (state, plus any pending deferred input) and restore it later with no `_onEnter`, `_onExit`, or events firing. The WeakMap entry is written as if the client had always been there.
+- **Deferred inputs survive the round trip** — click **Pause on start** on a still-`queued` job to defer a pre-emptive `pause` until it reaches `processing`, then refresh the page and start the job: it still pauses. A bare state string can't carry that; the snapshot form does. See [Persisting clients](/guide/persisting-clients/) for the general pattern.
 - **Two-step restore: rehydrate + resume** — after `rehydrate()` places a job in `processing`, the app dispatches `resume` to restart the tick timer. This is the canonical pattern for recovering side effects after a cold restore.
 - **`createBehavioralFsm` with per-client state** — one FSM definition drives all jobs. Each job is a plain object; state lives in the FSM's internal WeakMap, not on the client.
-- **localStorage persistence on every transition** — the `transitioned` event handler serializes all jobs and their states. State is stored alongside the client, not on it, matching the `rehydrate()` API's design.
+- **localStorage persistence on every transition** — the `transitioned` event handler serializes every job's snapshot. The snapshot is stored alongside the client, not on it, matching the `rehydrate()` API's design.
 
 ## States
 
@@ -41,24 +42,25 @@ A simulated job queue where multiple jobs share a single `BehavioralFsm` definit
                         processing
 ```
 
-| State        | What happens                                                                                                                   |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| `queued`     | Registered but not running. `start` transitions to `processing`.                                                               |
-| `processing` | Tick timer advances `currentStep`. Random failure chance on each tick. `pause` stops the timer. `resume` restarts it silently. |
-| `paused`     | Timer stopped. `resume` transitions back to `processing`, firing `_onEnter` to restart the timer.                              |
-| `failed`     | Something went wrong during a tick. `retry` resets `currentStep` to 0 and transitions to `processing` for a fresh run.         |
-| `completed`  | Terminal. Job reached `totalSteps`. No inputs handled.                                                                         |
+| State        | What happens                                                                                                                                                                                                                                  |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `queued`     | Registered but not running. `start` transitions to `processing`. `pause` (the **Pause on start** button) defers itself until `processing` is reached — a pre-emptive pause, and the deferred input that demonstrates the snapshot round trip. |
+| `processing` | Tick timer advances `currentStep`. Random failure chance on each tick. `pause` stops the timer. `resume` restarts it silently.                                                                                                                |
+| `paused`     | Timer stopped. `resume` transitions back to `processing`, firing `_onEnter` to restart the timer.                                                                                                                                             |
+| `failed`     | Something went wrong during a tick. `retry` resets `currentStep` to 0 and transitions to `processing` for a fresh run.                                                                                                                        |
+| `completed`  | Terminal. Job reached `totalSteps`. No inputs handled.                                                                                                                                                                                        |
 
 ## The rehydrate pattern
 
 On page load, `main.ts` reads localStorage and restores each job in two steps:
 
 ```ts
-// STEP 1: Silent placement — no _onEnter, no events, no timer
-fsm.rehydrate(job, savedState);
+// STEP 1: Silent placement — no _onEnter, no events, no timer.
+// Requeues any pending deferred input from the snapshot too.
+fsm.rehydrate(job, snapshot);
 
 // STEP 2: Re-establish side effects for in-flight jobs
-if (savedState === "processing") {
+if (snapshot.state === "processing") {
     fsm.handle(job, "resume");
 }
 ```
@@ -70,11 +72,11 @@ The `resume` handler on `processing` restarts the tick timer without transitioni
 
 ## Persistence design
 
-State is persisted alongside the client, not on it. The serialized shape stores `state` as a sibling field:
+The job's `dehydrate()` snapshot is persisted alongside the client, not on it. The serialized shape stores it as a sibling field:
 
 ```ts
 interface PersistedJob {
-    state: JobState; // from fsm.currentState(job)
+    snapshot: ClientSnapshot; // from fsm.dehydrate(job)
     id: number;
     name: string;
     currentStep: number;
@@ -84,19 +86,19 @@ interface PersistedJob {
 }
 ```
 
-This matches the `rehydrate()` API: `fsm.rehydrate(client, state)` takes state as a separate argument because BehavioralFsm stores state in a WeakMap, not on the client object.
+This matches the `rehydrate()` API: `fsm.rehydrate(client, snapshot)` takes the snapshot as a separate argument because BehavioralFsm stores state (and deferred inputs) in a WeakMap, not on the client object. Using the snapshot form instead of a bare state string is what lets a `queued` job's pre-emptive `pause` — deferred until it reaches `processing` (see `fsm.ts`) — survive the round trip. A bare state string can only ever restore the "queued" part; the deferral itself would silently vanish.
 
 On deserialization, `timer` is set to `null`. The `resume` input re-establishes it for processing jobs.
 
 ## Stale storage recovery
 
-`rehydrate()` throws synchronously for unknown state names. `main.ts` wraps the restore loop in `try/catch` — if a schema change makes old data incompatible, it clears localStorage and starts fresh rather than crashing:
+`rehydrate()` throws synchronously for unknown state names — including ones referenced inside a corrupted snapshot. `main.ts` wraps the restore loop in `try/catch` — if a schema change makes old data incompatible, it clears localStorage and starts fresh rather than crashing:
 
 ```ts
 try {
     for (const persisted of shape.jobs) {
         const job = reconstructClient(persisted);
-        fsm.rehydrate(job, persisted.state);
+        fsm.rehydrate(job, persisted.snapshot);
         // ...
     }
 } catch {

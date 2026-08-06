@@ -2666,6 +2666,323 @@ describe("BehavioralFsm — hierarchical hardening", () => {
 });
 
 // =============================================================================
+// setupChildSubscriptions() shared-child dedup
+//
+// wrapChildLinks() mints a fresh ChildLink wrapper per declaring state, even
+// when the SAME underlying Fsm/BehavioralFsm instance is shared across two
+// states. setupChildSubscriptions()'s dedup Set was keyed by that wrapper, not
+// the underlying instance, so it never matched for a shared child — the exact
+// wrapper-vs-instance identity bug collectChildSnapshots() had before its
+// #184 fix. Confirmed via exploratory testing against the pre-fix code (see
+// dev report for the full write-up): a shared child got TWO subscriptions,
+// and while a single client's own events were incidentally filtered down to
+// one relay by isChildActiveForClient()'s per-wrapper comparison, a
+// client-less relay (an Fsm-child event, or — as exercised below — a
+// BehavioralFsm child's custom emit() with no `client` field) genuinely
+// double-fired on the parent whenever two different clients were active on
+// the child's two different declaring names at once, because each duplicate
+// subscription independently walked ALL known clients looking for a match.
+// =============================================================================
+
+describe("BehavioralFsm — setupChildSubscriptions() shared-child dedup", () => {
+    describe("oracle — subscription count for a child shared under two declaring states", () => {
+        let child: any, onSpy: jest.Mock;
+
+        beforeEach(() => {
+            child = makeChildFsm();
+
+            // Own-property-override spy (not jest.spyOn) on child.on() — lets
+            // us tell "subscribed once" apart from "subscribed twice, both
+            // producing the same eventual answer." Same rationale as the
+            // dehydrateSpy pattern used for the dehydrate() dedup regression
+            // test earlier in this file.
+            const originalOn = child.on.bind(child);
+            onSpy = jest.fn((eventName: string, cb: any) => originalOn(eventName, cb));
+            child.on = onSpy;
+
+            createBehavioralFsm({
+                id: "sub-dedup-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child, switch: "modeB" },
+                    modeB: { _child: child },
+                },
+            });
+        });
+
+        it("should subscribe to the shared child's wildcard event exactly once", () => {
+            expect(onSpy).toHaveBeenCalledTimes(1);
+            expect(onSpy).toHaveBeenCalledWith("*", expect.any(Function));
+        });
+    });
+
+    describe("oracle — client-less relay duplication when two clients are active on different declaring names", () => {
+        let child: any, parent: any, alice: ChildClient, bob: ChildClient, relayedCb: jest.Mock;
+
+        beforeEach(() => {
+            child = makeChildFsm();
+            parent = createBehavioralFsm({
+                id: "sub-dedup-clientless-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child, switch: "modeB" },
+                    modeB: { _child: child },
+                },
+            });
+            alice = {};
+            bob = {};
+            parent.handle(alice, "noop" as any); // alice -> modeA
+            parent.handle(bob, "switch"); // bob init -> modeA -> switch -> modeB
+
+            relayedCb = jest.fn();
+            parent.on("customEvt" as any, relayedCb);
+
+            // A client-less custom event — no `client` field, the same shape
+            // an Fsm child's events take. The old per-declaring-state
+            // subscriptions each independently walked ALL known clients for
+            // this: one matched alice (modeA's declaring name), the other
+            // matched bob (modeB's), so ONE underlying child event produced
+            // TWO relays on the parent.
+            child.emit("customEvt", { note: "one child, one event" });
+        });
+
+        it("should relay the single child event to the parent exactly once", () => {
+            expect(relayedCb).toHaveBeenCalledTimes(1);
+            expect(relayedCb).toHaveBeenCalledWith({ note: "one child, one event" });
+        });
+    });
+
+    describe("shared child — event relay when the client's active declaring name is the FIRST one iterated (modeA)", () => {
+        let child: any, parent: any, alice: ChildClient, transitionedCb: jest.Mock;
+
+        beforeEach(() => {
+            child = makeChildFsm();
+            parent = createBehavioralFsm({
+                id: "sub-dedup-modeA-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child, switch: "modeB" },
+                    modeB: { _child: child },
+                },
+            });
+            alice = {};
+            parent.handle(alice, "noop" as any); // alice -> modeA
+
+            transitionedCb = jest.fn();
+            parent.on("transitioned", transitionedCb);
+            child.handle(alice, "poweron"); // child: off -> on, relayed while alice is at modeA
+        });
+
+        it("should forward exactly one transitioned event for the child transition", () => {
+            expect(transitionedCb).toHaveBeenCalledTimes(1);
+            expect(transitionedCb).toHaveBeenCalledWith(expect.objectContaining({ client: alice }));
+        });
+    });
+
+    describe("shared child — event relay when the client's active declaring name is a LATER one iterated (modeB)", () => {
+        let child: any, parent: any, bob: ChildClient, transitionedCb: jest.Mock;
+
+        beforeEach(() => {
+            child = makeChildFsm();
+            parent = createBehavioralFsm({
+                id: "sub-dedup-modeB-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child, switch: "modeB" },
+                    modeB: { _child: child },
+                },
+            });
+            bob = {};
+            parent.handle(bob, "switch"); // bob init -> modeA -> switch -> modeB
+
+            transitionedCb = jest.fn();
+            parent.on("transitioned", transitionedCb);
+            child.handle(bob, "poweron"); // child: off -> on, relayed while bob is at modeB
+        });
+
+        // Regression guard: the single deduped subscription is set up using
+        // whichever declaring state's wrapper is encountered FIRST (modeA's).
+        // isChildActiveForClient() must compare `.instance`, not the wrapper
+        // reference itself — otherwise this exact case (client active on a
+        // LATER declaring name) would silently stop relaying once the
+        // subscriptions were deduped, since modeB's wrapper is a different
+        // object from the one the subscription closure captured.
+        it("should still forward exactly one transitioned event, from the later declaring name", () => {
+            expect(transitionedCb).toHaveBeenCalledTimes(1);
+            expect(transitionedCb).toHaveBeenCalledWith(expect.objectContaining({ client: bob }));
+        });
+    });
+
+    describe("dispose — shared child subscription is torn down exactly once", () => {
+        let child: any,
+            parent: any,
+            alice: ChildClient,
+            bob: ChildClient,
+            transitionedCb: jest.Mock;
+
+        beforeEach(() => {
+            child = makeChildFsm();
+            parent = createBehavioralFsm({
+                id: "sub-dedup-dispose-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child, switch: "modeB" },
+                    modeB: { _child: child },
+                },
+            });
+            alice = {};
+            bob = {};
+            parent.handle(alice, "noop" as any); // alice -> modeA
+            parent.handle(bob, "switch"); // bob -> modeB
+
+            transitionedCb = jest.fn();
+            parent.on("transitioned", transitionedCb);
+            // preserveChildren so the child stays alive and still transitions
+            // normally below — isolating "was the PARENT's subscription torn
+            // down" from "did cascading child.dispose() just stop it cold."
+            parent.dispose({ preserveChildren: true });
+            transitionedCb.mockClear();
+
+            child.handle(alice, "poweron");
+            child.handle(bob, "poweron");
+        });
+
+        it("should not relay any further child events after dispose, for either declaring name", () => {
+            expect(transitionedCb).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("shared child — client-less relay breaks after the first match when two clients share the SAME declaring name", () => {
+        let child: any, parent: any, alice: ChildClient, clara: ChildClient, relayedCb: jest.Mock;
+
+        beforeEach(() => {
+            child = makeChildFsm();
+            parent = createBehavioralFsm({
+                id: "sub-dedup-same-declaring-name-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child, switch: "modeB" },
+                    modeB: { _child: child },
+                },
+            });
+            alice = {};
+            clara = {};
+            parent.handle(alice, "noop" as any); // alice -> modeA
+            parent.handle(clara, "noop" as any); // clara -> modeA too (same declaring name)
+
+            relayedCb = jest.fn();
+            parent.on("customEvt" as any, relayedCb);
+
+            // Both alice and clara would independently satisfy isChildActiveForClient()'s
+            // check for modeA — the "walk known clients, break on first match" loop
+            // (behavioral-fsm.ts's relay branch) must still fire exactly once, not
+            // once per matching client.
+            child.emit("customEvt", { note: "one child, one event, two eligible clients" });
+        });
+
+        it("should relay the single child event to the parent exactly once", () => {
+            expect(relayedCb).toHaveBeenCalledTimes(1);
+            expect(relayedCb).toHaveBeenCalledWith({
+                note: "one child, one event, two eligible clients",
+            });
+        });
+    });
+
+    describe("a surviving shared child (preserveChildren dispose) is picked up correctly by a brand-new, unrelated parent FSM", () => {
+        let child: any, parent1: any, parent2: any, alice: ChildClient, bob: ChildClient;
+        let transitionedCb1: jest.Mock, transitionedCb2: jest.Mock;
+
+        beforeEach(() => {
+            child = makeChildFsm();
+            parent1 = createBehavioralFsm({
+                id: "sub-dedup-lifecycle-parent1",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child, switch: "modeB" },
+                    modeB: { _child: child },
+                },
+            });
+            alice = {};
+            parent1.handle(alice, "noop" as any); // alice -> modeA
+
+            transitionedCb1 = jest.fn();
+            parent1.on("transitioned", transitionedCb1);
+
+            // preserveChildren so the child (and its state) survives parent1's
+            // teardown — parent1's OWN subscription must still go away, though.
+            parent1.dispose({ preserveChildren: true });
+
+            // A completely independent second parent, constructed AFTER parent1's
+            // dispose, reusing the same still-alive child instance. Its own
+            // setupChildSubscriptions() call must produce a working subscription
+            // regardless of parent1's now-torn-down one.
+            parent2 = createBehavioralFsm({
+                id: "sub-dedup-lifecycle-parent2",
+                initialState: "solo",
+                states: { solo: { _child: child } },
+            });
+            bob = {};
+            parent2.handle(bob, "noop" as any); // bob -> solo
+
+            transitionedCb2 = jest.fn();
+            parent2.on("transitioned", transitionedCb2);
+
+            child.handle(bob, "poweron");
+        });
+
+        it("should relay the child event to the new parent exactly once", () => {
+            expect(transitionedCb2).toHaveBeenCalledTimes(1);
+            expect(transitionedCb2).toHaveBeenCalledWith(expect.objectContaining({ client: bob }));
+        });
+
+        it("should not relay anything through the disposed parent's stale subscription", () => {
+            expect(transitionedCb1).not.toHaveBeenCalled();
+        });
+    });
+});
+
+// =============================================================================
+// dispose() shared-child cascade dedup
+//
+// Same wrapper-vs-instance identity bug shape as the subscription dedup above,
+// in dispose()'s cascade loop. Double-dispose was harmless (child.dispose() is
+// idempotent), so this pins call-count hygiene, not a behavior fix.
+// =============================================================================
+
+describe("BehavioralFsm — dispose() shared-child cascade dedup", () => {
+    describe("when the same child instance is declared under two parent states", () => {
+        let child: any, disposeSpy: jest.Mock;
+
+        beforeEach(() => {
+            child = makeChildFsm();
+
+            // Own-property-override spy (not jest.spyOn) on child.dispose() —
+            // same rationale as the subscription-count oracle above: "disposed
+            // once" and "disposed twice, second a no-op" are indistinguishable
+            // by observable child state, only by call count.
+            const originalDispose = child.dispose.bind(child);
+            disposeSpy = jest.fn((...args: unknown[]) => originalDispose(...args));
+            child.dispose = disposeSpy;
+
+            const parent = createBehavioralFsm({
+                id: "dispose-dedup-parent",
+                initialState: "modeA",
+                states: {
+                    modeA: { _child: child, switch: "modeB" },
+                    modeB: { _child: child },
+                },
+            });
+
+            parent.dispose();
+        });
+
+        it("should cascade-dispose the shared child exactly once", () => {
+            expect(disposeSpy).toHaveBeenCalledTimes(1);
+        });
+    });
+});
+
+// =============================================================================
 // rehydrate() tests
 // =============================================================================
 
@@ -4851,6 +5168,387 @@ describe("BehavioralFsm — persistence hardening", () => {
 
         it("should accept the declared state rather than rejecting it as if it were inherited", () => {
             expect(fsm.currentState(client)).toBe("hasOwnProperty");
+        });
+    });
+});
+
+// =============================================================================
+// transition() / rehydrate() (string form) — Object.hasOwn state checks
+//
+// `toState in this.states` (transition()) and `state in this.states`
+// (rehydrateCompositePath(), the string-form helper) both walked the
+// prototype chain, exactly like the `state in this.states` check
+// `planSnapshotWrites()` had before its #184 fix. These two are the only
+// other `in this.states` checks left in the file — ported to
+// Object.hasOwn() here for parity with the already-fixed object-form path.
+// =============================================================================
+
+describe("BehavioralFsm — transition()/rehydrate() inherited-name state guards", () => {
+    describe("transition() to the inherited '__proto__' accessor", () => {
+        let fsm: any, client: ChildClient, invalidstateCb: jest.Mock;
+
+        beforeEach(() => {
+            invalidstateCb = jest.fn();
+            fsm = createBehavioralFsm({
+                id: "proto-transition",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            client = {};
+            fsm.handle(client, "noop" as any); // init -> idle
+            fsm.on("invalidstate", invalidstateCb);
+            fsm.transition(client, "__proto__" as any);
+        });
+
+        // Regression guard: before Object.hasOwn(), "__proto__" in this.states
+        // was true via the inherited Object.prototype member, so transition()
+        // silently accepted it and wedged the client at a pseudo-state that
+        // was never declared. It must take the SAME path any other unknown
+        // state does — emit invalidstate, no throw — not a new failure mode.
+        it("should emit invalidstate rather than silently accepting the pseudo-state", () => {
+            expect(invalidstateCb).toHaveBeenCalledTimes(1);
+            expect(invalidstateCb).toHaveBeenCalledWith(
+                expect.objectContaining({ stateName: "__proto__", client })
+            );
+        });
+
+        it("should leave the client's state unchanged, not wedged in the pseudo-state", () => {
+            expect(fsm.currentState(client)).toBe("idle");
+        });
+    });
+
+    describe("transition() to '__proto__' via a handler's runtime return value", () => {
+        let fsm: any, client: ChildClient, invalidstateCb: jest.Mock;
+
+        beforeEach(() => {
+            invalidstateCb = jest.fn();
+            fsm = createBehavioralFsm({
+                id: "proto-transition-via-handler",
+                initialState: "idle",
+                states: {
+                    // Typed as a plain string return so this bypasses the
+                    // compile-time state-name validation a hand-written
+                    // string literal would trigger — the same way an
+                    // untyped JS consumer, or a value computed at runtime,
+                    // could hand transition() a bad name.
+                    idle: {
+                        go(): string {
+                            return "__proto__";
+                        },
+                    },
+                    running: {},
+                },
+            });
+            client = {};
+            fsm.on("invalidstate", invalidstateCb);
+            fsm.handle(client, "go" as any);
+        });
+
+        it("should emit invalidstate for the runtime-returned pseudo-state name", () => {
+            expect(invalidstateCb).toHaveBeenCalledTimes(1);
+            expect(invalidstateCb).toHaveBeenCalledWith(
+                expect.objectContaining({ stateName: "__proto__", client })
+            );
+        });
+
+        it("should leave the client's state unchanged", () => {
+            expect(fsm.currentState(client)).toBe("idle");
+        });
+    });
+
+    describe("transition() to another Object.prototype-inherited name ('constructor')", () => {
+        let fsm: any, client: ChildClient, invalidstateCb: jest.Mock;
+
+        beforeEach(() => {
+            invalidstateCb = jest.fn();
+            fsm = createBehavioralFsm({
+                id: "proto-transition-constructor",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            client = {};
+            fsm.handle(client, "noop" as any); // init -> idle
+            fsm.on("invalidstate", invalidstateCb);
+            fsm.transition(client, "constructor" as any);
+        });
+
+        // The bug class is "any inherited name," not just "__proto__" —
+        // "constructor" is inherited too and must be rejected the same way.
+        it("should emit invalidstate for 'constructor' just like any other unknown state", () => {
+            expect(invalidstateCb).toHaveBeenCalledTimes(1);
+            expect(invalidstateCb).toHaveBeenCalledWith(
+                expect.objectContaining({ stateName: "constructor", client })
+            );
+        });
+
+        it("should leave the client's state unchanged", () => {
+            expect(fsm.currentState(client)).toBe("idle");
+        });
+    });
+
+    describe("transition() to a legitimately declared state that shadows an inherited name", () => {
+        let fsm: any, client: ChildClient;
+
+        beforeEach(() => {
+            // "hasOwnProperty" IS a real, declared own key — object-literal
+            // syntax creates it same as any other property name. The fix must
+            // not reject declared states just because they happen to shadow
+            // an inherited Object.prototype member name.
+            fsm = createBehavioralFsm({
+                id: "proto-transition-legit-shadow",
+                initialState: "idle",
+                states: { idle: { go: "hasOwnProperty" }, hasOwnProperty: {} },
+            });
+            client = {};
+            fsm.handle(client, "go" as any);
+        });
+
+        it("should transition into the declared state normally", () => {
+            expect(fsm.currentState(client)).toBe("hasOwnProperty");
+        });
+    });
+
+    describe("rehydrate() (string form) to the inherited '__proto__' accessor, top level", () => {
+        let fsm: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            thrownError = undefined;
+            fsm = createBehavioralFsm({
+                id: "proto-rehydrate-string-top",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            client = {};
+            try {
+                fsm.rehydrate(client, "__proto__");
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        // rehydrate() throws for unknown states (unlike transition(), which
+        // emits invalidstate) — the fix must preserve THIS path's existing
+        // failure mode too, just reclassify "__proto__" as unknown.
+        it("should throw the unknown-state error rather than silently accepting it", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("__proto__");
+        });
+
+        it("should leave the client unregistered", () => {
+            expect(fsm.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("rehydrate() (string form) to the inherited '__proto__' accessor, nested composite path", () => {
+        let child: any, parent: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            thrownError = undefined;
+            child = createBehavioralFsm({
+                id: "proto-rehydrate-string-nested-child",
+                initialState: "off",
+                states: { off: {}, on: {} },
+            });
+            parent = createBehavioralFsm({
+                id: "proto-rehydrate-string-nested-parent",
+                initialState: "idle",
+                states: { idle: {}, active: { _child: child } },
+            });
+            client = {};
+            try {
+                parent.rehydrate(client, "active.__proto__");
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw the unknown-state error for the nested pseudo-state", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("__proto__");
+        });
+
+        it("should leave both parent and child unregistered — nothing written", () => {
+            expect(parent.currentState(client)).toBeUndefined();
+            expect(child.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("rehydrate() (string form) to another Object.prototype-inherited name ('constructor')", () => {
+        let fsm: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            thrownError = undefined;
+            fsm = createBehavioralFsm({
+                id: "proto-rehydrate-string-constructor",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            client = {};
+            try {
+                fsm.rehydrate(client, "constructor");
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw the unknown-state error for 'constructor' just like any other unknown state", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain("constructor");
+        });
+    });
+
+    describe("rehydrate() (string form) into a legitimately declared state that shadows an inherited name", () => {
+        let fsm: any, client: ChildClient;
+
+        beforeEach(() => {
+            fsm = createBehavioralFsm({
+                id: "proto-rehydrate-string-legit-shadow",
+                initialState: "idle",
+                states: { idle: {}, hasOwnProperty: {} },
+            });
+            client = {};
+            fsm.rehydrate(client, "hasOwnProperty");
+        });
+
+        it("should accept the declared state rather than rejecting it as if it were inherited", () => {
+            expect(fsm.currentState(client)).toBe("hasOwnProperty");
+        });
+    });
+
+    describe("transition() to an inherited name via a state's string-shorthand handler target", () => {
+        let fsm: any, client: ChildClient, invalidstateCb: jest.Mock;
+
+        beforeEach(() => {
+            invalidstateCb = jest.fn();
+            fsm = createBehavioralFsm({
+                id: "proto-transition-via-shorthand",
+                initialState: "idle",
+                states: {
+                    // "constructor" as any bypasses compile-time shorthand-target
+                    // validation, same as the _child cast elsewhere in this file —
+                    // this exercises handleLocally()'s `typeof handler === "string"`
+                    // branch, distinct from the function-handler branch already
+                    // covered by the runtime-return-value test above.
+                    idle: { go: "constructor" as any },
+                    running: {},
+                },
+            });
+            client = {};
+            fsm.on("invalidstate", invalidstateCb);
+            fsm.handle(client, "go" as any);
+        });
+
+        it("should emit invalidstate for the shorthand-targeted pseudo-state", () => {
+            expect(invalidstateCb).toHaveBeenCalledTimes(1);
+            expect(invalidstateCb).toHaveBeenCalledWith(
+                expect.objectContaining({ stateName: "constructor", client })
+            );
+        });
+
+        it("should leave the client's state unchanged", () => {
+            expect(fsm.currentState(client)).toBe("idle");
+        });
+    });
+});
+
+describe("BehavioralFsm — rehydrate() malformed snapshot shapes", () => {
+    // The object-form of rehydrate() trusts its input more than dehydrate()
+    // trusts its output — planSnapshotWrites() only validates `state` (and
+    // `children[stateName]`) against the state graph. A missing/wrong-shaped
+    // `deferred` or a wholesale missing snapshot aren't validated at all; they
+    // fail as an incidental consequence of destructuring or array iteration.
+    // These tests pin CURRENT behavior so a future "helpful" guard added to
+    // planSnapshotWrites() (e.g. an early `if (!snapshot) return [];`) doesn't
+    // silently change "throws, nothing written" into "silently drops the
+    // client's data" without a test noticing. See review-report-persistence-
+    // follow-ups.md Should-Fix #1.
+    describe("snapshot is undefined", () => {
+        let fsm: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            thrownError = undefined;
+            fsm = createBehavioralFsm({
+                id: "rehydrate-undefined-snapshot",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            client = {};
+            try {
+                fsm.rehydrate(client, undefined as any);
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        it("should throw a TypeError rather than silently no-opping", () => {
+            expect(thrownError).toBeInstanceOf(TypeError);
+        });
+
+        it("should leave the client unregistered", () => {
+            expect(fsm.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("snapshot object is missing 'state'", () => {
+        let fsm: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            thrownError = undefined;
+            fsm = createBehavioralFsm({
+                id: "rehydrate-missing-state",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            client = {};
+            try {
+                fsm.rehydrate(client, { deferred: [] } as any);
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        // Distinct from the "undefined" case above — this snapshot IS a real
+        // object, so destructuring succeeds (state comes back undefined via
+        // normal missing-property lookup); it fails at the explicit
+        // Object.hasOwn() validation instead, taking the DELIBERATE
+        // unknown-state error path rather than an accidental crash.
+        it("should throw the deliberate unknown-state validation error naming 'undefined'", () => {
+            expect(thrownError).toBeDefined();
+            expect(thrownError!.message).toContain('unknown state "undefined"');
+        });
+
+        it("should leave the client unregistered", () => {
+            expect(fsm.currentState(client)).toBeUndefined();
+        });
+    });
+
+    describe("snapshot has a valid 'state' but is missing 'deferred'", () => {
+        let fsm: any, client: ChildClient, thrownError: Error | undefined;
+
+        beforeEach(() => {
+            thrownError = undefined;
+            fsm = createBehavioralFsm({
+                id: "rehydrate-missing-deferred",
+                initialState: "idle",
+                states: { idle: {}, running: {} },
+            });
+            client = {};
+            try {
+                fsm.rehydrate(client, { state: "running" } as any);
+            } catch (e: any) {
+                thrownError = e;
+            }
+        });
+
+        // Unlike the missing-'state' case, this snapshot passes the hasOwn
+        // validation (the state name IS declared) — it fails later, and
+        // differently, when the (missing) deferred array is mapped over.
+        it("should throw a TypeError from the missing deferred array rather than validating it", () => {
+            expect(thrownError).toBeInstanceOf(TypeError);
+        });
+
+        it("should leave the client unregistered", () => {
+            expect(fsm.currentState(client)).toBeUndefined();
         });
     });
 });
