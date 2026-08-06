@@ -1089,6 +1089,58 @@ describe("BehavioralFsm", () => {
                 expect(result.id).toBe(FSM_ID);
             });
         });
+
+        describe("when the curried factory is invoked multiple times", () => {
+            const make = createBehavioralFsm<TrafficClient>();
+            let fsmOne: ReturnType<typeof make>,
+                fsmTwo: ReturnType<typeof make>,
+                clientOne: TrafficClient,
+                clientTwo: TrafficClient;
+
+            beforeEach(() => {
+                fsmOne = make({
+                    id: "curried-one",
+                    initialState: "green",
+                    states: {
+                        green: { timeout: "yellow" },
+                        yellow: { timeout: "red" },
+                        red: { timeout: "green" },
+                    },
+                });
+                fsmTwo = make({
+                    id: "curried-two",
+                    initialState: "green",
+                    states: {
+                        green: { timeout: "yellow" },
+                        yellow: { timeout: "red" },
+                        red: { timeout: "green" },
+                    },
+                });
+                clientOne = makeClient();
+                clientTwo = makeClient();
+                fsmOne.handle(clientOne, "timeout");
+            });
+
+            it("should produce independent BehavioralFsm instances", () => {
+                expect(fsmOne).not.toBe(fsmTwo);
+            });
+
+            it("should give each construction its own configured id", () => {
+                expect(fsmOne.id).toBe("curried-one");
+                expect(fsmTwo.id).toBe("curried-two");
+            });
+
+            it("should keep per-client state isolated between the two constructions", () => {
+                expect(fsmOne.currentState(clientOne)).toBe("yellow");
+                expect(fsmTwo.currentState(clientTwo)).toBeUndefined();
+            });
+        });
+
+        describe("when called with null instead of omitting the argument entirely", () => {
+            it("should throw rather than silently returning a curried factory", () => {
+                expect(() => (createBehavioralFsm as any)(null)).toThrow(TypeError);
+            });
+        });
     });
 
     // =========================================================================

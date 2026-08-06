@@ -107,7 +107,7 @@ interface Connection {
     retries: number;
 }
 
-const connFsm = createBehavioralFsm<Connection>({
+const connFsm = createBehavioralFsm<Connection>()({
     id: "connectivity",
     initialState: "disconnected",
     states: {

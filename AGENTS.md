@@ -54,7 +54,7 @@ TypeScript 5.9+, target ES2022, strict mode.
 Two factory functions, one mental model:
 
 - **`createFsm(config)`** — single-client FSM. Owns its context object. Use for one instance of a thing.
-- **`createBehavioralFsm<TClient>(config)`** — multi-client FSM. State tracked per-client in a WeakMap, nothing stamped on client objects. One FSM definition, many independent clients.
+- **`createBehavioralFsm<TClient>()(config)`** — multi-client FSM. State tracked per-client in a WeakMap, nothing stamped on client objects. One FSM definition, many independent clients. Curried: `TClient` can't be inferred from the config, so it's fixed by the first (zero-arg) call, then the returned function infers everything else from `config`.
 
 **Handlers** receive `{ ctx, inputName, defer, emit }` as a destructured first argument (no `this` binding). Return a state name string to transition; return nothing to stay put. String shorthand (`timeout: "yellow"`) handles the always-transition case.
 

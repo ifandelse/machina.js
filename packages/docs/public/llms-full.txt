@@ -280,10 +280,10 @@ light.transition("yellw");   // compile error — not a valid state
 
 ### Config
 
-Same as `createFsm` without the `context` property. The client type is provided as an explicit type parameter:
+Same as `createFsm` without the `context` property. The client type can't be inferred from the config, so it's provided via a curried call — `createBehavioralFsm<Connection>()` fixes the client type, and the returned function infers everything else from the config:
 
 ```ts
-const connFsm = createBehavioralFsm<Connection>({
+const connFsm = createBehavioralFsm<Connection>()({
     id: "connectivity",
     initialState: "disconnected",
     states: { ... },
@@ -329,7 +329,7 @@ interface Connection {
     retries: number;
 }
 
-const connFsm = createBehavioralFsm<Connection>({
+const connFsm = createBehavioralFsm<Connection>()({
     id: "connectivity",
     initialState: "disconnected",
     states: {
@@ -618,7 +618,7 @@ v4.0.2 was the last public release. v5 was never released. v6 is a ground-up Typ
 | Pattern              | v4                                       | v6                                       |
 | -------------------- | ---------------------------------------- | ---------------------------------------- |
 | Create FSM           | `new machina.Fsm({ namespace, ... })`    | `createFsm({ id, context, ... })`        |
-| Create behavioral    | `new machina.BehavioralFsm({ ... })`     | `createBehavioralFsm<Client>({ ... })`   |
+| Create behavioral    | `new machina.BehavioralFsm({ ... })`     | `createBehavioralFsm<Client>()({ ... })` |
 | Handler context      | `this` (bound to FSM)                    | `{ ctx, inputName, defer, emit }` arg    |
 | Arrow functions      | broken (wrong `this`)                    | work fine                                |
 | Transition (inside)  | `this.transition("state")`               | `return "state"`                         |

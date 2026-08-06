@@ -1083,20 +1083,30 @@ function createChildLink(child: any): ChildLink {
 /**
  * Create a behavioral FSM (one definition, many clients) from a config object.
  *
- * Generic parameters are inferred automatically:
- * - `TClient` must be provided explicitly as a type parameter (it can't be
- *   inferred from the config since no `context` property exists at the FSM level).
- * - `TStates` is captured with `const` inference to preserve string literal
- *   types, enabling compile-time validation of transition targets and `handle()`
- *   input names.
+ * `TClient` can't be inferred from the config — there's no `context` property
+ * at the FSM level for it to hook into, unlike `createFsm`'s `TCtx`. Supplying
+ * it as a single explicit type argument (`createBehavioralFsm<Connection>({...})`)
+ * doesn't work either: TypeScript has no partial type-argument inference, so
+ * providing one of two type parameters disables inference for the other,
+ * widening `TStates` to `Record<string, Record<string, unknown>>` and
+ * discarding all literal-type validation.
  *
- * State names, input names, and all handler signatures derive from `TStates`.
+ * The fix is currying: call with zero arguments to fix `TClient`, then call
+ * the returned function with the config to infer `TStates` from it, `const`
+ * literal capture and all. This is the recommended way to type a client.
+ *
+ * If you'd rather skip the type argument entirely, annotate `ctx` inline on
+ * at least one handler (e.g. `disconnect({ ctx }: { ctx: Connection }) {...}`)
+ * and call with zero type arguments — `TClient` is then inferred from that
+ * annotation. This only works when the annotation is visible directly on a
+ * handler; it does NOT work through object spread (`...guards`), since
+ * TypeScript won't look inside a spread for the annotation.
  *
  * @example
  * ```ts
  * interface Connection { url: string; retries: number; }
  *
- * const connFsm = createBehavioralFsm<Connection>({
+ * const connFsm = createBehavioralFsm<Connection>()({
  *   id: "connectivity",
  *   initialState: "disconnected",
  *   states: {
@@ -1109,12 +1119,42 @@ function createChildLink(child: any): ChildLink {
  * const conn = { url: "wss://example.com", retries: 0 };
  * connFsm.handle(conn, "connect");
  * ```
+ *
+ * @example Inline-annotated `ctx`, zero type arguments
+ * ```ts
+ * const connFsm = createBehavioralFsm({
+ *   id: "connectivity",
+ *   initialState: "disconnected",
+ *   states: {
+ *     disconnected: {
+ *       connect({ ctx }: { ctx: Connection }) { return "connecting"; },
+ *     },
+ *     connecting: { connected: "online", failed: "disconnected" },
+ *     online:     { disconnect: "disconnected" },
+ *   },
+ * });
+ * ```
  */
+export function createBehavioralFsm<TClient extends object>(): <
+    const TStates extends Record<string, Record<string, unknown>>,
+>(
+    config: FsmConfig<TClient, TStates>
+) => BehavioralFsm<TClient, StateNamesOf<TStates>, InputNamesOf<TStates>>;
 export function createBehavioralFsm<
     TClient extends object,
     const TStates extends Record<string, Record<string, unknown>>,
 >(
     config: FsmConfig<TClient, TStates>
-): BehavioralFsm<TClient, StateNamesOf<TStates>, InputNamesOf<TStates>> {
+): BehavioralFsm<TClient, StateNamesOf<TStates>, InputNamesOf<TStates>>;
+export function createBehavioralFsm<
+    TClient extends object,
+    const TStates extends Record<string, Record<string, unknown>>,
+>(config?: FsmConfig<TClient, TStates>) {
+    if (config === undefined) {
+        return (curriedConfig: FsmConfig<TClient, TStates>) =>
+            new BehavioralFsm(
+                curriedConfig as FsmConfig<TClient, Record<string, Record<string, unknown>>>
+            );
+    }
     return new BehavioralFsm(config as FsmConfig<TClient, Record<string, Record<string, unknown>>>);
 }

@@ -21,15 +21,23 @@ Use `createFsm` when you have a single instance with its own dedicated context o
 
 ## Config
 
-The config is the same as `createFsm` with one difference: there's no `context` property. The client object IS the context. Because the client type can't be inferred from the config, you provide it as an explicit type parameter:
+The config is the same as `createFsm` with one difference: there's no `context` property. The client object IS the context. Because the client type can't be inferred from the config, you provide it via a curried call: `createBehavioralFsm<Connection>()` fixes the client type, and the function it returns infers everything else from the config you pass it:
 
 ```ts
-const connFsm = createBehavioralFsm<Connection>({
+const connFsm = createBehavioralFsm<Connection>()({
     id: "connectivity",
     initialState: "disconnected",
     states: { ... },
 });
 ```
+
+<Aside type="tip">
+    You can skip the type argument entirely by annotating `ctx` inline on a handler instead — e.g.
+    `connect({ ctx }: { ctx: Connection }) { ... }` — and calling `createBehavioralFsm({ ... })` with
+    zero type arguments. This only works when the annotation is visible directly on a handler; it
+    won't be picked up through object spread (`...sharedHandlers`). The curried form above works
+    either way, so it's the recommended default.
+</Aside>
 
 State names, input names, and transition target validation all work identically — inferred from the `states` config at compile time.
 
@@ -163,7 +171,7 @@ interface Connection {
     retries: number;
 }
 
-const connFsm = createBehavioralFsm<Connection>({
+const connFsm = createBehavioralFsm<Connection>()({
     id: "connectivity",
     initialState: "disconnected",
     states: {
@@ -217,7 +225,7 @@ connFsm.dispose();
 
 ## TypeScript
 
-The client type is the only thing you need to supply explicitly. State names and input names are inferred from the `states` config the same way `createFsm` handles it.
+The client type is the only thing you need to supply explicitly — via the curried call, `createBehavioralFsm<Connection>()`. State names and input names are inferred from the `states` config the same way `createFsm` handles it.
 
 ```ts
 import type { BehavioralFsmEventMap, HandlerArgs } from "machina";
