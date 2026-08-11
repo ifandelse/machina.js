@@ -7,7 +7,7 @@ import { Aside } from "@astrojs/starlight/components";
 
 ## Overview
 
-Any state can own a child FSM by setting `_child` to an FSM instance. While the parent is in that state, inputs dispatched via `handle()` are checked against the child first using `canHandle()`. If the child can handle the input, it's forwarded. If not, the parent's own state handlers get it. If the child itself sends an input it can't handle (e.g. from `_onEnter`), that fires `nohandler` on the child and bubbles up to the parent.
+Any state can own a child FSM by setting `_child` to an FSM instance. While the parent is in that state, inputs dispatched via `handle()` are checked against the child first using `canHandle()`, which looks through the child's entire `_child` chain. If anything down the chain can handle the input, it's forwarded. If not, the parent's own state handlers get it. If the child itself sends an input it can't handle (e.g. from `_onEnter`), that fires `nohandler` on the child and bubbles up to the parent.
 
 ## Setting up a child
 
@@ -50,11 +50,11 @@ When `handle()` is called on the parent, the dispatch order is:
 
 1. Input arrives at the parent via `handle()`
 2. Parent checks if the current state has a `_child`
-3. If yes, parent calls `canHandle()` on the child
-4. If the child can handle it, the input is forwarded to the child's `handle()` — done
-5. If the child can't handle it, the parent's own state handlers get the input
+3. If yes, parent calls `canHandle()` on the child — and `canHandle()` answers for the child's whole `_child` chain, not just the child itself, so a grandchild's input counts
+4. If anything down the chain can handle it, the input is forwarded to the child's `handle()`, which repeats the same dispatch one level down — until it reaches the FSM that actually handles it
+5. If nothing down the chain can handle it, the parent's own state handlers get the input
 
-The child gets first shot via `canHandle()`, and the parent's handlers act as a fallback. Separately, if the child sends itself an input it can't handle (e.g. inside `_onEnter`), that fires `nohandler` on the child and bubbles up to the parent — this is how the traffic intersection's `phaseComplete` input reaches the parent from the child's `red` state.
+The descendant chain gets first shot, and the parent's handlers act as a fallback — the same child-first precedence at every level. Delegation reaches as deep as your hierarchy nests (matching `compositeState()`'s reach), so an input handled three levels down can be dispatched from the root without any manual forwarding. Separately, if the child sends itself an input it can't handle (e.g. inside `_onEnter`), that fires `nohandler` on the child and bubbles up to the parent — this is how the traffic intersection's `phaseComplete` input reaches the parent from the child's `red` state.
 
 ## Declaring bubbled inputs
 

@@ -113,8 +113,10 @@ export class Fsm<
 
     /**
      * Returns true if the current state has a handler for `inputName`
-     * (or a catch-all `"*"` handler). Does not trigger initialization
-     * or any side effects. Returns false when disposed.
+     * (or a catch-all `"*"` handler), or if the current state's `_child`
+     * chain can handle it (checked recursively, matching `handle()`'s
+     * delegation reach). Does not trigger initialization or any side
+     * effects. Returns false when disposed.
      */
     canHandle(inputName: string): boolean {
         if (this.disposed) {

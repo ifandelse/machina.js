@@ -839,15 +839,10 @@ describe("D1 — child-input surfacing", () => {
             compositeAfterChildInput = parent.compositeState();
 
             // "activate" is the GRANDCHILD's own input. D1 makes this type-check
-            // on parent.handle() with no cast (the point of this pin), but the
-            // engine's delegation is gated by canHandle(), which only checks the
-            // IMMEDIATE child's current state — it does not recurse into that
-            // child's own _child. So this call type-checks per D1, then no-ops
-            // as `nohandler` on the parent at runtime rather than reaching the
-            // grandchild. That's expected: this feature is type-level only (see
-            // "Runtime changes: none" in the design), and reaching a grandchild's
-            // input from the top requires dispatching through the intermediate
-            // child directly, not a single call from the root.
+            // on parent.handle() with no cast, and canHandle() recurses through
+            // the _child chain, so the delegation gate answers true at every
+            // level and the input reaches the grandchild's handler from the
+            // root — the runtime now keeps the promise the types make.
             parent.handle("activate");
             compositeAfterGrandchildInput = parent.compositeState();
         });
@@ -856,8 +851,15 @@ describe("D1 — child-input surfacing", () => {
             expect(compositeAfterChildInput).toBe("active.on.idle");
         });
 
-        it("should type-check a D1-surfaced grandchild input without it reaching the grandchild at runtime (single-hop canHandle gate)", () => {
-            expect(compositeAfterGrandchildInput).toBe("active.on.idle");
+        it("should carry a D1-surfaced grandchild input to the grandchild's handler from the root", () => {
+            expect(compositeAfterGrandchildInput).toBe("active.on.running");
+        });
+
+        it("should answer canHandle() through the full _child chain", () => {
+            // deactivate is only handleable once the grandchild is in
+            // "running" — beforeEach just drove it there via "activate".
+            expect(parent.canHandle("deactivate")).toBe(true);
+            expect(parent.canHandle("bogus" as never)).toBe(false);
         });
     });
 

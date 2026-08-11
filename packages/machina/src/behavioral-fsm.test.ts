@@ -2397,14 +2397,14 @@ describe("BehavioralFsm — hierarchical hardening", () => {
     // Three-level hierarchy — delegation cascade
     // =========================================================================
 
-    describe("three-level hierarchy — canHandle is shallow", () => {
-        describe("when middle child has no handler, grandparent falls through to local", () => {
-            let grandparent: any, client: ChildClient, grandparentHandled: boolean;
+    describe("three-level hierarchy — canHandle recurses through the _child chain", () => {
+        describe("when middle child has no handler but its grandchild does, delegation cascades past the middle", () => {
+            let grandchild: any, grandparent: any, client: ChildClient, grandparentHandled: boolean;
 
             beforeEach(() => {
                 grandparentHandled = false;
-                const grandchild = createBehavioralFsm({
-                    id: "gc-shallow",
+                grandchild = createBehavioralFsm({
+                    id: "gc-cascade-past-middle",
                     initialState: "a",
                     states: {
                         a: { poweron: "b" },
@@ -2412,15 +2412,16 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                     },
                 });
                 const middle = createBehavioralFsm({
-                    id: "middle-shallow",
+                    id: "middle-cascade-past",
                     initialState: "x",
                     states: {
-                        // middle has _child but no "poweron" handler
+                        // middle has _child but no "poweron" handler of its own —
+                        // its canHandle() answers true by recursing into grandchild
                         x: { _child: grandchild },
                     },
                 });
                 grandparent = createBehavioralFsm({
-                    id: "gp-shallow",
+                    id: "gp-cascade-past",
                     initialState: "top",
                     states: {
                         top: {
@@ -2432,14 +2433,32 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                     },
                 });
                 client = {};
-                grandparent.handle(client, "noop" as any); // init
+                grandparent.handle(client, "noop" as never); // init
                 grandparent.handle(client, "poweron");
             });
 
-            it("should NOT cascade through the middle child to grandchild", () => {
-                // canHandle is shallow — middle has no "poweron", so grandparent
-                // falls through and handles it locally
-                expect(grandparentHandled).toBe(true);
+            it("should cascade through the handler-less middle to the grandchild", () => {
+                expect(grandchild.currentState(client)).toBe("b");
+            });
+
+            it("should prefer the descendant chain over the grandparent's local handler, extending the existing child-first precedence", () => {
+                expect(grandparentHandled).toBe(false);
+            });
+
+            it("should answer canHandle for a grandchild-only input without initializing the client", () => {
+                // fresh client, never dispatched — canHandle uses initialState
+                // fallbacks at every level and must stay side-effect free
+                const fresh: ChildClient = {};
+                expect(grandparent.canHandle(fresh, "poweron")).toBe(true);
+                expect(grandparent.canHandle(fresh, "mystery")).toBe(false);
+                expect(grandparent.currentState(fresh)).toBeUndefined();
+            });
+
+            it("should still emit nohandler at the root when nothing in the chain handles the input", () => {
+                const nohandlerCb = jest.fn();
+                grandparent.on("nohandler", nohandlerCb);
+                grandparent.handle(client, "mystery" as never);
+                expect(nohandlerCb).toHaveBeenCalledTimes(1);
             });
         });
 

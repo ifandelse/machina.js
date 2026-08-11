@@ -130,9 +130,12 @@ export class BehavioralFsm<
 
     /**
      * Returns true if the client's current state has a handler for `inputName`
-     * (or a catch-all `"*"` handler). Does NOT initialize the client — no
-     * `_onEnter`, no events, no side effects. Unseen clients are treated as
-     * if they were already in `initialState`. Returns false when disposed.
+     * (or a catch-all `"*"` handler), or if the current state's `_child` chain
+     * can handle it — the check recurses to the same depth `handle()`'s
+     * delegation can actually reach, so a grandchild-only input answers true
+     * from the root. Does NOT initialize the client — no `_onEnter`, no
+     * events, no side effects. Unseen clients are treated as if they were
+     * already in `initialState`. Returns false when disposed.
      */
     canHandle(client: TClient, inputName: string): boolean {
         if (this.disposed) {
@@ -143,7 +146,17 @@ export class BehavioralFsm<
         // fallback for unseen clients (they'd start there anyway).
         const state = this.clients.get(client)?.state ?? this.initialState;
         const stateObj = this.states[state];
-        return !!(stateObj?.[inputName] ?? stateObj?.["*"]);
+        if (stateObj?.[inputName] ?? stateObj?.["*"]) {
+            return true;
+        }
+        // Recurse into the current state's child so the answer matches
+        // handle()'s real delegation reach: handle() forwards one level, the
+        // child's own handle() forwards another, and so on. Without this, a
+        // grandchild-only input answers "no" at the top even though the
+        // delegation chain would carry it all the way down — which made
+        // D1-surfaced grandchild inputs type-check and then silently no-op.
+        const childLink = stateObj?._child as ChildLink | undefined;
+        return childLink ? childLink.canHandle(client, inputName) : false;
     }
 
     /**
