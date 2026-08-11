@@ -3,6 +3,8 @@ title: Hierarchical States
 description: Nest child FSMs inside parent states with _child for input delegation and bubbling.
 ---
 
+import { Aside } from "@astrojs/starlight/components";
+
 ## Overview
 
 Any state can own a child FSM by setting `_child` to an FSM instance. While the parent is in that state, inputs dispatched via `handle()` are checked against the child first using `canHandle()`. If the child can handle the input, it's forwarded. If not, the parent's own state handlers get it. If the child itself sends an input it can't handle (e.g. from `_onEnter`), that fires `nohandler` on the child and bubbles up to the parent.
@@ -53,6 +55,113 @@ When `handle()` is called on the parent, the dispatch order is:
 5. If the child can't handle it, the parent's own state handlers get the input
 
 The child gets first shot via `canHandle()`, and the parent's handlers act as a fallback. Separately, if the child sends itself an input it can't handle (e.g. inside `_onEnter`), that fires `nohandler` on the child and bubbles up to the parent — this is how the traffic intersection's `phaseComplete` input reaches the parent from the child's `red` state.
+
+## Declaring bubbled inputs
+
+The nohandler-bubbling mechanism above works whether or not the child says anything about it — but an undeclared bubble gives you zero compile-time signal that a container needs to catch it. `bubbles` closes that gap: it's a config property listing the inputs an FSM fires at itself without handling, so TypeScript can enforce that whatever mounts it via `_child` actually deals with them.
+
+```ts
+// `fsm` is declared before createFsm() and assigned after, so _onEnter can
+// close over it safely — the same pattern the traffic intersection example
+// uses (setTimeout runs well after createFsm() returns and the assignment
+// completes).
+let fsm: ReturnType<typeof createFsm>;
+
+const phaseController = createFsm({
+    id: "phase-controller",
+    initialState: "green",
+    bubbles: ["phaseComplete"], // "I fire this; whoever mounts me must deal with it"
+    states: {
+        green: { advance: "red" },
+        red: {
+            _onEnter() {
+                // Not handled here — this is exactly the self-directed
+                // dispatch the nohandler-bubbling mechanism above describes.
+                setTimeout(() => fsm.handle("phaseComplete"), 0);
+            },
+        },
+    },
+});
+
+fsm = phaseController;
+```
+
+Declaring a bubble does two things:
+
+1. It joins the FSM's own typed input union, so the self-directed `fsm.handle("phaseComplete")` call above type-checks without a cast.
+2. It becomes part of the FSM's **mounting contract**. Any config that mounts `phaseController` via `_child` must satisfy it — otherwise the mount is a compile error:
+
+```ts
+// Compile error on `_child` — "phaseComplete" is declared but neither
+// handled here, re-declared, nor covered by a catch-all.
+const intersection = createFsm({
+    id: "intersection",
+    initialState: "northSouth",
+    states: {
+        northSouth: { _child: phaseController },
+        clearance: { advance: "northSouth" },
+    },
+});
+```
+
+Fixing it means doing one of three things:
+
+```ts
+// 1. Handle it directly — anywhere in the config, not necessarily on the
+//    same state that declares `_child`. Coverage is FSM-wide because a
+//    bubble re-dispatches against whatever state the parent is in when it
+//    fires, which can be any state.
+const intersection = createFsm({
+    id: "intersection",
+    initialState: "northSouth",
+    states: {
+        northSouth: {
+            _child: phaseController,
+            phaseComplete: "clearance",
+        },
+        clearance: { advance: "northSouth" },
+    },
+});
+
+// 2. Re-declare it in your OWN `bubbles` — this discharges the mount but
+//    passes the obligation up one level: whatever mounts `intersection`
+//    now owes `phaseComplete` too.
+const intersection2 = createFsm({
+    id: "intersection-passthrough",
+    initialState: "northSouth",
+    bubbles: ["phaseComplete"],
+    states: {
+        northSouth: { _child: phaseController },
+        clearance: { advance: "northSouth" },
+    },
+});
+
+// 3. Carry a "*" catch-all anywhere in the config — it absorbs every
+//    bubble along with everything else.
+const intersection3 = createFsm({
+    id: "intersection-catchall",
+    initialState: "northSouth",
+    states: {
+        northSouth: {
+            _child: phaseController,
+            "*"({ inputName }) {
+                console.log("unhandled:", inputName);
+            },
+        },
+        clearance: { advance: "northSouth" },
+    },
+});
+```
+
+The contract composes across arbitrarily many hierarchy levels — a grandparent that mounts a re-declaring parent inherits the same obligation, and so on up the chain. An FSM that declares no `bubbles` (the default) owes nothing and can be mounted anywhere with no obligation at all.
+
+<Aside type="note">
+    `bubbles` is type-level only — the engine never reads it. Runtime behavior is exactly the
+    nohandler-bubbling mechanism described above; `bubbles` just gives TypeScript enough information
+    to check that the wiring is actually correct.
+</Aside>
+
+See the [Traffic Intersection example](/examples/traffic-intersection/) for `bubbles` in a real hierarchy — the phase controller declares `bubbles: ["phaseComplete"]`, and the intersection parent covers it with a handler on each phase state.
 
 ## compositeState()
 

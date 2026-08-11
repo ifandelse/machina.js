@@ -13,7 +13,6 @@ import { cloneDeep, cloneJsonSafe, NonSerializableValueError } from "./json-safe
 import {
     MACHINA_TYPE,
     type FsmConfig,
-    type StateNamesOf,
     type InputNamesOf,
     type HandlerArgs,
     type HandlerFn,
@@ -24,6 +23,7 @@ import {
     type DisposeOptions,
     type ClientSnapshot,
     type MachinaInstance,
+    type ExpandUnion,
 } from "./types";
 
 // Safety valve for _onEnter → transition loops. Instance-level counter works
@@ -46,11 +46,16 @@ const MAX_TRANSITION_DEPTH = 20;
  *   so it can serve as a WeakMap key.
  * @typeParam TStateNames - String literal union of valid state names.
  * @typeParam TInputNames - String literal union of valid input names.
+ * @typeParam TBubbles - String literal union of inputs this FSM declares via
+ *   `bubbles`. Type-only — carried so `BubblesOfInstance` can extract it from
+ *   a constructed instance; nothing at runtime reads this generic.
  */
 export class BehavioralFsm<
     TClient extends object,
     TStateNames extends string,
     TInputNames extends string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- phantom marker: never referenced in the class body, only read back out externally via BubblesOfInstance's `infer`.
+    TBubbles extends string = never,
 > {
     readonly id: string;
     readonly initialState: TStateNames;
@@ -1134,24 +1139,77 @@ function createChildLink(child: any): ChildLink {
  *   },
  * });
  * ```
+ *
+ * @example Declaring bubbled inputs under the curried form
+ * ```ts
+ * // childFsm fires "phaseComplete" at itself but never handles it — it
+ * // expects whatever mounts it via `_child` to catch the bubble.
+ * const childFsm = createBehavioralFsm<Connection>()({
+ *   id: "child",
+ *   initialState: "green",
+ *   bubbles: ["phaseComplete"],
+ *   states: {
+ *     green: { advance: "red" },
+ *     red: {},
+ *   },
+ * });
+ *
+ * // Mounting it without handling (or re-declaring) "phaseComplete" is a
+ * // compile error on `_child` below.
+ * const parentFsm = createBehavioralFsm<Connection>()({
+ *   id: "parent",
+ *   initialState: "active",
+ *   states: {
+ *     active: {
+ *       _child: childFsm,
+ *       phaseComplete: "cooldown", // covers the bubble
+ *     },
+ *     cooldown: { advance: "active" },
+ *   },
+ * });
+ * ```
  */
 export function createBehavioralFsm<TClient extends object>(): <
     const TStates extends Record<string, Record<string, unknown>>,
+    TStateNames extends string = keyof TStates & string,
+    TBubbles extends string = never,
 >(
-    config: FsmConfig<TClient, TStates>
-) => BehavioralFsm<TClient, StateNamesOf<TStates>, InputNamesOf<TStates>>;
+    config: FsmConfig<TClient, TStates, TStateNames, TBubbles>
+) => BehavioralFsm<
+    TClient,
+    // Inlined rather than `ExpandUnion<StateNamesOf<TStates>>` — see the same
+    // comment in fsm.ts's createFsm: StateNamesOf's plain intersection keeps
+    // its alias symbol through ExpandUnion's distribution, so error text would
+    // still show "StateNamesOf<{...}>" instead of the flat union.
+    ExpandUnion<keyof TStates & string>,
+    ExpandUnion<InputNamesOf<TStates> | TBubbles>,
+    TBubbles
+>;
 export function createBehavioralFsm<
     TClient extends object,
     const TStates extends Record<string, Record<string, unknown>>,
+    TStateNames extends string = keyof TStates & string,
+    TBubbles extends string = never,
 >(
-    config: FsmConfig<TClient, TStates>
-): BehavioralFsm<TClient, StateNamesOf<TStates>, InputNamesOf<TStates>>;
+    config: FsmConfig<TClient, TStates, TStateNames, TBubbles>
+): BehavioralFsm<
+    TClient,
+    // Inlined rather than `ExpandUnion<StateNamesOf<TStates>>` — see the same
+    // comment in fsm.ts's createFsm: StateNamesOf's plain intersection keeps
+    // its alias symbol through ExpandUnion's distribution, so error text would
+    // still show "StateNamesOf<{...}>" instead of the flat union.
+    ExpandUnion<keyof TStates & string>,
+    ExpandUnion<InputNamesOf<TStates> | TBubbles>,
+    TBubbles
+>;
 export function createBehavioralFsm<
     TClient extends object,
     const TStates extends Record<string, Record<string, unknown>>,
->(config?: FsmConfig<TClient, TStates>) {
+    TStateNames extends string = keyof TStates & string,
+    TBubbles extends string = never,
+>(config?: FsmConfig<TClient, TStates, TStateNames, TBubbles>) {
     if (config === undefined) {
-        return (curriedConfig: FsmConfig<TClient, TStates>) =>
+        return (curriedConfig: FsmConfig<TClient, TStates, TStateNames, TBubbles>) =>
             new BehavioralFsm(
                 curriedConfig as FsmConfig<TClient, Record<string, Record<string, unknown>>>
             );

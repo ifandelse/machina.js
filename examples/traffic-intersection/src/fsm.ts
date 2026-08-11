@@ -104,6 +104,12 @@ function createPhaseController(id: string) {
             redTimeout: null,
         } as PhaseControllerContext,
 
+        // "phaseComplete" is fired at the FSM itself (see red._onEnter below) but
+        // never handled here — it bubbles to whichever parent state mounts this
+        // controller via _child. Declaring it lets fsm.handle("phaseComplete")
+        // type-check locally AND requires the mounting parent to cover it.
+        bubbles: ["phaseComplete"],
+
         states: {
             // ------------------------------------------------------------------
             // green — non-interruptible portion of the green phase

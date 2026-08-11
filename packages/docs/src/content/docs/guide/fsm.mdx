@@ -213,6 +213,14 @@ light.transition("yellw"); // "yellw" is not a valid state name
 
 String shorthand targets are validated against actual state keys. `timeout: "yellw"` is a type error, not a runtime surprise.
 
+<Aside type="note">
+    A shorthand typo like `timeout: "yellw"` is reported by TypeScript on the *state object's* line
+    (e.g. `green: {`), not on the `timeout` property itself. This is a consequence of how state
+    validation works: every state shares one combined shape, so a mismatch anywhere inside it
+    surfaces as one incompatibility on the containing state. The error chain underneath still names
+    the exact property and a "Did you mean" suggestion — read past the first line.
+</Aside>
+
 When you need the inferred types explicitly — say, for a function that receives input names — the `StateNamesOf` and `InputNamesOf` utility types extract them from your states config:
 
 ```ts

@@ -32,6 +32,7 @@ export type {
     InputNamesOfInstance,
     ContextOf,
     ClientOf,
+    BubblesOfInstance,
     DisposeOptions,
     ChildLink,
     DeferredInput,

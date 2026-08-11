@@ -14,9 +14,9 @@ import {
     MACHINA_TYPE,
     type FsmConfig,
     type FsmEventMap,
-    type StateNamesOf,
     type InputNamesOf,
     type DisposeOptions,
+    type ExpandUnion,
 } from "./types";
 
 /**
@@ -31,8 +31,17 @@ import {
  * @typeParam TCtx - The context type, inferred from `config.context`.
  * @typeParam TStateNames - String literal union of valid state names.
  * @typeParam TInputNames - String literal union of valid input names.
+ * @typeParam TBubbles - String literal union of inputs this FSM declares via
+ *   `bubbles`. Type-only — carried so `BubblesOfInstance` can extract it from
+ *   a constructed instance; nothing at runtime reads this generic.
  */
-export class Fsm<TCtx extends object, TStateNames extends string, TInputNames extends string> {
+export class Fsm<
+    TCtx extends object,
+    TStateNames extends string,
+    TInputNames extends string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- phantom marker: never referenced in the class body, only read back out externally via BubblesOfInstance's `infer`.
+    TBubbles extends string = never,
+> {
     readonly id: string;
     readonly initialState: TStateNames;
     // Type discriminant — lets ChildLink adapter identify this at runtime
@@ -233,6 +242,20 @@ export function createFsm<
         string,
         Record<string, unknown>
     >,
->(config: FsmConfig<TCtx, TStates>): Fsm<TCtx, StateNamesOf<TStates>, InputNamesOf<TStates>> {
+    TStateNames extends string = keyof TStates & string,
+    TBubbles extends string = never,
+>(
+    config: FsmConfig<TCtx, TStates, TStateNames, TBubbles>
+): Fsm<
+    TCtx,
+    // Inlined rather than `ExpandUnion<StateNamesOf<TStates>>`: StateNamesOf's
+    // right-hand side (a plain `keyof T & string` intersection) keeps its alias
+    // symbol attached through ExpandUnion's conditional distribution, so error
+    // text would still show "StateNamesOf<{...}>" instead of the flat union.
+    // Inlining the same expression sidesteps that display-only quirk.
+    ExpandUnion<keyof TStates & string>,
+    ExpandUnion<InputNamesOf<TStates> | TBubbles>,
+    TBubbles
+> {
     return new Fsm(config as FsmConfig<TCtx, Record<string, Record<string, unknown>>>);
 }

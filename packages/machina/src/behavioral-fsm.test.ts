@@ -2163,7 +2163,11 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                 });
                 parent.on("nohandler", parentNohandlerCb);
                 const unknownClient = {};
-                child.handle(unknownClient as any, "mystery" as any);
+                // child's single empty state ("on": {}) means InputNamesOf<...> is
+                // correctly `never` now — `any` isn't assignable to `never`, so the
+                // input name needs `as never` instead. `unknownClient` stays `as any`
+                // (TClient fell back to `object`; unrelated to this fix).
+                child.handle(unknownClient as any, "mystery" as never);
             });
 
             it("should not bubble to parent for an uninitialized client", () => {
@@ -2197,7 +2201,9 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                 client = {};
                 parent.handle(client, "noop" as any); // init → stateA
                 parent.on("nohandler", parentNohandlerCb);
-                childB.handle(client, "mystery" as any);
+                // childB's single empty state means its InputNamesOf is `never`;
+                // `any` isn't assignable to `never`, so this needs `as never`.
+                childB.handle(client, "mystery" as never);
             });
 
             it("should not bubble child-B event when client is in stateA", () => {
@@ -2230,7 +2236,9 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                 });
                 const client = {};
                 parent.handle(client, "noop" as any); // init → active
-                child.handle(client, "mystery" as any);
+                // child's single empty state means its InputNamesOf is `never`;
+                // `any` isn't assignable to `never`, so this needs `as never`.
+                child.handle(client, "mystery" as never);
             });
 
             it("should bubble the child event to parent and handle it", () => {
@@ -2621,7 +2629,9 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                 });
                 const client = {};
                 parent.handle(client, "noop" as any); // init
-                child.handle(client, "mystery" as any, "kirk", "spock");
+                // child's single empty state means its InputNamesOf is `never`;
+                // `any` isn't assignable to `never`, so this needs `as never`.
+                child.handle(client, "mystery" as never, "kirk", "spock");
             });
 
             it("should preserve extra args through the bubbling path", () => {
@@ -5278,14 +5288,15 @@ describe("BehavioralFsm — transition()/rehydrate() inherited-name state guards
                 id: "proto-transition-via-handler",
                 initialState: "idle",
                 states: {
-                    // Typed as a plain string return so this bypasses the
-                    // compile-time state-name validation a hand-written
-                    // string literal would trigger — the same way an
-                    // untyped JS consumer, or a value computed at runtime,
-                    // could hand transition() a bad name.
+                    // `as never` (not a `: string` return annotation — that's now
+                    // rejected outright, since HandlerFn's return type is the
+                    // literal state-name union, not `string`) is the bypass that
+                    // survives the #188/#189 fix while still exercising the exact
+                    // same runtime path: an untyped JS consumer, or a value
+                    // computed at runtime, handing transition() a bad name.
                     idle: {
-                        go(): string {
-                            return "__proto__";
+                        go() {
+                            return "__proto__" as never;
                         },
                     },
                     running: {},
