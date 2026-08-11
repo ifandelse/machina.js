@@ -1,5 +1,11 @@
 # machina
 
+## 7.0.1
+
+### Patch Changes
+
+- 01285e4: Updated documentation
+
 ## 7.0.0
 
 ### Major Changes

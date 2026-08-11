@@ -54,7 +54,7 @@
         "acorn": "^8.14.1"
     },
     "peerDependencies": {
-        "machina": ">=7.0.0"
+        "machina": ">=7.0.1"
     },
     "devDependencies": {
         "eslint": "^9.39.4",

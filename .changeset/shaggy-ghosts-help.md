@@ -1,5 +1,0 @@
----
-"machina": patch
----
-
-Updated documentation
