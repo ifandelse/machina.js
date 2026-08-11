@@ -13,7 +13,7 @@ import { cloneDeep, cloneJsonSafe, NonSerializableValueError } from "./json-safe
 import {
     MACHINA_TYPE,
     type FsmConfig,
-    type InputNamesOf,
+    type InputNamesOfInstance,
     type HandlerArgs,
     type HandlerFn,
     type BehavioralFsmEventMap,
@@ -23,7 +23,7 @@ import {
     type DisposeOptions,
     type ClientSnapshot,
     type MachinaInstance,
-    type ExpandUnion,
+    type SpecialStateKeys,
 } from "./types";
 
 // Safety valve for _onEnter → transition loops. Instance-level counter works
@@ -1177,12 +1177,18 @@ export function createBehavioralFsm<TClient extends object>(): <
     config: FsmConfig<TClient, TStates, TStateNames, TBubbles>
 ) => BehavioralFsm<
     TClient,
-    // Inlined rather than `ExpandUnion<StateNamesOf<TStates>>` — see the same
-    // comment in fsm.ts's createFsm: StateNamesOf's plain intersection keeps
-    // its alias symbol through ExpandUnion's distribution, so error text would
-    // still show "StateNamesOf<{...}>" instead of the flat union.
-    ExpandUnion<keyof TStates & string>,
-    ExpandUnion<InputNamesOf<TStates> | TBubbles>,
+    // Both unions inlined rather than written as StateNamesOf/InputNamesOf —
+    // see the comment in fsm.ts's createFsm: a named alias reference keeps its
+    // alias symbol in compiler diagnostics, so rejected handle()/transition()
+    // calls would display "InputNamesOf<{...}>" instead of the flat union.
+    keyof TStates & string,
+    | Exclude<{ [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates], SpecialStateKeys>
+    | {
+          [S in keyof TStates]: TStates[S] extends { _child: infer C }
+              ? InputNamesOfInstance<C>
+              : never;
+      }[keyof TStates]
+    | TBubbles,
     TBubbles
 >;
 export function createBehavioralFsm<
@@ -1194,12 +1200,18 @@ export function createBehavioralFsm<
     config: FsmConfig<TClient, TStates, TStateNames, TBubbles>
 ): BehavioralFsm<
     TClient,
-    // Inlined rather than `ExpandUnion<StateNamesOf<TStates>>` — see the same
-    // comment in fsm.ts's createFsm: StateNamesOf's plain intersection keeps
-    // its alias symbol through ExpandUnion's distribution, so error text would
-    // still show "StateNamesOf<{...}>" instead of the flat union.
-    ExpandUnion<keyof TStates & string>,
-    ExpandUnion<InputNamesOf<TStates> | TBubbles>,
+    // Both unions inlined rather than written as StateNamesOf/InputNamesOf —
+    // see the comment in fsm.ts's createFsm: a named alias reference keeps its
+    // alias symbol in compiler diagnostics, so rejected handle()/transition()
+    // calls would display "InputNamesOf<{...}>" instead of the flat union.
+    keyof TStates & string,
+    | Exclude<{ [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates], SpecialStateKeys>
+    | {
+          [S in keyof TStates]: TStates[S] extends { _child: infer C }
+              ? InputNamesOfInstance<C>
+              : never;
+      }[keyof TStates]
+    | TBubbles,
     TBubbles
 >;
 export function createBehavioralFsm<

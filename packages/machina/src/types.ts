@@ -18,46 +18,12 @@
 /**
  * Keys on a state object that have special meaning and are NOT input names.
  * Used by InputNamesOf to filter these out when collecting input names.
+ *
+ * @internal Exported from this module only so the factory return types in
+ *   fsm.ts / behavioral-fsm.ts can inline InputNamesOf's definition for
+ *   readable error text; not re-exported via index.ts.
  */
-type SpecialStateKeys = "_onEnter" | "_onExit" | "_child" | "*";
-
-/**
- * Display-only helper: forces TypeScript to eagerly resolve a computed union
- * to its flat literal members instead of preserving a lazy alias reference
- * (e.g. `InputNamesOf<{...entire states object type...}>`) in error text.
- *
- * Distributing a conditional type over `T` (`T extends unknown ? T : never`)
- * doesn't change what the type IS — it's definitionally equal to `T` for any
- * concrete union — but it changes how the compiler DISPLAYS it: an alias
- * reference like `InputNamesOf<TStates>` is left as-is in diagnostics unless
- * something forces its evaluation, while a conditional type must be resolved
- * to pick a branch, so the compiler materializes the flat union at each
- * report site instead. Used ONLY in the factory functions' return-type
- * annotations (createFsm / createBehavioralFsm) — it has no effect on
- * type equality, so it's safe to add or remove without touching any
- * `Equal<...>` pin.
- *
- * Known limitation (timeboxed, documented rather than chased further): the
- * distribution above only forces resolution when there are 2+ real union
- * members to distribute over. `keyof TStates & string` (state names) always
- * has 2+ members for any real config, so `transition()` error text resolves
- * cleanly. `InputNamesOf<TStates> | TBubbles` only has 2+ members when
- * `bubbles` is non-empty — for the common bubbles-free config, TBubbles
- * defaults to `never` (which disappears from a union), leaving a single,
- * already-sticky `InputNamesOf<TStates>` alias reference that this wrapper
- * doesn't unstick. `handle()` error text improves once `bubbles` is declared;
- * the bubbles-free case still shows the alias. Fully fixing that would mean
- * either exporting `InputNamesOf`'s internal `ChildInputNamesOf` helper so the
- * factories could inline it (bypassing the alias, as done for state names),
- * or duplicating that definition in fsm.ts/behavioral-fsm.ts — both traded
- * against a purely cosmetic diagnostic-text improvement with zero effect on
- * hover types or actual type safety, so this was left as-is per the "timebox
- * and drop if it fights back" guidance.
- *
- * @internal Not part of the public API surface (not re-exported via index.ts)
- *   — exported from this module only so the factory functions can import it.
- */
-export type ExpandUnion<T extends string> = T extends unknown ? T : never;
+export type SpecialStateKeys = "_onEnter" | "_onExit" | "_child" | "*";
 
 /**
  * Extracts state names as a string literal union from a states config object.

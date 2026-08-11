@@ -14,9 +14,9 @@ import {
     MACHINA_TYPE,
     type FsmConfig,
     type FsmEventMap,
-    type InputNamesOf,
+    type InputNamesOfInstance,
     type DisposeOptions,
-    type ExpandUnion,
+    type SpecialStateKeys,
 } from "./types";
 
 /**
@@ -248,13 +248,20 @@ export function createFsm<
     config: FsmConfig<TCtx, TStates, TStateNames, TBubbles>
 ): Fsm<
     TCtx,
-    // Inlined rather than `ExpandUnion<StateNamesOf<TStates>>`: StateNamesOf's
-    // right-hand side (a plain `keyof T & string` intersection) keeps its alias
-    // symbol attached through ExpandUnion's conditional distribution, so error
-    // text would still show "StateNamesOf<{...}>" instead of the flat union.
-    // Inlining the same expression sidesteps that display-only quirk.
-    ExpandUnion<keyof TStates & string>,
-    ExpandUnion<InputNamesOf<TStates> | TBubbles>,
+    // Both unions below are inlined rather than written as `StateNamesOf<TStates>`
+    // / `InputNamesOf<TStates>`: a named alias reference keeps its alias symbol
+    // in compiler diagnostics, so a rejected handle()/transition() call would
+    // display "InputNamesOf<{...entire config...}>" instead of the flat literal
+    // union. Inlining the aliases' right-hand sides forces eager evaluation and
+    // keeps error text readable. Display-only — hover types are identical.
+    keyof TStates & string,
+    | Exclude<{ [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates], SpecialStateKeys>
+    | {
+          [S in keyof TStates]: TStates[S] extends { _child: infer C }
+              ? InputNamesOfInstance<C>
+              : never;
+      }[keyof TStates]
+    | TBubbles,
     TBubbles
 > {
     return new Fsm(config as FsmConfig<TCtx, Record<string, Record<string, unknown>>>);
