@@ -1,6 +1,6 @@
 {
     "name": "machina-react",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "private": true,
     "description": "React external-store hooks for machina FSM instances.",
     "author": "Jim Cowart (http://ifandelse.com)",
@@ -45,7 +45,7 @@
         "use-sync-external-store": "^1.6.0"
     },
     "peerDependencies": {
-        "machina": ">=6.3.0",
+        "machina": ">=7.0.0",
         "react": ">=18"
     },
     "devDependencies": {

@@ -1,6 +1,6 @@
-# @machina-examples/job-queue
+# machina-react
 
-## 0.0.3
+## 1.0.0
 
 ### Patch Changes
 
@@ -8,10 +8,3 @@
 - Updated dependencies [eb71113]
 - Updated dependencies [749d583]
     - machina@7.0.0
-
-## 0.0.2
-
-### Patch Changes
-
-- Updated dependencies
-    - machina@6.3.0

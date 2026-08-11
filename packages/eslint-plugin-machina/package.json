@@ -1,6 +1,6 @@
 {
     "name": "eslint-plugin-machina",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "description": "ESLint plugin for static analysis of machina FSM configs.",
     "author": "Jim Cowart (http://ifandelse.com)",
     "license": "MIT",
