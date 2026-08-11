@@ -240,10 +240,12 @@ type ConnEvents = BehavioralFsmEventMap<
 >;
 ```
 
+String shorthand transition targets are validated against actual state keys at compile time. A typo like `connect: "conecting"` is a type error.
+
 <Aside type="note">
-    Like `createFsm`, a shorthand typo (`connect: "conecting"`) is reported on the *state object's*
-    line rather than the property itself — every state shares one combined validated shape, so the
-    error chain names the specific property a level down. See the [`createFsm` TypeScript
+    Like `createFsm`, the error's *anchor* varies with the shape of the neighboring states — it can
+    land on the state object's line or on the property itself — but the error chain always names the
+    specific property, with a "Did you mean" suggestion. See the [`createFsm` TypeScript
     section](/guide/fsm/#typescript) for the full explanation.
 </Aside>
 
@@ -263,5 +265,3 @@ introduction.
     curried form and the zero-type-argument direct call are unaffected — this only bites the
     explicit-both form.
 </Aside>
-
-String shorthand transition targets are validated against actual state keys at compile time. A typo like `connect: "conecting"` is a type error.
