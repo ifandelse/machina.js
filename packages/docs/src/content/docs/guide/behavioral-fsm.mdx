@@ -241,3 +241,27 @@ type ConnEvents = BehavioralFsmEventMap<
 ```
 
 String shorthand transition targets are validated against actual state keys at compile time. A typo like `connect: "conecting"` is a type error.
+
+<Aside type="note">
+    Like `createFsm`, the error's *anchor* varies with the shape of the neighboring states — it can
+    land on the state object's line or on the property itself — but the error chain always names the
+    specific property, with a "Did you mean" suggestion. See the [`createFsm` TypeScript
+    section](/guide/fsm/#typescript) for the full explanation.
+</Aside>
+
+There's a third, rarely-needed call form: supplying both the client type and an already-resolved
+`states` type explicitly — `createBehavioralFsm<Connection, typeof connectivityStates>({ ... })`.
+It skips inference entirely, which is why it predates (and was never affected by) the curried form's
+introduction.
+
+<Aside type="caution">
+    That explicit-both form has one sharp edge with `bubbles`: supplying only the first two type
+    arguments leaves the trailing `TStateNames` and `TBubbles` parameters at their *defaults* rather
+    than inferring them from the config — TypeScript does not infer later positional type arguments
+    once earlier ones were supplied explicitly. `TBubbles` defaults to `never`, so any non-empty
+    `bubbles` array is rejected (`Type 'string' is not assignable to type 'never'`). The workaround
+    is to supply all four type arguments explicitly: `createBehavioralFsm<Connection, typeof
+    connectivityStates, "disconnected" | "connecting" | "online", "somethingBubbled">({ ... })`. The
+    curried form and the zero-type-argument direct call are unaffected — this only bites the
+    explicit-both form.
+</Aside>

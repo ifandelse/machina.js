@@ -2163,7 +2163,11 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                 });
                 parent.on("nohandler", parentNohandlerCb);
                 const unknownClient = {};
-                child.handle(unknownClient as any, "mystery" as any);
+                // child's single empty state ("on": {}) means InputNamesOf<...> is
+                // correctly `never` now — `any` isn't assignable to `never`, so the
+                // input name needs `as never` instead. `unknownClient` stays `as any`
+                // (TClient fell back to `object`; unrelated to this fix).
+                child.handle(unknownClient as any, "mystery" as never);
             });
 
             it("should not bubble to parent for an uninitialized client", () => {
@@ -2197,7 +2201,9 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                 client = {};
                 parent.handle(client, "noop" as any); // init → stateA
                 parent.on("nohandler", parentNohandlerCb);
-                childB.handle(client, "mystery" as any);
+                // childB's single empty state means its InputNamesOf is `never`;
+                // `any` isn't assignable to `never`, so this needs `as never`.
+                childB.handle(client, "mystery" as never);
             });
 
             it("should not bubble child-B event when client is in stateA", () => {
@@ -2230,7 +2236,9 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                 });
                 const client = {};
                 parent.handle(client, "noop" as any); // init → active
-                child.handle(client, "mystery" as any);
+                // child's single empty state means its InputNamesOf is `never`;
+                // `any` isn't assignable to `never`, so this needs `as never`.
+                child.handle(client, "mystery" as never);
             });
 
             it("should bubble the child event to parent and handle it", () => {
@@ -2389,14 +2397,14 @@ describe("BehavioralFsm — hierarchical hardening", () => {
     // Three-level hierarchy — delegation cascade
     // =========================================================================
 
-    describe("three-level hierarchy — canHandle is shallow", () => {
-        describe("when middle child has no handler, grandparent falls through to local", () => {
-            let grandparent: any, client: ChildClient, grandparentHandled: boolean;
+    describe("three-level hierarchy — canHandle recurses through the _child chain", () => {
+        describe("when middle child has no handler but its grandchild does, delegation cascades past the middle", () => {
+            let grandchild: any, grandparent: any, client: ChildClient, grandparentHandled: boolean;
 
             beforeEach(() => {
                 grandparentHandled = false;
-                const grandchild = createBehavioralFsm({
-                    id: "gc-shallow",
+                grandchild = createBehavioralFsm({
+                    id: "gc-cascade-past-middle",
                     initialState: "a",
                     states: {
                         a: { poweron: "b" },
@@ -2404,15 +2412,16 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                     },
                 });
                 const middle = createBehavioralFsm({
-                    id: "middle-shallow",
+                    id: "middle-cascade-past",
                     initialState: "x",
                     states: {
-                        // middle has _child but no "poweron" handler
+                        // middle has _child but no "poweron" handler of its own —
+                        // its canHandle() answers true by recursing into grandchild
                         x: { _child: grandchild },
                     },
                 });
                 grandparent = createBehavioralFsm({
-                    id: "gp-shallow",
+                    id: "gp-cascade-past",
                     initialState: "top",
                     states: {
                         top: {
@@ -2424,14 +2433,32 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                     },
                 });
                 client = {};
-                grandparent.handle(client, "noop" as any); // init
+                grandparent.handle(client, "noop" as never); // init
                 grandparent.handle(client, "poweron");
             });
 
-            it("should NOT cascade through the middle child to grandchild", () => {
-                // canHandle is shallow — middle has no "poweron", so grandparent
-                // falls through and handles it locally
-                expect(grandparentHandled).toBe(true);
+            it("should cascade through the handler-less middle to the grandchild", () => {
+                expect(grandchild.currentState(client)).toBe("b");
+            });
+
+            it("should prefer the descendant chain over the grandparent's local handler, extending the existing child-first precedence", () => {
+                expect(grandparentHandled).toBe(false);
+            });
+
+            it("should answer canHandle for a grandchild-only input without initializing the client", () => {
+                // fresh client, never dispatched — canHandle uses initialState
+                // fallbacks at every level and must stay side-effect free
+                const fresh: ChildClient = {};
+                expect(grandparent.canHandle(fresh, "poweron")).toBe(true);
+                expect(grandparent.canHandle(fresh, "mystery")).toBe(false);
+                expect(grandparent.currentState(fresh)).toBeUndefined();
+            });
+
+            it("should still emit nohandler at the root when nothing in the chain handles the input", () => {
+                const nohandlerCb = jest.fn();
+                grandparent.on("nohandler", nohandlerCb);
+                grandparent.handle(client, "mystery" as never);
+                expect(nohandlerCb).toHaveBeenCalledTimes(1);
             });
         });
 
@@ -2621,7 +2648,9 @@ describe("BehavioralFsm — hierarchical hardening", () => {
                 });
                 const client = {};
                 parent.handle(client, "noop" as any); // init
-                child.handle(client, "mystery" as any, "kirk", "spock");
+                // child's single empty state means its InputNamesOf is `never`;
+                // `any` isn't assignable to `never`, so this needs `as never`.
+                child.handle(client, "mystery" as never, "kirk", "spock");
             });
 
             it("should preserve extra args through the bubbling path", () => {
@@ -5278,14 +5307,15 @@ describe("BehavioralFsm — transition()/rehydrate() inherited-name state guards
                 id: "proto-transition-via-handler",
                 initialState: "idle",
                 states: {
-                    // Typed as a plain string return so this bypasses the
-                    // compile-time state-name validation a hand-written
-                    // string literal would trigger — the same way an
-                    // untyped JS consumer, or a value computed at runtime,
-                    // could hand transition() a bad name.
+                    // `as never` (not a `: string` return annotation — that's now
+                    // rejected outright, since HandlerFn's return type is the
+                    // literal state-name union, not `string`) is the bypass that
+                    // survives the #188/#189 fix while still exercising the exact
+                    // same runtime path: an untyped JS consumer, or a value
+                    // computed at runtime, handing transition() a bad name.
                     idle: {
-                        go(): string {
-                            return "__proto__";
+                        go() {
+                            return "__proto__" as never;
                         },
                     },
                     running: {},

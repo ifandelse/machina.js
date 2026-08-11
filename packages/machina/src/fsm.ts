@@ -14,9 +14,9 @@ import {
     MACHINA_TYPE,
     type FsmConfig,
     type FsmEventMap,
-    type StateNamesOf,
-    type InputNamesOf,
+    type InputNamesOfInstance,
     type DisposeOptions,
+    type SpecialStateKeys,
 } from "./types";
 
 /**
@@ -31,8 +31,17 @@ import {
  * @typeParam TCtx - The context type, inferred from `config.context`.
  * @typeParam TStateNames - String literal union of valid state names.
  * @typeParam TInputNames - String literal union of valid input names.
+ * @typeParam TBubbles - String literal union of inputs this FSM declares via
+ *   `bubbles`. Type-only — carried so `BubblesOfInstance` can extract it from
+ *   a constructed instance; nothing at runtime reads this generic.
  */
-export class Fsm<TCtx extends object, TStateNames extends string, TInputNames extends string> {
+export class Fsm<
+    TCtx extends object,
+    TStateNames extends string,
+    TInputNames extends string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- phantom marker: never referenced in the class body, only read back out externally via BubblesOfInstance's `infer`.
+    TBubbles extends string = never,
+> {
     readonly id: string;
     readonly initialState: TStateNames;
     // Type discriminant — lets ChildLink adapter identify this at runtime
@@ -104,8 +113,10 @@ export class Fsm<TCtx extends object, TStateNames extends string, TInputNames ex
 
     /**
      * Returns true if the current state has a handler for `inputName`
-     * (or a catch-all `"*"` handler). Does not trigger initialization
-     * or any side effects. Returns false when disposed.
+     * (or a catch-all `"*"` handler), or if the current state's `_child`
+     * chain can handle it (checked recursively, matching `handle()`'s
+     * delegation reach). Does not trigger initialization or any side
+     * effects. Returns false when disposed.
      */
     canHandle(inputName: string): boolean {
         if (this.disposed) {
@@ -233,6 +244,27 @@ export function createFsm<
         string,
         Record<string, unknown>
     >,
->(config: FsmConfig<TCtx, TStates>): Fsm<TCtx, StateNamesOf<TStates>, InputNamesOf<TStates>> {
+    TStateNames extends string = keyof TStates & string,
+    TBubbles extends string = never,
+>(
+    config: FsmConfig<TCtx, TStates, TStateNames, TBubbles>
+): Fsm<
+    TCtx,
+    // Both unions below are inlined rather than written as `StateNamesOf<TStates>`
+    // / `InputNamesOf<TStates>`: a named alias reference keeps its alias symbol
+    // in compiler diagnostics, so a rejected handle()/transition() call would
+    // display "InputNamesOf<{...entire config...}>" instead of the flat literal
+    // union. Inlining the aliases' right-hand sides forces eager evaluation and
+    // keeps error text readable. Display-only — hover types are identical.
+    keyof TStates & string,
+    | Exclude<{ [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates], SpecialStateKeys>
+    | {
+          [S in keyof TStates]: TStates[S] extends { _child: infer C }
+              ? InputNamesOfInstance<C>
+              : never;
+      }[keyof TStates]
+    | TBubbles,
+    TBubbles
+> {
     return new Fsm(config as FsmConfig<TCtx, Record<string, Record<string, unknown>>>);
 }

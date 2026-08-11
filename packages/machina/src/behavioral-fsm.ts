@@ -13,8 +13,7 @@ import { cloneDeep, cloneJsonSafe, NonSerializableValueError } from "./json-safe
 import {
     MACHINA_TYPE,
     type FsmConfig,
-    type StateNamesOf,
-    type InputNamesOf,
+    type InputNamesOfInstance,
     type HandlerArgs,
     type HandlerFn,
     type BehavioralFsmEventMap,
@@ -24,6 +23,7 @@ import {
     type DisposeOptions,
     type ClientSnapshot,
     type MachinaInstance,
+    type SpecialStateKeys,
 } from "./types";
 
 // Safety valve for _onEnter → transition loops. Instance-level counter works
@@ -46,11 +46,16 @@ const MAX_TRANSITION_DEPTH = 20;
  *   so it can serve as a WeakMap key.
  * @typeParam TStateNames - String literal union of valid state names.
  * @typeParam TInputNames - String literal union of valid input names.
+ * @typeParam TBubbles - String literal union of inputs this FSM declares via
+ *   `bubbles`. Type-only — carried so `BubblesOfInstance` can extract it from
+ *   a constructed instance; nothing at runtime reads this generic.
  */
 export class BehavioralFsm<
     TClient extends object,
     TStateNames extends string,
     TInputNames extends string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- phantom marker: never referenced in the class body, only read back out externally via BubblesOfInstance's `infer`.
+    TBubbles extends string = never,
 > {
     readonly id: string;
     readonly initialState: TStateNames;
@@ -125,9 +130,12 @@ export class BehavioralFsm<
 
     /**
      * Returns true if the client's current state has a handler for `inputName`
-     * (or a catch-all `"*"` handler). Does NOT initialize the client — no
-     * `_onEnter`, no events, no side effects. Unseen clients are treated as
-     * if they were already in `initialState`. Returns false when disposed.
+     * (or a catch-all `"*"` handler), or if the current state's `_child` chain
+     * can handle it — the check recurses to the same depth `handle()`'s
+     * delegation can actually reach, so a grandchild-only input answers true
+     * from the root. Does NOT initialize the client — no `_onEnter`, no
+     * events, no side effects. Unseen clients are treated as if they were
+     * already in `initialState`. Returns false when disposed.
      */
     canHandle(client: TClient, inputName: string): boolean {
         if (this.disposed) {
@@ -138,7 +146,17 @@ export class BehavioralFsm<
         // fallback for unseen clients (they'd start there anyway).
         const state = this.clients.get(client)?.state ?? this.initialState;
         const stateObj = this.states[state];
-        return !!(stateObj?.[inputName] ?? stateObj?.["*"]);
+        if (stateObj?.[inputName] ?? stateObj?.["*"]) {
+            return true;
+        }
+        // Recurse into the current state's child so the answer matches
+        // handle()'s real delegation reach: handle() forwards one level, the
+        // child's own handle() forwards another, and so on. Without this, a
+        // grandchild-only input answers "no" at the top even though the
+        // delegation chain would carry it all the way down — which made
+        // D1-surfaced grandchild inputs type-check and then silently no-op.
+        const childLink = stateObj?._child as ChildLink | undefined;
+        return childLink ? childLink.canHandle(client, inputName) : false;
     }
 
     /**
@@ -1134,24 +1152,89 @@ function createChildLink(child: any): ChildLink {
  *   },
  * });
  * ```
+ *
+ * @example Declaring bubbled inputs under the curried form
+ * ```ts
+ * // childFsm fires "phaseComplete" at itself but never handles it — it
+ * // expects whatever mounts it via `_child` to catch the bubble.
+ * const childFsm = createBehavioralFsm<Connection>()({
+ *   id: "child",
+ *   initialState: "green",
+ *   bubbles: ["phaseComplete"],
+ *   states: {
+ *     green: { advance: "red" },
+ *     red: {},
+ *   },
+ * });
+ *
+ * // Mounting it without handling (or re-declaring) "phaseComplete" is a
+ * // compile error on `_child` below.
+ * const parentFsm = createBehavioralFsm<Connection>()({
+ *   id: "parent",
+ *   initialState: "active",
+ *   states: {
+ *     active: {
+ *       _child: childFsm,
+ *       phaseComplete: "cooldown", // covers the bubble
+ *     },
+ *     cooldown: { advance: "active" },
+ *   },
+ * });
+ * ```
  */
 export function createBehavioralFsm<TClient extends object>(): <
     const TStates extends Record<string, Record<string, unknown>>,
+    TStateNames extends string = keyof TStates & string,
+    TBubbles extends string = never,
 >(
-    config: FsmConfig<TClient, TStates>
-) => BehavioralFsm<TClient, StateNamesOf<TStates>, InputNamesOf<TStates>>;
+    config: FsmConfig<TClient, TStates, TStateNames, TBubbles>
+) => BehavioralFsm<
+    TClient,
+    // Both unions inlined rather than written as StateNamesOf/InputNamesOf —
+    // see the comment in fsm.ts's createFsm: a named alias reference keeps its
+    // alias symbol in compiler diagnostics, so rejected handle()/transition()
+    // calls would display "InputNamesOf<{...}>" instead of the flat union.
+    keyof TStates & string,
+    | Exclude<{ [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates], SpecialStateKeys>
+    | {
+          [S in keyof TStates]: TStates[S] extends { _child: infer C }
+              ? InputNamesOfInstance<C>
+              : never;
+      }[keyof TStates]
+    | TBubbles,
+    TBubbles
+>;
 export function createBehavioralFsm<
     TClient extends object,
     const TStates extends Record<string, Record<string, unknown>>,
+    TStateNames extends string = keyof TStates & string,
+    TBubbles extends string = never,
 >(
-    config: FsmConfig<TClient, TStates>
-): BehavioralFsm<TClient, StateNamesOf<TStates>, InputNamesOf<TStates>>;
+    config: FsmConfig<TClient, TStates, TStateNames, TBubbles>
+): BehavioralFsm<
+    TClient,
+    // Both unions inlined rather than written as StateNamesOf/InputNamesOf —
+    // see the comment in fsm.ts's createFsm: a named alias reference keeps its
+    // alias symbol in compiler diagnostics, so rejected handle()/transition()
+    // calls would display "InputNamesOf<{...}>" instead of the flat union.
+    keyof TStates & string,
+    | Exclude<{ [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates], SpecialStateKeys>
+    | {
+          [S in keyof TStates]: TStates[S] extends { _child: infer C }
+              ? InputNamesOfInstance<C>
+              : never;
+      }[keyof TStates]
+    | TBubbles,
+    TBubbles
+>;
 export function createBehavioralFsm<
     TClient extends object,
     const TStates extends Record<string, Record<string, unknown>>,
->(config?: FsmConfig<TClient, TStates>) {
+    TStateNames extends string = keyof TStates & string,
+    TBubbles extends string = never,
+>(config?: FsmConfig<TClient, TStates, TStateNames, TBubbles>) {
     if (config === undefined) {
-        return (curriedConfig: FsmConfig<TClient, TStates>) =>
+        return (curriedConfig: FsmConfig<TClient, TStates, TStateNames, TBubbles>) =>
             new BehavioralFsm(
                 curriedConfig as FsmConfig<TClient, Record<string, Record<string, unknown>>>
             );

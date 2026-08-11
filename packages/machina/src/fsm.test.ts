@@ -1318,6 +1318,84 @@ describe("Fsm — hierarchical (Task 4)", () => {
         });
     });
 
+    // Runtime pin for the `bubbles` type contract (D2): the engine never reads
+    // `bubbles` (it's type-level only — see types.ts' FsmConfig docstring), so
+    // this freezes that the PRE-EXISTING nohandler-bubbling mechanism the type
+    // contract describes actually behaves the way `bubbles` documents:
+    // canHandle() is false for a declared-but-unhandled input, handle() emits
+    // nohandler on the child, and inside a hierarchy the input reaches the
+    // parent's handler exactly like the "bubbling" describe above.
+    describe("bubbles declaration matches runtime nohandler-bubbling semantics", () => {
+        describe("when an input listed in bubbles has no handler on the child", () => {
+            let child: any, nohandlerCb: jest.Mock;
+
+            beforeEach(() => {
+                nohandlerCb = jest.fn();
+                child = createFsm({
+                    id: "bubbles-runtime-child",
+                    initialState: "on",
+                    bubbles: ["phaseComplete"],
+                    states: {
+                        on: {
+                            // phaseComplete is declared via `bubbles` but not handled here
+                        },
+                    },
+                });
+                child.on("nohandler", nohandlerCb);
+            });
+
+            it("should report canHandle() as false for the declared bubble", () => {
+                expect(child.canHandle("phaseComplete")).toBe(false);
+            });
+
+            it("should emit nohandler when the bubble is fired directly on the child", () => {
+                child.handle("phaseComplete");
+                expect(nohandlerCb).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        describe("when the bubbling child is mounted under a parent that covers the bubble", () => {
+            let child: any, parentHandled: boolean;
+
+            beforeEach(() => {
+                parentHandled = false;
+                child = createFsm({
+                    id: "bubbles-runtime-mounted-child",
+                    initialState: "on",
+                    bubbles: ["phaseComplete"],
+                    states: {
+                        on: {
+                            // phaseComplete bubbles to whatever mounts this FSM
+                        },
+                    },
+                });
+                createFsm({
+                    id: "bubbles-runtime-parent",
+                    initialState: "active",
+                    states: {
+                        active: {
+                            _child: child,
+                            phaseComplete() {
+                                parentHandled = true;
+                            },
+                        },
+                        idle: {},
+                    },
+                });
+                // Same runtime path as the untyped "mystery" bubble in the
+                // describe above — the compile-time half of this contract
+                // (declaring `bubbles` makes this handle() call type-check with
+                // no cast) is pinned exhaustively in instance-types.test.ts;
+                // this test's job is only to freeze the runtime behavior.
+                child.handle("phaseComplete");
+            });
+
+            it("should reach the parent's handler through the same bubbling path as an undeclared input", () => {
+                expect(parentHandled).toBe(true);
+            });
+        });
+    });
+
     describe("ChildLink.instance", () => {
         describe("when the parent Fsm has a child FSM", () => {
             let parent: any, child: any;
