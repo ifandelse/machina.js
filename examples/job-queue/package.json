@@ -1,6 +1,6 @@
 {
     "name": "@machina-examples/job-queue",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "private": true,
     "description": "Job Queue — machina.js v6 rehydrate() showcase",
     "scripts": {

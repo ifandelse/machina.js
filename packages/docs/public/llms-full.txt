@@ -1,10 +1,10 @@
-# machina v6 — Complete Documentation
+# machina v7 — Complete Documentation
 
 > Focused finite state machine library for JavaScript and TypeScript. States in, states out.
 
 - **Repository**: https://github.com/ifandelse/machina.js
 - **npm**: `npm install machina`
-- **Version**: 6.0.0
+- **Version**: 7.0.0
 - **License**: MIT
 
 ---
@@ -19,7 +19,7 @@ Handlers are plain functions (or string shorthand for simple transitions) that r
 
 ### Design Philosophy
 
-machina was originally inspired by the `gen_fsm` behavior module from Erlang/OTP. v6 is TypeScript-first. State names, input names, and transition targets are all inferred from the config object — no manual type parameters needed for `createFsm`. String shorthand targets (`timeout: "red"`) are validated against actual state keys at compile time, so a typo is a type error rather than a runtime surprise.
+machina was originally inspired by the `gen_fsm` behavior module from Erlang/OTP. The v6/v7 line is TypeScript-first. State names, input names, and transition targets are all inferred from the config object — no manual type parameters needed for `createFsm`. String shorthand targets (`timeout: "red"`), `initialState`, `handle()` inputs, and `defer({ until })` targets are validated against actual state keys at compile time — in every config shape — so a typo is a type error rather than a runtime surprise.
 
 ### How machina differs from XState
 
@@ -196,7 +196,7 @@ createFsm({
 | Method                       | Description                                                                              |
 | ---------------------------- | ---------------------------------------------------------------------------------------- |
 | `handle(inputName, ...args)` | Dispatch an input to the current state's handler.                                        |
-| `canHandle(inputName)`       | `true` if the current state has a handler (or `"*"`) for this input.                     |
+| `canHandle(inputName)`       | `true` if the current state — or its `_child` chain — can handle this input.             |
 | `transition(toState)`        | Directly transition; fires `_onExit`, `_onEnter`, and lifecycle events.                  |
 | `reset()`                    | Transition back to `initialState`.                                                       |
 | `currentState()`             | Returns the current state name.                                                          |
@@ -297,7 +297,7 @@ Every method takes the client object as its first argument:
 | Method                               | Description                                                             |
 | ------------------------------------ | ----------------------------------------------------------------------- |
 | `handle(client, inputName, ...args)` | Dispatch an input to the client's current state handler                 |
-| `canHandle(client, inputName)`       | True if the client's current state has a handler for this input         |
+| `canHandle(client, inputName)`       | True if the client's current state — or its `_child` chain — can handle this input |
 | `transition(client, toState)`        | Directly transition the client                                          |
 | `reset(client)`                      | Transition the client back to `initialState`                            |
 | `currentState(client)`               | Returns the client's current state, or `undefined` if never initialized |
@@ -380,15 +380,37 @@ connFsm.dispose();
 
 ## Hierarchical States
 
-Any state can own a child FSM by setting `_child` to an FSM instance. While the parent is in that state, inputs are checked against the child first. If the child can handle the input, it's forwarded. If not, the parent's own handlers get it.
+Any state can own a child FSM by setting `_child` to an FSM instance. While the parent is in that state, inputs are checked against the child first — and the check looks through the child's entire `_child` chain, so delegation reaches any depth. If anything down the chain can handle the input, it's forwarded. If not, the parent's own handlers get it.
 
 ### Input Delegation
 
 1. Input arrives at the parent via `handle()`
 2. Parent checks if the current state has a `_child`
-3. If yes, parent calls `canHandle()` on the child
-4. If the child can handle it, the input is forwarded — done
-5. If the child can't handle it, the parent's own state handlers get the input
+3. If yes, parent calls `canHandle()` on the child — which answers for the child's whole `_child` chain, so a grandchild's input counts
+4. If anything down the chain can handle it, the input is forwarded to the child's `handle()`, which repeats the same dispatch one level down — until it reaches the FSM that actually handles it
+5. If nothing down the chain can handle it, the parent's own state handlers get the input
+
+The descendant chain gets first shot at every level; the parent's handlers are the fallback. When both a descendant and an ancestor could handle an input, the descendant wins.
+
+### Declaring Bubbled Inputs (`bubbles`)
+
+An FSM can declare inputs it fires at itself but never handles, expecting its container to catch them via nohandler bubbling:
+
+```ts
+const phase = createFsm({
+    id: "phase",
+    initialState: "running",
+    context: {},
+    bubbles: ["phaseComplete"], // "I fire this; whoever mounts me must deal with it"
+    states: {
+        running: { /* fires phase.handle("phaseComplete") from a timer — no handler here */ },
+    },
+});
+```
+
+Declared bubbles join the FSM's own typed input union (the self-`handle()` call compiles; typos don't), and they form a compile-time wiring contract: a config that mounts the FSM via `_child` must handle each declared bubble, re-declare it in its own `bubbles` (passing the obligation upward), or carry a `"*"` catch-all — otherwise compilation fails on the `_child` property, naming exactly what's missing. The contract composes through arbitrarily deep hierarchies. Standalone FSMs owe nothing, and the engine never reads `bubbles` — it's purely type-level. A `BubblesOfInstance` extractor is exported alongside the other instance-type utilities.
+
+One sharp edge: the explicit-both call form (`createBehavioralFsm<Client, typeof states>`) disables inference for trailing type parameters, so combining it with `bubbles` requires supplying all four type arguments. The curried and zero-argument forms are unaffected.
 
 ### compositeState()
 
@@ -608,6 +630,10 @@ type HandlerDef<TCtx, TStateNames> = TStateNames | HandlerFn<TCtx, TStateNames> 
 **BehavioralFsmEventMap** — same events, but every payload intersected with `{ client: TClient }`.
 
 ---
+
+## Migrating from v6 to v7
+
+v7's runtime API is unchanged except `canHandle()`, which now answers for the whole `_child` chain instead of one level (so delegation reaches any depth, and a descendant's handler wins over an ancestor's — inputs that used to dead-end as `nohandler` at an ancestor now reach the descendant that declares them). The type system got stricter: configs containing an empty state (`{}`) or a state with only unannotated lifecycle hooks were silently unvalidated under v6 and are fully checked under v7, so latent typos surface as new compile errors — each one is a real bug that was already there. `defer({ until })` is narrowed to declared state names; explicitly widened `defer: (o?: { until: string }) => void` annotations no longer compile (annotate with `HandlerArgs<TCtx>` instead). New in v7: parents accept child/grandchild inputs on `handle()` with no casts, `bubbles` declarations with the compile-time coverage contract, and flat literal-union compiler errors. Full guide: https://machina-js.org/migration/v6-to-v7/
 
 ## Migrating from v4 to v6
 

@@ -136,7 +136,7 @@ export default defineConfig({
                 },
                 {
                     label: "Migration",
-                    items: [{ slug: "migration/v5-to-v6" }],
+                    items: [{ slug: "migration/v6-to-v7" }, { slug: "migration/v5-to-v6" }],
                 },
             ],
         }),

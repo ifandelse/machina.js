@@ -4,7 +4,7 @@ Focused finite state machine library for JavaScript and TypeScript. States in, s
 
 - **Repo**: https://github.com/ifandelse/machina.js
 - **Docs**: https://machina-js.org
-- **Version**: 6.0.0
+- **Version**: 7.0.0
 - **License**: MIT
 
 ## Architecture
@@ -60,7 +60,9 @@ Two factory functions, one mental model:
 
 **Lifecycle hooks**: `_onEnter(args)` fires on state entry (can return a state name to "bounce"). `_onExit(args)` fires on state exit. Both receive the same args object as regular handlers.
 
-**Child FSMs**: `_child: fsmInstance` on a state delegates inputs to the child first; unhandled inputs bubble up. `compositeState()` returns the dot-delimited path (e.g. `"active.uploading.retrying"`). Children auto-reset when the parent re-enters their state.
+**Child FSMs**: `_child: fsmInstance` on a state delegates inputs to the child first — `canHandle()` answers for the entire `_child` chain, so delegation reaches any depth and the deepest handler wins over ancestors. Unhandled inputs bubble up. `compositeState()` returns the dot-delimited path (e.g. `"active.uploading.retrying"`). Children auto-reset when the parent re-enters their state.
+
+**Bubbled inputs**: `bubbles: ["someInput"]` on a config declares inputs the FSM fires at itself but never handles, expecting a container to catch them. Declared bubbles join the FSM's typed input union, and any config mounting it via `_child` must handle or re-declare them (or carry a `"*"`) or it fails to compile. Type-level only — the engine never reads `bubbles`.
 
 **Deferred input**: `defer()` in a handler queues the current input for replay after the next transition. `defer({ until: "stateName" })` targets a specific state.
 

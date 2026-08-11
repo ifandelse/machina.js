@@ -1,6 +1,6 @@
 {
     "name": "@machina-examples/dungeon-critters",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "private": true,
     "description": "Dungeon Critters — machina.js v6 createBehavioralFsm example",
     "scripts": {

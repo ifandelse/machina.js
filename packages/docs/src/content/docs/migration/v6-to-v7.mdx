@@ -1,0 +1,37 @@
+---
+title: Migrating from v6 to v7
+description: v7 tightens compile-time validation, extends hierarchical delegation to any depth, and adds bubbles declarations. Runtime API is nearly unchanged — but some previously-compiling code will surface new type errors.
+---
+
+v7 is a small migration with one honest catch: some code that compiled under v6 will stop compiling — and in almost every case, that code was already broken and v6 just wasn't telling you. The runtime API is unchanged except for one deliberate fix to `canHandle()`.
+
+## New compile errors you might see
+
+**Configs with an empty state or a function-only state get checked now.** Under v6, a state that was an empty object (`{}`) — or, far more commonly, a state containing only unannotated handler functions, like a lone `_onEnter`/`_onExit` — silently disabled literal-type validation for the _entire_ config. Shorthand transition targets, `initialState`, `handle()` input names, and `defer({ until })` all accepted any string. v7 validates every config shape.
+
+What to do: read the new errors — each one points at a genuine latent bug (a typo'd state name, an input nothing handles). Fix the typo; there is no suppression to reach for because the code was never doing what it looked like it did.
+
+**`defer({ until })` only accepts real state names.** Typos get a "Did you mean" suggestion. If you had a handler annotated with an explicitly widened defer signature — `defer: (o?: { until: string }) => void` — it no longer compiles. Annotate the args object as `HandlerArgs<YourCtx>` instead, or just destructure without annotations and let inference do it.
+
+**Where shorthand-typo errors anchor varies.** Depending on the shape of neighboring states, the error lands on the state object's line or on the property itself. Either way the error chain names the exact property — if the first line looks broad, read past it.
+
+## The one runtime change: delegation reaches any depth
+
+Under v6, `canHandle()` checked one level: the current state's own handlers plus its `"*"`. A parent delegating to a child stopped there — an input handled by a _grandchild_ behind a handler-less middle FSM was unreachable from the root and dead-ended as `nohandler`. Under v7, `canHandle()` answers for the whole `_child` chain, and `handle()`'s delegation follows it all the way down.
+
+Two behaviors shift, both consistent with the child-first precedence machina always had one level deep (and with how UML/SCXML/XState statecharts resolve events — innermost active state first):
+
+- Inputs that previously dead-ended as `nohandler` at an ancestor now reach the descendant that declares them. If you had `nohandler` listeners doing real work for those inputs, they'll fire less often.
+- An ancestor's local handler no longer wins against a deeper descendant's handler for the same input name. If you were relying on a handler-less middle FSM to "shield" an ancestor handler, give the input distinct names per level, or drive the ancestor directly with `transition()`.
+
+## New capabilities (no migration required)
+
+- **Parents accept child inputs.** `parent.handle(childInput)` — or a grandchild's input — type-checks with no casts, and arrives at runtime.
+- **`bubbles` declarations.** An FSM can declare inputs it fires at itself but never handles: `bubbles: ["phaseComplete"]`. Declared bubbles join its typed input union, and any config mounting the FSM via `_child` must handle them, re-declare them in its own `bubbles`, or carry a `"*"` — or it fails to compile, with the error naming what's missing. See [Hierarchical States](/guide/hierarchical/#declaring-bubbled-inputs).
+- **Readable compiler errors.** Rejected `handle()`/`transition()` calls show the flat list of valid names (`'"go" | "stop"'`).
+
+One sharp edge on the new `bubbles` property: the explicit-both call form (`createBehavioralFsm<Client, typeof states>`) turns inference off for the trailing type parameters, so combining it with `bubbles` requires all four type arguments spelled out. The curried form — the recommended one — and the zero-argument form are unaffected.
+
+## Class generic signatures
+
+`Fsm` and `BehavioralFsm` gained a fourth type parameter, `TBubbles`, defaulting to `never`. Existing three-argument annotations (`Fsm<Ctx, States, Inputs>`) still resolve — no changes needed. A new `BubblesOfInstance` extractor joins the existing instance-type utilities.

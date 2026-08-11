@@ -87,7 +87,7 @@ Handlers return a state name to transition or `void`/`undefined` to stay in the 
 | Method                       | Description                                                                                                                                        |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `handle(inputName, ...args)` | Dispatch an input to the current state's handler.                                                                                                  |
-| `canHandle(inputName)`       | `true` if the current state has a handler (or `"*"`) for this input.                                                                               |
+| `canHandle(inputName)`       | `true` if the current state has a handler (or `"*"`) for this input, or if the current state's `_child` chain can handle it.                       |
 | `transition(toState)`        | Directly transition; fires `_onExit`, `_onEnter`, and lifecycle events. Same-state transitions are silently ignored.                               |
 | `reset()`                    | Transition back to `initialState`. Fires `_onEnter` as if entering fresh.                                                                          |
 | `currentState()`             | Returns the current state name.                                                                                                                    |
@@ -108,7 +108,7 @@ fsm.handle("success", responseData);
 
 ### `canHandle`
 
-Useful for conditionally triggering inputs without swallowing `nohandler` events:
+Useful for conditionally triggering inputs without swallowing `nohandler` events. When the current state mounts a child FSM, `canHandle()` answers for the whole `_child` chain — the same reach `handle()`'s delegation has:
 
 ```ts
 if (light.canHandle("timeout")) {

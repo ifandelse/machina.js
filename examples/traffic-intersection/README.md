@@ -7,7 +7,7 @@ A canvas-rendered traffic intersection that demonstrates hierarchical FSMs in ma
 Five machina v6 features working together in a realistic scenario:
 
 1. **`_child` delegation** — parent states forward inputs to an active child FSM automatically
-2. **Input bubbling** — `phaseComplete` has no handler in the child's `red` state, so it bubbles up to the parent
+2. **Input bubbling** — `phaseComplete` has no handler in the child's `red` state, so it bubbles up to the parent. The child declares `bubbles: ["phaseComplete"]`, which makes the self-dispatch type-check and obligates any config that mounts the child to handle it
 3. **`compositeState()`** — returns `"northSouthPhase.green"` as a single readable string, combining parent and child state
 4. **Child auto-reset** — when the parent re-enters a phase state, machina calls `reset()` on the child automatically, returning it to `green`
 5. **`defer()`** — a pedestrian button press during non-interruptible green is queued and replayed automatically when `interruptibleGreen` is entered

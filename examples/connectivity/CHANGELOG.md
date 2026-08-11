@@ -1,5 +1,14 @@
 # @machina-examples/connectivity
 
+## 0.0.6
+
+### Patch Changes
+
+- Updated dependencies [59746b5]
+- Updated dependencies [eb71113]
+- Updated dependencies [749d583]
+    - machina@7.0.0
+
 ## 0.0.5
 
 ### Patch Changes
