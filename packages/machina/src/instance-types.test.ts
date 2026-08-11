@@ -630,6 +630,75 @@ describe("#188 — empty and function-only states keep validation", () => {
             states: emptyStateExplicitStates,
         });
 
+        // initialState + handle() rejection under the remaining two call forms
+        // (the curried-form pins for these live above; Task 4 asks for all
+        // three forms). The states objects here are fully VALID so the only
+        // error in each config is the one the directive pins — this also keeps
+        // TClient inference stable under the full-inference form.
+        // No annotated handler here on purpose: a deliberate config error (the
+        // bad initialState) destabilizes this form's TClient inference — the
+        // same documented quirk the typo pins above work around by co-locating
+        // their error inside the annotated handler. TClient is NOT what this
+        // pin tests; initialState validation rides on TStateNames (keys-only
+        // capture) and must reject regardless.
+        const _fullInferenceBadInitial = createBehavioralFsm({
+            id: "empty-state-full-inference-bad-initial",
+            // @ts-expect-error -- "pending" is not a declared state name; an empty sibling state must not disable initialState validation under the full-inference form
+            initialState: "pending",
+            states: {
+                disconnected: { connect: "connecting" },
+                connecting: { connected: "online" },
+                online: { disconnect: "disconnected" },
+                closed: {},
+            },
+        });
+
+        // No annotated handler here on purpose: with this variant's sibling
+        // state present, the full-inference form's TClient inference is fragile
+        // (the documented quirk above), and TClient is NOT what this pin tests.
+        // TClient falls back to `object`; the input-name union — the actual
+        // subject — must stay narrow regardless.
+        const fullInferenceHandleFsm = createBehavioralFsm({
+            id: "empty-state-full-inference-handle",
+            initialState: "disconnected",
+            states: {
+                disconnected: { connect: "connecting" },
+                connecting: { connected: "online" },
+                online: { disconnect: "disconnected" },
+                closed: {},
+            },
+        });
+        // @ts-expect-error -- "unknownInput" is not a member of the literal input-name union; an empty sibling state must not widen handle() under the full-inference form
+        fullInferenceHandleFsm.handle({ url: "wss://example.com", retries: 0 }, "unknownInput");
+
+        const emptyStateValidExplicitStates = {
+            disconnected: { connect: "connecting" },
+            connecting: { connected: "online", failed: "disconnected" },
+            online: { disconnect: "disconnected" },
+            closed: {},
+        } as const;
+
+        const _explicitBadInitial = createBehavioralFsm<
+            Connection,
+            typeof emptyStateValidExplicitStates
+        >({
+            id: "empty-state-explicit-bad-initial",
+            // @ts-expect-error -- "pending" is not a declared state name; TStateNames defaults to keyof TStates & string, so initialState stays validated when both type arguments are supplied explicitly
+            initialState: "pending",
+            states: emptyStateValidExplicitStates,
+        });
+
+        const explicitHandleFsm = createBehavioralFsm<
+            Connection,
+            typeof emptyStateValidExplicitStates
+        >({
+            id: "empty-state-explicit-handle",
+            initialState: "disconnected",
+            states: emptyStateValidExplicitStates,
+        });
+        // @ts-expect-error -- "unknownInput" is not a member of the literal input-name union; the explicit-both form must keep handle() narrowed with an empty sibling state present
+        explicitHandleFsm.handle({ url: "wss://example.com", retries: 0 }, "unknownInput");
+
         let result: string;
 
         beforeEach(() => {
@@ -740,6 +809,79 @@ describe("#188 — empty and function-only states keep validation", () => {
             // @ts-expect-error -- "onilne" is not a declared state name; the explicit-both form was never broken by #188 — pinned as a regression guard that it stays rejected even with a function-only sibling state
             states: functionOnlyExplicitStates,
         });
+
+        // Same completion for this variant: initialState + handle() rejection
+        // under the full-inference and explicit-both forms, with fully valid
+        // states objects so each config carries exactly one pinned error.
+        // No annotated handler here on purpose: a deliberate config error (the
+        // bad initialState) destabilizes this form's TClient inference — the
+        // same documented quirk the typo pins above work around by co-locating
+        // their error inside the annotated handler. TClient is NOT what this
+        // pin tests; initialState validation rides on TStateNames (keys-only
+        // capture) and must reject regardless.
+        const _fullInferenceBadInitial = createBehavioralFsm({
+            id: "function-only-full-inference-bad-initial",
+            // @ts-expect-error -- "pending" is not a declared state name; a sibling function-only state must not disable initialState validation under the full-inference form
+            initialState: "pending",
+            states: {
+                disconnected: { connect: "connecting" },
+                connecting: { connected: "online" },
+                online: { disconnect: "disconnected" },
+                closed: {
+                    _onEnter() {},
+                },
+            },
+        });
+
+        // No annotated handler here on purpose: with this variant's sibling
+        // state present, the full-inference form's TClient inference is fragile
+        // (the documented quirk above), and TClient is NOT what this pin tests.
+        // TClient falls back to `object`; the input-name union — the actual
+        // subject — must stay narrow regardless.
+        const fullInferenceHandleFsm = createBehavioralFsm({
+            id: "function-only-full-inference-handle",
+            initialState: "disconnected",
+            states: {
+                disconnected: { connect: "connecting" },
+                connecting: { connected: "online" },
+                online: { disconnect: "disconnected" },
+                closed: {
+                    _onEnter() {},
+                },
+            },
+        });
+        // @ts-expect-error -- "unknownInput" is not a member of the literal input-name union; a sibling function-only state must not widen handle() under the full-inference form
+        fullInferenceHandleFsm.handle({ url: "wss://example.com", retries: 0 }, "unknownInput");
+
+        const functionOnlyValidExplicitStates = {
+            disconnected: { connect: "connecting" },
+            connecting: { connected: "online", failed: "disconnected" },
+            online: { disconnect: "disconnected" },
+            closed: {
+                _onEnter() {},
+            },
+        } as const;
+
+        const _explicitBadInitial = createBehavioralFsm<
+            Connection,
+            typeof functionOnlyValidExplicitStates
+        >({
+            id: "function-only-explicit-bad-initial",
+            // @ts-expect-error -- "pending" is not a declared state name; TStateNames defaults to keyof TStates & string, so initialState stays validated when both type arguments are supplied explicitly
+            initialState: "pending",
+            states: functionOnlyValidExplicitStates,
+        });
+
+        const explicitHandleFsm = createBehavioralFsm<
+            Connection,
+            typeof functionOnlyValidExplicitStates
+        >({
+            id: "function-only-explicit-handle",
+            initialState: "disconnected",
+            states: functionOnlyValidExplicitStates,
+        });
+        // @ts-expect-error -- "unknownInput" is not a member of the literal input-name union; the explicit-both form must keep handle() narrowed with a function-only sibling state present
+        explicitHandleFsm.handle({ url: "wss://example.com", retries: 0 }, "unknownInput");
 
         let result: string;
 
