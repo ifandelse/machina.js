@@ -94,15 +94,15 @@ light.reset();
 light.dispose();
 ```
 
-| Method                       | What it does                                                      |
-| ---------------------------- | ----------------------------------------------------------------- |
-| `handle(inputName, ...args)` | Dispatch an input to the current state                            |
-| `canHandle(inputName)`       | True if the current state has a handler (or `"*"`) for this input |
-| `currentState()`             | Returns the current state name as a string                        |
-| `on(eventName, callback)`    | Subscribe to a lifecycle event — returns `{ off() }`              |
-| `emit(eventName, data?)`     | Emit a custom event to subscribers                                |
-| `reset()`                    | Transition back to `initialState`                                 |
-| `dispose()`                  | Permanently shut down the FSM                                     |
+| Method                       | What it does                                                               |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| `handle(inputName, ...args)` | Dispatch an input to the current state                                     |
+| `canHandle(inputName)`       | True if the current state — or a mounted child FSM — can handle this input |
+| `currentState()`             | Returns the current state name as a string                                 |
+| `on(eventName, callback)`    | Subscribe to a lifecycle event — returns `{ off() }`                       |
+| `emit(eventName, data?)`     | Emit a custom event to subscribers                                         |
+| `reset()`                    | Transition back to `initialState`                                          |
+| `dispose()`                  | Permanently shut down the FSM                                              |
 
 ## String shorthand
 

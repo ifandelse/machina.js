@@ -60,17 +60,17 @@ light.dispose(); // tears down; all subsequent calls are silent no-ops
 
 ### Public API — `Fsm`
 
-| Method                       | Description                                                        |
-| ---------------------------- | ------------------------------------------------------------------ |
-| `handle(inputName, ...args)` | Dispatch an input to the current state's handler                   |
-| `canHandle(inputName)`       | True if the current state has a handler (or `"*"`) for this input  |
-| `transition(toState)`        | Directly transition; fires `_onExit`, `_onEnter`, lifecycle events |
-| `reset()`                    | Transition back to `initialState`                                  |
-| `currentState()`             | Returns the current state name                                     |
-| `compositeState()`           | Dot-delimited path including active child FSM states               |
-| `on(eventName, callback)`    | Subscribe to a lifecycle event (returns `{ off() }`)               |
-| `emit(eventName, data?)`     | Emit a custom event                                                |
-| `dispose(options?)`          | Permanently shut down; cascades to child FSMs by default           |
+| Method                       | Description                                                               |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| `handle(inputName, ...args)` | Dispatch an input to the current state's handler                          |
+| `canHandle(inputName)`       | True if the current state — or its `_child` chain — can handle this input |
+| `transition(toState)`        | Directly transition; fires `_onExit`, `_onEnter`, lifecycle events        |
+| `reset()`                    | Transition back to `initialState`                                         |
+| `currentState()`             | Returns the current state name                                            |
+| `compositeState()`           | Dot-delimited path including active child FSM states                      |
+| `on(eventName, callback)`    | Subscribe to a lifecycle event (returns `{ off() }`)                      |
+| `emit(eventName, data?)`     | Emit a custom event                                                       |
+| `dispose(options?)`          | Permanently shut down; cascades to child FSMs by default                  |
 
 ## `createBehavioralFsm`
 
@@ -187,6 +187,28 @@ uploader.compositeState(); // "idle"
 ```
 
 The parent re-enters `initialState` of the child FSM whenever the parent transitions into the state that owns `_child`.
+
+Delegation reaches any depth: `canHandle()` answers for the whole `_child` chain, so an input handled three levels down can be dispatched from the root. When both a descendant and an ancestor could handle an input, the descendant wins.
+
+An FSM can also declare inputs it fires at itself but never handles — expecting whatever mounts it to catch them via bubbling:
+
+```ts
+const phase = createFsm({
+    id: "phase",
+    initialState: "running",
+    context: {},
+    bubbles: ["phaseComplete"], // "I fire this; whoever mounts me must deal with it"
+    states: {
+        running: {
+            _onEnter() {
+                // ...later: phase.handle("phaseComplete") — typed, no handler here
+            },
+        },
+    },
+});
+```
+
+Declared bubbles join the FSM's typed input union, and they form a compile-time contract: a config that mounts `phase` via `_child` must handle `phaseComplete`, re-declare it in its own `bubbles`, or carry a `"*"` catch-all — otherwise it fails to compile, with the error naming what's missing. Standalone FSMs owe nothing; the contract only exists where FSMs get wired together. The engine never reads `bubbles` — it's purely type-level.
 
 ## Deferred input
 

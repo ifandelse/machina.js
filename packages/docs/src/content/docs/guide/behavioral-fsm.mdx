@@ -45,20 +45,20 @@ State names, input names, and transition target validation all work identically 
 
 Every method takes the client object as its first argument. The rest of the API mirrors `Fsm`.
 
-| Method                               | Description                                                             |
-| ------------------------------------ | ----------------------------------------------------------------------- |
-| `handle(client, inputName, ...args)` | Dispatch an input to the client's current state handler                 |
-| `canHandle(client, inputName)`       | True if the client's current state has a handler for this input         |
-| `transition(client, toState)`        | Directly transition the client; fires `_onExit`, `_onEnter`, events     |
-| `reset(client)`                      | Transition the client back to `initialState`                            |
-| `currentState(client)`               | Returns the client's current state, or `undefined` if never initialized |
-| `compositeState(client)`             | Dot-delimited path including active child FSM states                    |
-| `rehydrate(client, compositeState)`  | Silently place a client at a state — no lifecycle hooks or events       |
-| `dehydrate(client)`                  | Snapshot everything tracked for a client — state, deferrals, children   |
-| `rehydrate(client, snapshot)`        | Restore a `dehydrate()` snapshot — state and deferred queues, no hooks  |
-| `on(eventName, callback)`            | Subscribe to a lifecycle event — returns `{ off() }`                    |
-| `emit(eventName, data?)`             | Emit a custom event to subscribers                                      |
-| `dispose()`                          | Permanently shut down the entire FSM; cascades to child FSMs by default |
+| Method                               | Description                                                                        |
+| ------------------------------------ | ---------------------------------------------------------------------------------- |
+| `handle(client, inputName, ...args)` | Dispatch an input to the client's current state handler                            |
+| `canHandle(client, inputName)`       | True if the client's current state — or its `_child` chain — can handle this input |
+| `transition(client, toState)`        | Directly transition the client; fires `_onExit`, `_onEnter`, events                |
+| `reset(client)`                      | Transition the client back to `initialState`                                       |
+| `currentState(client)`               | Returns the client's current state, or `undefined` if never initialized            |
+| `compositeState(client)`             | Dot-delimited path including active child FSM states                               |
+| `rehydrate(client, compositeState)`  | Silently place a client at a state — no lifecycle hooks or events                  |
+| `dehydrate(client)`                  | Snapshot everything tracked for a client — state, deferrals, children              |
+| `rehydrate(client, snapshot)`        | Restore a `dehydrate()` snapshot — state and deferred queues, no hooks             |
+| `on(eventName, callback)`            | Subscribe to a lifecycle event — returns `{ off() }`                               |
+| `emit(eventName, data?)`             | Emit a custom event to subscribers                                                 |
+| `dispose()`                          | Permanently shut down the entire FSM; cascades to child FSMs by default            |
 
 <Aside type="note">
     `currentState(client)` returns `undefined` for a client the FSM has never seen — it does not

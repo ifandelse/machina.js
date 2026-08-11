@@ -23,6 +23,14 @@ The most prominent alternative is [XState](https://xstate.js.org/). XState is a 
 
 machina is for when you want a state machine (or a hierarchy of them) and nothing else. No actors, no invocations, no spawning. Just states, inputs, transitions, and the occasional child FSM. If your state management requirements are a finite machine and XState feels like bringing a bulldozer to plant a garden, machina is probably the right call.
 
+## What's new in v7
+
+- **Validation with no blind spots**: empty states (`{}`) and states containing only lifecycle hooks used to silently disable type checking for the whole config. Every config shape is now fully validated — latent typos surface as compile errors on upgrade. See the [migration notes](/migration/v6-to-v7/).
+- **`defer({ until })` is typed**: the `until` target only accepts declared state names, with a "Did you mean" suggestion on typos.
+- **Parents accept child inputs**: `handle()` on a parent type-checks with a child's — or grandchild's — inputs, no casts, and delegation now reaches any depth at runtime.
+- **`bubbles` declarations**: an FSM names the inputs it fires at itself but never handles; whatever mounts it via `_child` must provably cover them or the config fails to compile.
+- **Readable compiler errors**: rejected `handle()`/`transition()` calls show the flat list of valid names instead of an unresolved type alias.
+
 ## What's new in v6
 
 - **TypeScript-first**: state names, input names, and transition targets are inferred from config — typos in string shorthand are compile errors.
