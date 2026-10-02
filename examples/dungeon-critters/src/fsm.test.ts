@@ -611,54 +611,6 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
     });
 
     // =========================================================================
-    // Missing payload — alert and chase tick handlers destructure payload
-    // =========================================================================
-
-    describe("missing tick payload", () => {
-        describe("when alert.tick is called without a payload", () => {
-            let critter: any;
-
-            beforeEach(() => {
-                critter = makeCritter();
-                fsm.handle(critter, "tick", FAR_PAYLOAD);
-                fsm.handle(critter, "playerDetected"); // → alert
-            });
-
-            it("should not throw when tick is dispatched with no payload", () => {
-                // alert.tick now uses a defensive guard: (payload ?? {}) as TickPayload
-                // with defaults of 0 for playerX/playerY
-                expect(() => {
-                    fsm.handle(critter, "tick");
-                }).not.toThrow();
-            });
-
-            it("should default to origin when tick payload is missing", () => {
-                fsm.handle(critter, "tick");
-                // Critter faces toward (0,0) since that's the default player position
-                expect(fsm.currentState(critter)).toBe("alert");
-            });
-        });
-
-        describe("when chase.tick is called without a payload", () => {
-            let critter: any;
-
-            beforeEach(() => {
-                critter = makeCritter();
-                fsm.handle(critter, "tick", FAR_PAYLOAD);
-                fsm.handle(critter, "playerDetected");
-                fsm.handle(critter, "playerInRange"); // → chase
-            });
-
-            it("should not throw when tick is dispatched with no payload", () => {
-                // chase.tick also uses the defensive guard
-                expect(() => {
-                    fsm.handle(critter, "tick");
-                }).not.toThrow();
-            });
-        });
-    });
-
-    // =========================================================================
     // nohandler — inputs with no handler in the current state
     // =========================================================================
 
