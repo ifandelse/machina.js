@@ -98,6 +98,12 @@ export interface WalkConfig<TClient extends object = object> {
      * and `inputs["X"]` is defined, it calls that function and passes the
      * return value as the payload to handle(). Inputs without generators
      * are fired with no payload.
+     *
+     * If the FSM fixes an input payload map (machina #195), supply a
+     * generator for every payload-carrying input. Handlers written against
+     * a map trust the payload, and walkAll bypasses the compile-time check
+     * that normally guarantees it — a missing generator surfaces as a
+     * runtime error inside the handler.
      */
     inputs?: Record<string, () => unknown>;
 

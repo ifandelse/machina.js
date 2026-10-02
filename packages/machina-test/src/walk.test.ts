@@ -1272,3 +1272,71 @@ describe("walkAll export from machina-test", () => {
         });
     });
 });
+
+// =============================================================================
+// Typed input payload maps (#195)
+//
+// Pins compatibility: an instance built with the curried typed form must pass
+// through walkAll's untyped factory boundary. Payload-carrying inputs need
+// generators — handlers written against a map trust the payload, and walkAll
+// bypasses the compile-time check that normally guarantees it.
+// =============================================================================
+
+type TypedLightInputs = {
+    timeout: [];
+    emergency: [event: { severity: number }];
+};
+
+const makeTypedLight = () =>
+    createFsm<TypedLightInputs>()({
+        id: "typed-traffic-light",
+        initialState: "green",
+        context: { emergencies: 0 },
+        states: {
+            green: {
+                timeout: "yellow",
+                emergency({ ctx }, event) {
+                    if (event.severity < 3) {
+                        return;
+                    }
+                    ctx.emergencies += 1;
+                    return "red";
+                },
+            },
+            yellow: { timeout: "red" },
+            red: { timeout: "green" },
+        },
+    });
+
+describe("walkAll with a typed input payload map", () => {
+    describe("when every payload-carrying input has a generator", () => {
+        let result: ReturnType<typeof walkAll>;
+        let severity: number;
+
+        beforeEach(() => {
+            severity = 0;
+            result = walkAll(makeTypedLight, {
+                seed: 8675309,
+                walks: 25,
+                maxSteps: 20,
+                inputs: {
+                    // Alternate below and above the guard threshold so walks
+                    // exercise both branches of the emergency handler.
+                    emergency: () => {
+                        severity = severity === 1 ? 5 : 1;
+                        return { severity };
+                    },
+                },
+                invariant({ state }) {
+                    if (!["green", "yellow", "red"].includes(state)) {
+                        throw new Error(`undeclared state: ${state}`);
+                    }
+                },
+            });
+        });
+
+        it("should complete every walk against the typed instance", () => {
+            expect(result).toEqual({ seed: 8675309, walksCompleted: 25 });
+        });
+    });
+});
