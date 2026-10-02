@@ -25,6 +25,8 @@ export type {
     HandlerArgs,
     HandlerFn,
     HandlerDef,
+    InputMap,
+    InputMapFromUnion,
     MachinaInstance,
     StateNamesOf,
     InputNamesOf,

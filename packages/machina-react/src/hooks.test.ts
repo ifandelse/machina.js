@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { act, render } from "@testing-library/react";
 import { createBehavioralFsm, createFsm } from "machina";
+import type { BehavioralFsm, InputNamesOf, StateNamesOf } from "machina";
 import {
     shallowEqual,
     useBehavioralFsm,
@@ -211,7 +212,10 @@ describe("machina-react hooks", () => {
             active: {},
         } as const;
         const renders: Array<string | undefined> = [];
-        let fsm: ReturnType<typeof createBehavioralFsm<Client, typeof states>>;
+        // Spelled directly rather than via ReturnType<typeof createBehavioralFsm<...>>:
+        // in that instantiation expression, the second type argument now binds to
+        // TInputs (the input payload map, #195), not TStates.
+        let fsm: BehavioralFsm<Client, StateNamesOf<typeof states>, InputNamesOf<typeof states>>;
         let clientA: Client;
         let clientB: Client;
 
@@ -254,7 +258,7 @@ describe("machina-react hooks", () => {
             },
             active: {},
         } as const;
-        let fsm: ReturnType<typeof createBehavioralFsm<Client, typeof states>>;
+        let fsm: BehavioralFsm<Client, StateNamesOf<typeof states>, InputNamesOf<typeof states>>;
         let clientA: Client;
         let clientB: Client;
         let latest: ReturnType<typeof useBehavioralFsm<typeof fsm>>;
@@ -309,7 +313,7 @@ describe("machina-react hooks", () => {
             active: {},
         } as const;
         const selectedStates: Array<string | undefined> = [];
-        let fsm: ReturnType<typeof createBehavioralFsm<Client, typeof states>>;
+        let fsm: BehavioralFsm<Client, StateNamesOf<typeof states>, InputNamesOf<typeof states>>;
         let clientA: Client;
         let clientB: Client;
 
@@ -428,7 +432,7 @@ describe("machina-react hooks", () => {
             },
         } as const;
         const events: string[] = [];
-        let fsm: ReturnType<typeof createBehavioralFsm<Client, typeof states>>;
+        let fsm: BehavioralFsm<Client, StateNamesOf<typeof states>, InputNamesOf<typeof states>>;
         let clientA: Client;
         let clientB: Client;
 
@@ -477,7 +481,7 @@ describe("machina-react hooks", () => {
             },
         } as const;
         const handledClientIds: string[] = [];
-        let fsm: ReturnType<typeof createBehavioralFsm<Client, typeof states>>;
+        let fsm: BehavioralFsm<Client, StateNamesOf<typeof states>, InputNamesOf<typeof states>>;
         let clientA: Client;
         let clientB: Client;
 

@@ -24,6 +24,7 @@ import {
     type ClientSnapshot,
     type MachinaInstance,
     type SpecialStateKeys,
+    type InputMap,
 } from "./types";
 
 // Safety valve for _onEnter → transition loops. Instance-level counter works
@@ -49,6 +50,11 @@ const MAX_TRANSITION_DEPTH = 20;
  * @typeParam TBubbles - String literal union of inputs this FSM declares via
  *   `bubbles`. Type-only — carried so `BubblesOfInstance` can extract it from
  *   a constructed instance; nothing at runtime reads this generic.
+ * @typeParam TInputs - The input payload map (#195). Defaults to the wide
+ *   map, under which `handle()`'s signature reduces to exactly the untyped
+ *   behavior: `keyof` of the wide map is `string`, so the key intersection
+ *   is `TInputNames` and the payload lookup is `unknown[]`. The typed
+ *   factory forms pass the user's map here.
  */
 export class BehavioralFsm<
     TClient extends object,
@@ -56,6 +62,7 @@ export class BehavioralFsm<
     TInputNames extends string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- phantom marker: never referenced in the class body, only read back out externally via BubblesOfInstance's `infer`.
     TBubbles extends string = never,
+    TInputs extends InputMap = InputMap,
 > {
     readonly id: string;
     readonly initialState: TStateNames;
@@ -99,7 +106,21 @@ export class BehavioralFsm<
      *
      * No-ops silently when disposed.
      */
-    handle(client: TClient, inputName: TInputNames, ...args: unknown[]): void {
+    handle<I extends TInputNames & keyof TInputs & string>(
+        client: TClient,
+        inputName: I,
+        ...args: TInputs[I]
+    ): void {
+        this.dispatch(client, inputName, args);
+    }
+
+    /**
+     * Untyped core of `handle()`, split out for internal callers (deferred
+     * replay). Replayed inputs were captured as `unknown[]`, and their
+     * payload types were already enforced at the original `handle()` call —
+     * so replay need not satisfy the payload-map generics.
+     */
+    private dispatch(client: TClient, inputName: TInputNames, args: unknown[]): void {
         if (this.disposed) {
             return;
         }
@@ -981,7 +1002,7 @@ export class BehavioralFsm<
         meta.deferredQueue = remaining;
 
         for (const item of toReplay) {
-            this.handle(client, item.inputName as TInputNames, ...item.args);
+            this.dispatch(client, item.inputName as TInputNames, item.args);
         }
     }
 }
@@ -1182,12 +1203,15 @@ function createChildLink(child: any): ChildLink {
  * });
  * ```
  */
-export function createBehavioralFsm<TClient extends object>(): <
+export function createBehavioralFsm<
+    TClient extends object,
+    TInputs extends InputMap = InputMap,
+>(): <
     const TStates extends Record<string, Record<string, unknown>>,
     TStateNames extends string = keyof TStates & string,
     TBubbles extends string = never,
 >(
-    config: FsmConfig<TClient, TStates, TStateNames, TBubbles>
+    config: FsmConfig<TClient, TStates, TStateNames, TBubbles, TInputs>
 ) => BehavioralFsm<
     TClient,
     // Both unions inlined rather than written as StateNamesOf/InputNamesOf —
@@ -1195,14 +1219,25 @@ export function createBehavioralFsm<TClient extends object>(): <
     // alias symbol in compiler diagnostics, so rejected handle()/transition()
     // calls would display "InputNamesOf<{...}>" instead of the flat union.
     keyof TStates & string,
-    | Exclude<{ [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates], SpecialStateKeys>
-    | {
-          [S in keyof TStates]: TStates[S] extends { _child: infer C }
-              ? InputNamesOfInstance<C>
-              : never;
-      }[keyof TStates]
-    | TBubbles,
-    TBubbles
+    // With a real payload map (#195), the map is the complete input
+    // vocabulary, so it replaces the inferred union as handle()'s key source.
+    // `string extends keyof TInputs` detects the wide default (untyped path),
+    // where the union stays inferred from the config exactly as before.
+    string extends keyof TInputs
+        ?
+              | Exclude<
+                    { [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates],
+                    SpecialStateKeys
+                >
+              | {
+                    [S in keyof TStates]: TStates[S] extends { _child: infer C }
+                        ? InputNamesOfInstance<C>
+                        : never;
+                }[keyof TStates]
+              | TBubbles
+        : keyof TInputs & string,
+    TBubbles,
+    TInputs
 >;
 export function createBehavioralFsm<
     TClient extends object,

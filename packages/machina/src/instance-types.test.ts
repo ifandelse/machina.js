@@ -12,6 +12,7 @@ import {
     type StateNamesOfInstance,
     type BubblesOfInstance,
     type FsmConfig,
+    type InputMapFromUnion,
 } from "./index";
 
 type Expect<T extends true> = T;
@@ -2194,6 +2195,213 @@ describe("compat — FsmConfig used directly as a type annotation", () => {
         });
 
         it("should infer TBubbles from a fully-typed hoisted FsmConfig annotation", () => {
+            expect(result).toBe("checked");
+        });
+    });
+});
+
+describe("#195 — input payload maps", () => {
+    type TrafficLightInputs = {
+        timeout: [];
+        emergency: [event: { severity: number }];
+        reset: [];
+    };
+
+    describe("when a map is supplied through the curried single-client form", () => {
+        const light = createFsm<TrafficLightInputs>()({
+            id: "typed-traffic-light",
+            initialState: "green",
+            context: { minSeverity: 3 },
+            states: {
+                green: {
+                    timeout: "yellow",
+                    // `event` is inferred from the map — no annotation, no cast
+                    emergency({ ctx }, event) {
+                        type _Payload = Expect<Equal<typeof event, { severity: number }>>;
+                        if (event.severity < ctx.minSeverity) {
+                            return;
+                        }
+                        return "red";
+                    },
+                },
+                yellow: { timeout: "red" },
+                red: { reset: "green" },
+            },
+        });
+
+        light.handle("timeout");
+        light.handle("emergency", { severity: 5 });
+
+        // @ts-expect-error -- payload is required: emergency declares [event: { severity: number }]
+        light.handle("emergency");
+
+        // @ts-expect-error -- wrong payload type: severity must be a number
+        light.handle("emergency", { severity: "high" });
+
+        // @ts-expect-error -- "emergencyy" is not a key of the input map
+        light.handle("emergencyy", { severity: 5 });
+
+        // @ts-expect-error -- timeout declares an empty tuple; stray arguments must be rejected
+        light.handle("timeout", { stray: true });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should infer handler payloads from the map and key handle() by it", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when the map's vocabulary or the state names are violated", () => {
+        const _typoInHandlerKey = createFsm<TrafficLightInputs>()({
+            id: "typo-handler-key",
+            initialState: "green",
+            context: {},
+            states: {
+                // @ts-expect-error -- "emrgency" is not declared in the input map; InputVocabulary must reject the state that declares it, naming the key in the error property
+                green: {
+                    emrgency: "green",
+                },
+            },
+        });
+
+        const _typoShorthandTarget = createFsm<TrafficLightInputs>()({
+            id: "typo-shorthand-target",
+            initialState: "green",
+            context: {},
+            states: {
+                green: {
+                    // @ts-expect-error -- "yelow" is not a declared state name; #188-style shorthand validation must survive the typed path. Anchors on the property (not the state object) because the mapped member types each key individually instead of through one index signature.
+                    timeout: "yelow",
+                },
+                yellow: {
+                    reset: "green",
+                },
+            },
+        });
+
+        const _invalidInitialState = createFsm<TrafficLightInputs>()({
+            id: "invalid-initial-state",
+            // @ts-expect-error -- "gren" is not a key of states; initialState must stay validated under the curried typed form
+            initialState: "gren",
+            context: {},
+            states: {
+                green: {
+                    timeout: "green",
+                },
+            },
+        });
+
+        const _deferNarrowing = createFsm<TrafficLightInputs>()({
+            id: "defer-narrowing",
+            initialState: "green",
+            context: {},
+            states: {
+                green: {
+                    timeout({ defer }) {
+                        // #189 guarantee holds on the typed path: until is narrowed
+                        defer({ until: "yellow" });
+                        // @ts-expect-error -- "yellw" is not a state name; defer({ until }) must stay narrowed under the typed form
+                        defer({ until: "yellw" });
+                    },
+                },
+                yellow: {
+                    reset: "green",
+                },
+            },
+        });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should reject undeclared handler keys and keep #188/#189 validation on the typed path", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when the map is derived from a discriminated event union", () => {
+        type TrafficLightEvent =
+            | { type: "emergency"; severity: number }
+            | { type: "pedestrianRequest"; crossingId: string };
+
+        const unionLight = createFsm<InputMapFromUnion<TrafficLightEvent>>()({
+            id: "union-derived",
+            initialState: "green",
+            context: {},
+            states: {
+                green: {
+                    emergency(_args, event) {
+                        // The whole union member, discriminant included, is the payload
+                        type _Discriminant = Expect<Equal<typeof event.type, "emergency">>;
+                        type _Severity = Expect<Equal<typeof event.severity, number>>;
+                        return "red";
+                    },
+                    pedestrianRequest: "yellow",
+                },
+                yellow: {},
+                red: {},
+            },
+        });
+
+        unionLight.handle("emergency", { type: "emergency", severity: 5 });
+        unionLight.handle("pedestrianRequest", {
+            type: "pedestrianRequest",
+            crossingId: "8675309",
+        });
+
+        // @ts-expect-error -- the payload must be the matching union member, not a sibling
+        unionLight.handle("pedestrianRequest", { type: "emergency", severity: 5 });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should derive per-input payload tuples from the union members", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when a map is supplied to the curried behavioral form", () => {
+        type ProbeClient = { url: string; retries: number };
+        type ProbeInputs = {
+            probe: [latencyMs: number];
+        };
+
+        const typedBehavioral = createBehavioralFsm<ProbeClient, ProbeInputs>()({
+            id: "typed-behavioral",
+            initialState: "disconnected",
+            states: {
+                disconnected: {
+                    probe({ ctx }, latencyMs) {
+                        type _Client = Expect<Equal<typeof ctx, ProbeClient>>;
+                        type _Latency = Expect<Equal<typeof latencyMs, number>>;
+                        return "connecting";
+                    },
+                },
+                connecting: {},
+            },
+        });
+
+        typedBehavioral.handle({ url: "wss://example.com", retries: 0 }, "probe", 12);
+
+        // @ts-expect-error -- payload is required: probe declares [latencyMs: number]
+        typedBehavioral.handle({ url: "wss://example.com", retries: 0 }, "probe");
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should type the client and the payload together under the two-argument curried form", () => {
             expect(result).toBe("checked");
         });
     });
