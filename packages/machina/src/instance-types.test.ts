@@ -2297,6 +2297,57 @@ describe("#195 — input payload maps", () => {
         });
     });
 
+    describe("when bubbles are declared under a map", () => {
+        // A bubble declares "I will fire this input at myself". The map is
+        // the complete set of fireable inputs, so TBubbles is constrained to
+        // the map's keys on the typed factory forms: a bubble outside the
+        // map is unfireable and gets rejected at the declaration.
+        type PhaseInputs = {
+            advance: [];
+            phaseComplete: [event: { phase: string }];
+        };
+
+        const phaseController = createFsm<PhaseInputs>()({
+            id: "phase-controller",
+            initialState: "green",
+            context: {},
+            bubbles: ["phaseComplete"],
+            states: {
+                green: { advance: "red" },
+                red: {},
+            },
+        });
+
+        // The bubble joined the typed input union — self-dispatch compiles,
+        // payload included.
+        phaseController.handle("phaseComplete", { phase: "green" });
+
+        // The bubble still flows to the mounting contract.
+        type _Bubbles = Expect<Equal<BubblesOfInstance<typeof phaseController>, "phaseComplete">>;
+
+        const _bubbleOutsideMap = createFsm<PhaseInputs>()({
+            id: "bubble-outside-map",
+            initialState: "green",
+            context: {},
+            // @ts-expect-error -- "phaseComplet" is not a key of the input map; an unfireable bubble must be rejected at the declaration
+            bubbles: ["phaseComplet"],
+            states: {
+                green: { advance: "red" },
+                red: {},
+            },
+        });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should accept map-keyed bubbles and reject bubbles outside the map", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
     describe("when the map's vocabulary or the state names are violated", () => {
         const _typoInHandlerKey = createFsm<TrafficLightInputs>()({
             id: "typo-handler-key",

@@ -288,7 +288,10 @@ export function createFsm<TInputs extends InputMap>(): <
     TCtx extends object,
     const TStates extends Record<string, Record<string, unknown>>,
     TStateNames extends string = keyof TStates & string,
-    TBubbles extends string = never,
+    // Constrained to the map: a bubble declares "I will fire this input",
+    // and the map is the complete set of fireable inputs. A bubble outside
+    // the map is unfireable — reject it at the declaration (#195).
+    TBubbles extends keyof TInputs & string = never,
 >(
     config: FsmConfig<TCtx, TStates, TStateNames, TBubbles, TInputs>
 ) => Fsm<

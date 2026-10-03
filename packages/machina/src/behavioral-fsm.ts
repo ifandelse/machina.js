@@ -1209,7 +1209,11 @@ export function createBehavioralFsm<
 >(): <
     const TStates extends Record<string, Record<string, unknown>>,
     TStateNames extends string = keyof TStates & string,
-    TBubbles extends string = never,
+    // Constrained to the map: a bubble declares "I will fire this input",
+    // and the map is the complete set of fireable inputs. On the untyped
+    // path the map is wide, so the constraint reduces to `string` — today's
+    // behavior exactly (#195).
+    TBubbles extends keyof TInputs & string = never,
 >(
     config: FsmConfig<TClient, TStates, TStateNames, TBubbles, TInputs>
 ) => BehavioralFsm<
