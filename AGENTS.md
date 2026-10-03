@@ -64,6 +64,8 @@ Two factory functions, one mental model:
 
 **Bubbled inputs**: `bubbles: ["someInput"]` on a config declares inputs the FSM fires at itself but never handles, expecting a container to catch them. Declared bubbles join the FSM's typed input union, and any config mounting it via `_child` must handle or re-declare them (or carry a `"*"`) or it fails to compile. Type-level only — the engine never reads `bubbles`.
 
+**Input payload maps**: `createFsm<TInputs>()(config)` and `createBehavioralFsm<TClient, TInputs>()(config)` fix a map of input name → argument tuple before config inference starts. Handler payload parameters are inferred from the map, `handle()` enforces payloads at the call site, and the map is the complete input vocabulary — undeclared handler keys, undeclared `bubbles` entries, and wrong payloads are compile errors. Type-only; the engine never reads it. `InputMapFromUnion` derives a map from a discriminated event union. `InputMapOfInstance` extracts it from an instance (machina-test's `walkAll` uses this to require typed payload generators). One known limit: a forwarder that takes a whole event union and calls `handle(event.type, event)` does not compile — TypeScript cannot correlate the two unions; narrow with a `switch` or cast the payload.
+
 **Deferred input**: `defer()` in a handler queues the current input for replay after the next transition. `defer({ until: "stateName" })` targets a specific state.
 
 **Events**: `transitioning`, `transitioned`, `handling`, `handled`, `nohandler`, `invalidstate`, `deferred`. Subscribe with `fsm.on(event, cb)` which returns `{ off() }`. BehavioralFsm event payloads include a `client` field.
