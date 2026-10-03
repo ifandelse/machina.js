@@ -51,16 +51,16 @@
         "lint": "eslint 'src/**/*.{ts,tsx}'"
     },
     "dependencies": {
-        "acorn": "^8.14.1"
+        "acorn": "^8.18.0"
     },
     "peerDependencies": {
         "machina": ">=7.0.1"
     },
     "devDependencies": {
-        "eslint": "^9.39.4",
-        "jest": "^30.3.0",
+        "eslint": "^9.39.5",
+        "jest": "^30.5.2",
         "machina": "workspace:*",
-        "ts-jest": "^29.4.6",
+        "ts-jest": "^29.4.14",
         "tsdown": "^0.20.3",
         "typescript": "^5.9.3"
     }

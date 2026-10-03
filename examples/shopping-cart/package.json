@@ -15,10 +15,10 @@
     },
     "devDependencies": {
         "@types/jest": "^30.0.0",
-        "eslint": "^9.39.4",
-        "jest": "^30.3.0",
-        "ts-jest": "^29.4.6",
+        "eslint": "^9.39.5",
+        "jest": "^30.5.2",
+        "ts-jest": "^29.4.14",
         "typescript": "^5.9.3",
-        "vite": "^6.3.5"
+        "vite": "^6.4.3"
     }
 }
