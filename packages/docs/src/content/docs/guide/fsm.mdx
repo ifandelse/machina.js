@@ -106,6 +106,8 @@ light.handle("timeout");
 fsm.handle("success", responseData);
 ```
 
+Extra args are untyped by default. To type them per input — and have `handle()` reject a missing or malformed payload at compile time — declare an [input payload map](/guide/typed-payloads/).
+
 ### `canHandle`
 
 Useful for conditionally triggering inputs without swallowing `nohandler` events. When the current state mounts a child FSM, `canHandle()` answers for the whole `_child` chain — the same reach `handle()`'s delegation has:

@@ -4,7 +4,7 @@ Focused finite state machine library for JavaScript and TypeScript. States in, s
 
 - **Repo**: https://github.com/ifandelse/machina.js
 - **Docs**: https://machina-js.org
-- **Version**: 7.0.0
+- **Version**: 7.0.1
 - **License**: MIT
 
 ## Architecture
@@ -28,7 +28,7 @@ packages/
 examples/           # Working examples (connectivity, dungeon-critters, etc.)
 ```
 
-The core library is ~1000 lines of TypeScript across 5 files.
+The core library is ~2,900 lines of TypeScript across 5 files.
 
 ## Build / Test / Lint
 

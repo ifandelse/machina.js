@@ -29,7 +29,7 @@ npm install --save-dev machina-test
 pnpm add -D machina-test
 ```
 
-`machina` >= 6.1.0 is a peer dependency. Either `jest` or `vitest` must be available as the host test runner.
+`machina` >= 7.0.1 is a peer dependency. Either `jest` or `vitest` must be available as the host test runner.
 
 ## Setup
 
@@ -147,7 +147,9 @@ try {
 }
 ```
 
-Both `Fsm` and `BehavioralFsm` are supported. See the [docs](https://machina-js.org/tools/machina-test/) for full configuration reference, payload generators, input filtering, and BehavioralFsm client factories.
+If the factory returns an FSM built with an [input payload map](https://machina-js.org/guide/typed-payloads/), the config requires a `payloads` key instead of `inputs`: one tuple-returning generator per payload-carrying input, checked at compile time. A forgotten or misspelled generator is a compile error naming the input.
+
+Both `Fsm` and `BehavioralFsm` are supported. See the [docs](https://machina-js.org/tools/machina-test/) for full configuration reference, payload generators (untyped and typed), input filtering, and BehavioralFsm client factories.
 
 ## See also
 
