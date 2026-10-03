@@ -13,6 +13,8 @@ import {
     type BubblesOfInstance,
     type FsmConfig,
     type InputMapFromUnion,
+    type InputMap,
+    type InputMapOfInstance,
 } from "./index";
 
 type Expect<T extends true> = T;
@@ -2251,6 +2253,46 @@ describe("#195 — input payload maps", () => {
         });
 
         it("should infer handler payloads from the map and key handle() by it", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when the map is extracted back off an instance", () => {
+        // InputMapOfInstance feeds tooling (machina-test's walkAll derives
+        // its typed generator config from it), so both directions are pinned:
+        // a typed instance yields its map, an untyped instance yields the
+        // wide map — never `never`, which would poison downstream conditionals.
+        const typedLight = createFsm<TrafficLightInputs>()({
+            id: "extraction-typed",
+            initialState: "green",
+            context: {},
+            states: {
+                green: { timeout: "green" },
+            },
+        });
+
+        const untypedLight = createFsm({
+            id: "extraction-untyped",
+            initialState: "green",
+            context: {},
+            states: {
+                green: { timeout: "green" },
+            },
+        });
+
+        type _TypedMap = Expect<Equal<InputMapOfInstance<typeof typedLight>, TrafficLightInputs>>;
+        type _WideMap = Expect<Equal<InputMapOfInstance<typeof untypedLight>, InputMap>>;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pins the any-detector: a factory typed () => any must fall back to the wide map, not a both-branches union
+        type _AnyFalls = Expect<Equal<InputMapOfInstance<any>, InputMap>>;
+        type _NonFsmFalls = Expect<Equal<InputMapOfInstance<{ states: object }>, InputMap>>;
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should extract the map from typed instances and widen everything else", () => {
             expect(result).toBe("checked");
         });
     });

@@ -183,6 +183,35 @@ export type BubblesOfInstance<TFsm> = TFsm extends import("./fsm").Fsm<
       ? TBubbles
       : never;
 
+/**
+ * Extracts the input payload map from a concrete machina FSM instance (#195).
+ *
+ * Falls back to the wide map — not `never` — for non-FSM types and for
+ * `any`: tooling (machina-test's walkAll) derives config types from this,
+ * and the wide map is what keeps the untyped path's config shape unchanged.
+ * The `0 extends 1 & TFsm` clause detects `any`, which would otherwise take
+ * both conditional branches and produce a useless union.
+ */
+export type InputMapOfInstance<TFsm> = 0 extends 1 & TFsm
+    ? InputMap
+    : TFsm extends import("./fsm").Fsm<
+            infer _TCtx extends object,
+            infer _TStateNames extends string,
+            infer _TInputNames extends string,
+            infer _TBubbles extends string,
+            infer TInputs extends InputMap
+        >
+      ? TInputs
+      : TFsm extends import("./behavioral-fsm").BehavioralFsm<
+              infer _TClient extends object,
+              infer _TStateNames extends string,
+              infer _TInputNames extends string,
+              infer _TBubbles extends string,
+              infer TInputs extends InputMap
+          >
+        ? TInputs
+        : InputMap;
+
 // -----------------------------------------------------------------------------
 // Input payload map (#195)
 //
