@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export default {};
 
+// Type-only imports are erased at compile time, so they coexist with the
+// jest.resetModules() + dynamic import pattern used in beforeEach. Typing
+// fsm and the critters makes every handle() call in this suite prove the
+// input payload map's compile-time contract (#195).
+import type { CritterBehaviorFsm } from "./fsm";
+import type { CritterClient } from "./critter";
+
 // =============================================================================
 // fsm.test.ts — Critter BehavioralFsm tests
 //
@@ -16,7 +23,7 @@ export default {};
 // =============================================================================
 
 describe("critter BehavioralFsm (fsm.ts)", () => {
-    let fsm: any;
+    let fsm: CritterBehaviorFsm;
     let IDLE_FIDGET_INTERVAL_MS: number;
     let ALERT_DURATION_MS: number;
     let FLEE_DURATION_MS: number;
@@ -26,7 +33,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
     // Payload with cursor at the critter's position (used for alert/flee direction)
     const CLOSE_PAYLOAD = { playerX: 100, playerY: 100, dt: 16 };
 
-    function makeCritter(id = 1): any {
+    function makeCritter(id = 1): CritterClient {
         return {
             id,
             x: 100,
@@ -67,7 +74,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("lazy initialization", () => {
         describe("when a critter receives its first tick", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter(1);
@@ -89,7 +96,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when a critter has never received any handle() call", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter(99);
@@ -107,7 +114,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("per-client independence", () => {
         describe("when two critters are initialized separately", () => {
-            let critterA: any, critterB: any;
+            let critterA: CritterClient, critterB: CritterClient;
 
             beforeEach(() => {
                 critterA = makeCritter(1);
@@ -134,7 +141,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("idle state", () => {
         describe("when playerDetected is received in idle", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -152,7 +159,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when the fidget interval elapses and transition probability triggers patrol", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -177,7 +184,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when the fidget interval elapses but random does not trigger patrol", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -213,7 +220,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("patrol state", () => {
         describe("when entering patrol state", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -234,7 +241,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when playerDetected fires during patrol", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -254,7 +261,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when patrol waypoint is reached and random triggers idle", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -288,7 +295,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("alert state", () => {
         describe("when playerInRange fires during alert", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -307,7 +314,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when playerLostContact fires during alert", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -322,7 +329,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when alert duration expires via tick", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -347,7 +354,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("chase state", () => {
         describe("when in chase state and tick fires", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -368,7 +375,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when playerLostContact fires during chase", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -384,7 +391,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when attacked fires during chase", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -418,7 +425,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("flee state", () => {
         describe("when flee duration expires via tick", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -456,7 +463,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("full lifecycle", () => {
         describe("when a critter completes the full state cycle", () => {
-            let critter: any, stateSequence: string[];
+            let critter: CritterClient, stateSequence: string[];
 
             beforeEach(() => {
                 critter = makeCritter(42);
@@ -501,7 +508,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("dispose", () => {
         describe("when the FSM is disposed", () => {
-            let critter: any, stateBeforeDispose: string | undefined;
+            let critter: CritterClient, stateBeforeDispose: string | undefined;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -527,7 +534,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("flee direction calculation", () => {
         describe("when attacked at the exact same position as the player", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -547,10 +554,13 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
             it("should pick a random flee direction when positions overlap", () => {
                 // directionTo() returns {dx:0, dy:0} when len===0, so the FSM
                 // falls back to a random direction to avoid a stuck critter.
-                expect(critter.fleeDirection).not.toBeNull();
-                const speed = Math.sqrt(
-                    critter.fleeDirection.dx ** 2 + critter.fleeDirection.dy ** 2
-                );
+                // The throwing guard fails the test AND narrows the null union —
+                // a jest assertion alone does not narrow for the compiler.
+                const { fleeDirection } = critter;
+                if (!fleeDirection) {
+                    throw new Error("expected chase.attacked to set fleeDirection");
+                }
+                const speed = Math.sqrt(fleeDirection.dx ** 2 + fleeDirection.dy ** 2);
                 expect(speed).toBeGreaterThan(0);
             });
 
@@ -569,7 +579,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when attacked with player directly above the critter", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -590,7 +600,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when attacked with player directly to the left of the critter", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -616,7 +626,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("nohandler events", () => {
         describe("when attacked is fired outside of chase state", () => {
-            let critter: any;
+            let critter: CritterClient;
             let nohandlerEvents: any[];
 
             beforeEach(() => {
@@ -645,7 +655,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when playerInRange is fired outside of alert state", () => {
-            let critter: any;
+            let critter: CritterClient;
             let nohandlerCount: number;
 
             beforeEach(() => {
@@ -675,7 +685,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("reset()", () => {
         describe("when reset is called on a critter in chase state", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -702,7 +712,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when reset is called on a critter in flee state", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -736,7 +746,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("canHandle()", () => {
         describe("for an uninitialized critter", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter(99);
@@ -758,7 +768,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("for a critter in idle state", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -779,7 +789,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("for a critter in chase state", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -866,7 +876,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("idle territory drift correction", () => {
         describe("when a critter in idle is outside its territory", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -902,7 +912,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when a critter in idle is exactly at territory center", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -922,7 +932,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
         });
 
         describe("when a critter in idle is exactly at the territory boundary", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -950,7 +960,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("flee timeout guard", () => {
         describe("when fleeStartedAt is manually nulled during flee", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -978,7 +988,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("alert _onEnter velocity reset", () => {
         describe("when transitioning from patrol (with velocity) to alert", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -1020,7 +1030,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("patrol waypoint territory constraint", () => {
         describe("when entering patrol, the waypoint should be within territory", () => {
-            let critter: any;
+            let critter: CritterClient;
 
             beforeEach(() => {
                 critter = makeCritter();
@@ -1031,8 +1041,12 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
             it("should set a patrolTarget within the territory radius", () => {
                 const { cx, cy, r } = critter.territory;
-                const dx = critter.patrolTarget.x - cx;
-                const dy = critter.patrolTarget.y - cy;
+                const { patrolTarget } = critter;
+                if (!patrolTarget) {
+                    throw new Error("expected patrol._onEnter to set patrolTarget");
+                }
+                const dx = patrolTarget.x - cx;
+                const dy = patrolTarget.y - cy;
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 expect(dist).toBeLessThanOrEqual(r);
             });
@@ -1083,7 +1097,7 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("handling and handled events", () => {
         describe("when playerDetected fires in idle", () => {
-            let critter: any;
+            let critter: CritterClient;
             let handlingEvents: any[];
             let handledEvents: any[];
 
@@ -1128,8 +1142,8 @@ describe("critter BehavioralFsm (fsm.ts)", () => {
 
     describe("createCritterBehavior() factory", () => {
         describe("when two independent FSM instances are created", () => {
-            let fsmA: any, fsmB: any;
-            let critterA: any, critterB: any;
+            let fsmA: CritterBehaviorFsm, fsmB: CritterBehaviorFsm;
+            let critterA: CritterClient, critterB: CritterClient;
 
             beforeEach(async () => {
                 const mod = await import("./fsm");
