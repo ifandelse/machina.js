@@ -1,5 +1,8 @@
 {
     "bannedCheck": {
         "mode": "block"
+    },
+    "outputCheck": {
+        "mode": "block"
     }
 }
