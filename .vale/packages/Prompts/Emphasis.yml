@@ -1,0 +1,11 @@
+# Shouting has a budget. "If you emphasize many lines, none of them stands
+# out," says the Claude Code guide, and the GPT-4.1 guide warns that all-caps
+# "could cause GPT-4.1 to pay attention to it too strictly." Case-sensitive:
+# an ordinary "must" is counted by Absolutes, not here.
+extends: occurrence
+message: "%d lines shouting. Emphasize one, and the rest stand out less, not more."
+link: https://code.claude.com/docs/en/best-practices
+level: warning
+scope: summary
+token: '\b(?:IMPORTANT|CRITICAL|MUST|NEVER|ALWAYS|DO NOT|DON''T)\b'
+max: 3

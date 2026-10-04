@@ -1,0 +1,21 @@
+# Two instructions that pull opposite ways, in one file. The first one seen
+# stands; the second is reported. The pairs are the ones that recur in
+# instruction files -- asking, committing, testing, emoji, length -- and a
+# file that means both, in different sections, should say when each applies.
+#
+# Each half is shaped like an instruction, not a mention. "Never commit" has
+# to end the clause or take the work as its object, so "never commit secret
+# files" is left alone; "commit when" has to be followed by a condition, so
+# "for every commit when signing" is too.
+extends: consistency
+message: "'%s' pulls against an earlier instruction. Say when each applies."
+link: https://developers.openai.com/cookbook/examples/gpt4-1_prompting_guide
+level: warning
+ignorecase: true
+nonword: true
+either:
+  '\balways ask (?:before|first)\b': '\b(?:never|don''t|do not) ask\b'
+  '\b(?:use|include|add) emoji\b': '\b(?:no|avoid|never use|don''t use|do not use) emoji\b'
+  '\brun (?:the |all )?tests\b': '\b(?:skip|don''t run|do not run) (?:the |all )?tests\b'
+  '\b(?:be|keep (?:it|responses)) (?:brief|concise|short|terse)\b': '\b(?:be|keep (?:it|responses)) (?:thorough|detailed|verbose|comprehensive|exhaustive)\b'
+  '\bcommit (?:after|once|when) (?:you|the|each|every|all)\b': '\b(?:never|do not|don''t) commit(?: (?:changes|code|anything|directly|automatically|without asking|for me|on (?:my|the user''s) behalf))?(?=\s*(?:[.,;:!]|$))'

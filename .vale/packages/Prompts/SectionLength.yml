@@ -1,0 +1,10 @@
+# A section a model can hold. Past three hundred words the later instructions
+# in a section compete with the earlier ones, and the fix is a heading, not a
+# cut. Measured per h2 section, subsections included.
+extends: metric
+message: "A section of %s words. Give the second half its own heading."
+link: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#token-budgets
+level: suggestion
+scope: 'doc(section:has(> h2))'
+formula: words
+condition: "> 300"

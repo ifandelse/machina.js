@@ -1,0 +1,14 @@
+# "Always use forward slashes in file paths, even on Windows." A backslash
+# path in prose fails on every other platform, and Vale reads prose only, so
+# a path inside a code span or a code block is not seen here.
+#
+# Written as one segment then one-or-more rather than `{2,}`: a counted
+# repetition of a group misses in regexp2, and the two forms match the same
+# paths.
+extends: existence
+message: "A path with backslashes: '%s'. Use forward slashes, even on Windows."
+link: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#avoid-windows-style-paths
+level: error
+nonword: true
+tokens:
+  - '(?:[A-Za-z]:)?\\[\w.-]+(?:\\[\w.-]+)+'

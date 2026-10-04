@@ -1,0 +1,16 @@
+# An instruction pinned to a date goes wrong on that date. The skill guide's
+# own bad example: "If you're doing this before August 2025, use the old
+# API." Dates are precise, and so is "currently"; "new" is not, so it is left
+# alone.
+extends: existence
+message: "'%s' will be wrong soon. State the current method, and put the old one under its own heading."
+link: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#avoid-time-sensitive-information
+level: warning
+ignorecase: true
+tokens:
+  - 'as of (?:\w+ )?\d{4}'
+  - '(?:before|after|until|since|starting) (?:January|February|March|April|May|June|July|August|September|October|November|December)(?: \d{1,2},?)? \d{4}'
+  - currently
+  - at the moment
+  - for now
+  - recently

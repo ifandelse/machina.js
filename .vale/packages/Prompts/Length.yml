@@ -1,0 +1,10 @@
+# The whole file is read on every turn. The skill guide's figure is "Keep
+# SKILL.md body under 500 lines", and 2,500 words is about what 500 lines of
+# instruction hold. The Claude Code guide says the same without a number:
+# "If your CLAUDE.md is too long, Claude ignores half of it."
+extends: metric
+message: "A file of %s words, read on every turn. Move what is only sometimes needed into a skill or a linked file."
+link: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#token-budgets
+level: warning
+formula: words
+condition: "> 2500"
