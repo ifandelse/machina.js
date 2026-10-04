@@ -68,7 +68,7 @@ If the current state has no handler for that input name and no wildcard handler,
 
 A handler is a property on a state object. There are two forms:
 
-**Function handler** — receives a `HandlerArgs` object plus any extra args passed to `handle()`. Return a state name to transition; return nothing to stay put. Extra args are untyped by default; an [input payload map](/guide/typed-payloads/) types them per input.
+**Function handler**: receives a `HandlerArgs` object plus any extra args passed to `handle()`. Return a state name to transition; return nothing to stay put. Extra args are untyped by default; an [input payload map](/guide/typed-payloads/) types them per input.
 
 ```ts
 green: {

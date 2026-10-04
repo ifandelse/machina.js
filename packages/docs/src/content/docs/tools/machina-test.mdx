@@ -277,7 +277,7 @@ walkAll(makeTypedLight, {
 });
 ```
 
-The requirement exists because handlers written against a map trust their payloads — the compiler guarantees them at every application call site. `walkAll` builds its calls at runtime, outside the compiler's view. The required `payloads` key moves the guarantee into your test's compile step: a forgotten generator is an error at the keyboard, instead of a TypeError thirty walks into a run.
+The requirement exists because handlers written against a map trust their payloads, because the compiler guarantees them at every application call site. `walkAll` builds its calls at runtime, outside the compiler's view. The required `payloads` key moves the guarantee into your test's compile step. A forgotten generator fails at the keyboard, before the walk ever runs.
 
 ### Filtering inputs
 

@@ -63,7 +63,7 @@ light.dispose(); // tears down; all subsequent calls are silent no-ops
 | Method                       | Description                                                                                                                                                                    |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `handle(inputName, ...args)` | Dispatch an input to the current state's handler. Extra args are untyped by default; an [input payload map](https://machina-js.org/guide/typed-payloads/) types them per input |
-| `canHandle(inputName)`       | True if the current state — or its `_child` chain — can handle this input                                                                                                      |
+| `canHandle(inputName)`       | True if the current state (or its `_child` chain) can handle this input                                                                                                        |
 | `transition(toState)`        | Directly transition; fires `_onExit`, `_onEnter`, lifecycle events                                                                                                             |
 | `reset()`                    | Transition back to `initialState`                                                                                                                                              |
 | `currentState()`             | Returns the current state name                                                                                                                                                 |
@@ -246,7 +246,7 @@ fsm.handle("save"); // deferred — not yet in "ready"
 
 ## Typed input payloads
 
-By default, extra arguments to `handle()` are untyped. An input payload map — input name → argument tuple — fixes both ends. Supply it through the curried factory form:
+By default, extra arguments to `handle()` are untyped. An input payload map (input name → argument tuple) fixes both ends. Supply it through the curried factory form:
 
 ```ts
 type TrafficLightInputs = {
@@ -260,7 +260,7 @@ light.handle("emergency", { severity: 5 }); // ok
 light.handle("emergency"); // compile error: payload missing
 ```
 
-Handler payload parameters are inferred from the map, and the map is the complete input vocabulary — undeclared handler keys are compile errors. Type-only; the untyped forms are unchanged. See the [typed payloads guide](https://machina-js.org/guide/typed-payloads/).
+Handler payload parameters are inferred from the map, and the map is the complete input vocabulary: undeclared handler keys are compile errors. Type-only; the untyped forms are unchanged. See the [typed payloads guide](https://machina-js.org/guide/typed-payloads/).
 
 ## Events
 

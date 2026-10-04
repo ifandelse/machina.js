@@ -3,13 +3,13 @@ title: Typed Input Payloads
 description: Declare each input's payload once. Handlers and handle() calls are checked against it.
 ---
 
-By default, extra arguments to `handle()` are untyped. Handlers receive them as `unknown`, and the call site can pass anything — or nothing. An input payload map fixes both ends. You declare each input's argument tuple once. TypeScript infers handler parameters from the map and checks every `handle()` call against it.
+By default, extra arguments to `handle()` are untyped. Handlers receive them as `unknown`, and the call site can pass anything, or nothing at all. Declaring an input payload map constrains both ends. You declare each input's argument tuple once. TypeScript infers handler parameters from the map and checks every `handle()` call against it.
 
 The map is type-only. The engine never reads it, runtime behavior does not change, and the untyped forms keep working exactly as before.
 
 ## Declaring a map
 
-A map is a type: input name → argument tuple. An empty tuple means the input carries no payload.
+The map is a type that pairs each input name with an argument tuple. An empty tuple declares a payload-free input.
 
 ```ts
 import { createFsm } from "machina";
@@ -45,7 +45,7 @@ light.handle("emergency", { severity: "high" }); // error: severity must be a nu
 light.handle("emergencyy", { severity: 5 }); // error: unknown input
 ```
 
-Note the call shape: `createFsm<TrafficLightInputs>()({...})`. The zero-argument call fixes the map. The returned function infers everything else from the config, exactly as the direct form does. The split exists because TypeScript has no partial type-argument inference — a type argument supplied alongside the config would disable inference for the states object and kill every literal validation.
+Note the call shape: `createFsm<TrafficLightInputs>()({...})`. The zero-argument call fixes the map. The returned function infers everything else from the config, exactly as the direct form does. The split exists because TypeScript has no partial type-argument inference. A type argument supplied alongside the config would disable inference for the states object, and the literal validations would go with it.
 
 For a `BehavioralFsm`, the map is the second type argument of the existing curried form:
 
@@ -55,13 +55,13 @@ const connectionFsm = createBehavioralFsm<Connection, ConnectionInputs>()({ ... 
 
 ## The map is the complete vocabulary
 
-Under a map, every handler key in every state must be a key of the map. A typo'd handler key is a compile error, anchored on the state that declares it. The untyped path cannot catch that mistake — its index signature accepts any key.
+Under a map, every handler key in every state must be a key of the map. A typo'd handler key is a compile error, anchored on the state that declares it. The untyped path cannot catch that mistake, because its index signature accepts any key.
 
 The same rule covers `bubbles`. A bubble declares "I will fire this input at myself," and the map is the complete set of fireable inputs. A bubble outside the map is rejected at the declaration.
 
 ## Deriving the map from an event union
 
-Many applications already describe their inbound messages as a discriminated union. `InputMapFromUnion` builds the map from that union, so the shape is written once:
+Many applications already describe their inbound messages as a discriminated union. `InputMapFromUnion` builds the map from that union. You write the shape once:
 
 ```ts
 import type { InputMapFromUnion } from "machina";
@@ -78,7 +78,7 @@ Each handler receives the whole event as its payload, discriminant included. Dis
 
 ## Forwarding whole events
 
-The "events" in this pattern are your application's inbound messages — socket callbacks, timer expirations, clicks. They have no connection to the events the FSM emits through `on()`; those flow the opposite direction.
+The "events" in this pattern are your application's inbound messages: socket callbacks, timer expirations, clicks. They have no connection to the events the FSM emits through `on()`; those flow the opposite direction.
 
 One function shape does not compile: a forwarder that takes the whole union and reads the input name off the event.
 
@@ -110,8 +110,8 @@ The switch gives full checking at the cost of one line per input. The cast gives
 
 ## Child FSMs under a typed parent
 
-A typed parent's `handle()` accepts only its map's keys. Mounting a `_child` does not add the child's inputs automatically. If the parent should forward a child's input, declare that input — with its tuple — in the parent's own map. This is the vocabulary rule applied to hierarchy: the parent's map states everything the parent accepts.
+A typed parent's `handle()` accepts only its map's keys. Mounting a `_child` does not add the child's inputs automatically. If the parent should forward a child's input, declare that input, with its tuple, in the parent's own map. This is the vocabulary rule applied to hierarchy: the parent's map states everything the parent accepts.
 
 ## Testing with walkAll
 
-machina-test's `walkAll` reads the map from your factory's return type. For a typed FSM, its config requires one tuple-returning generator per payload-carrying input — a forgotten or misspelled generator is a compile error instead of a mid-walk crash. See [typed payload generators](/tools/machina-test/#typed-payload-generators).
+machina-test's `walkAll` reads the map from your factory's return type. For a typed FSM, its config requires one tuple-returning generator per payload-carrying input. A forgotten or misspelled generator fails at compile time, before any walk runs. See [typed payload generators](/tools/machina-test/#typed-payload-generators).
