@@ -55,10 +55,10 @@
     },
     "devDependencies": {
         "@types/eslint": "^9.6.1",
-        "@types/estree": "^1.0.0",
-        "eslint": "^9.39.4",
-        "jest": "^30.3.0",
-        "ts-jest": "^29.4.6",
+        "@types/estree": "^1.0.9",
+        "eslint": "^9.39.5",
+        "jest": "^30.5.2",
+        "ts-jest": "^29.4.14",
         "tsdown": "^0.20.3",
         "typescript": "^5.9.3"
     }
