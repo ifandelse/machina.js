@@ -25,6 +25,8 @@ import {
     type MachinaInstance,
     type SpecialStateKeys,
     type InputMap,
+    type InputCall,
+    type InputMapLike,
 } from "./types";
 
 // Safety valve for _onEnter → transition loops. Instance-level counter works
@@ -62,7 +64,7 @@ export class BehavioralFsm<
     TInputNames extends string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- phantom marker: never referenced in the class body, only read back out externally via BubblesOfInstance's `infer`.
     TBubbles extends string = never,
-    TInputs extends InputMap = InputMap,
+    TInputs extends InputMapLike<TInputs> = InputMap,
 > {
     readonly id: string;
     readonly initialState: TStateNames;
@@ -106,11 +108,10 @@ export class BehavioralFsm<
      *
      * No-ops silently when disposed.
      */
-    handle<I extends TInputNames & keyof TInputs & string>(
-        client: TClient,
-        inputName: I,
-        ...args: TInputs[I]
-    ): void {
+    handle(client: TClient, ...call: InputCall<TInputNames, TInputs>): void {
+        // The rest tuple keeps the input name and its payload correlated at
+        // the call site; past this point the runtime treats them uniformly.
+        const [inputName, ...args] = call;
         this.dispatch(client, inputName, args);
     }
 
@@ -1205,7 +1206,7 @@ function createChildLink(child: any): ChildLink {
  */
 export function createBehavioralFsm<
     TClient extends object,
-    TInputs extends InputMap = InputMap,
+    TInputs extends InputMapLike<TInputs> = InputMap,
 >(): <
     const TStates extends Record<string, Record<string, unknown>>,
     TStateNames extends string = keyof TStates & string,
@@ -1228,17 +1229,16 @@ export function createBehavioralFsm<
     // `string extends keyof TInputs` detects the wide default (untyped path),
     // where the union stays inferred from the config exactly as before.
     string extends keyof TInputs
-        ?
-              | Exclude<
-                    { [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates],
-                    SpecialStateKeys
-                >
-              | {
-                    [S in keyof TStates]: TStates[S] extends { _child: infer C }
-                        ? InputNamesOfInstance<C>
-                        : never;
-                }[keyof TStates]
-              | TBubbles
+        ? | Exclude<
+                { [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates],
+                SpecialStateKeys
+            >
+          | {
+                [S in keyof TStates]: TStates[S] extends { _child: infer C }
+                    ? InputNamesOfInstance<C>
+                    : never;
+            }[keyof TStates]
+          | TBubbles
         : keyof TInputs & string,
     TBubbles,
     TInputs

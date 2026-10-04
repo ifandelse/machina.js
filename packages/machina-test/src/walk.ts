@@ -71,11 +71,11 @@ export interface WalkResult {
  */
 export type WalkConfig<
     TClient extends object = object,
-    TInputs extends InputMap = InputMap,
+    TInputs = InputMap,
 > = WalkConfigBase<TClient> & PayloadGeneratorsFor<TInputs>;
 
 /** Input names in the map whose tuples are non-empty — they carry payloads. */
-type PayloadCarryingInputs<TInputs extends InputMap> = {
+type PayloadCarryingInputs<TInputs> = {
     [K in keyof TInputs & string]: TInputs[K] extends [] ? never : K;
 }[keyof TInputs & string];
 
@@ -95,7 +95,7 @@ type PayloadCarryingInputs<TInputs extends InputMap> = {
  * Real map with no payload-carrying inputs: nothing to generate, so the
  * config carries neither key.
  */
-type PayloadGeneratorsFor<TInputs extends InputMap> = string extends keyof TInputs
+type PayloadGeneratorsFor<TInputs> = string extends keyof TInputs
     ? {
           /**
            * Payload generators keyed by input name. When walkAll fires input
@@ -368,7 +368,7 @@ const validateConfig = (config: WalkConfigBase, availableInputs: string[]): stri
  * @param config - Walk configuration: invariant, walk count, step limit, seed,
  *   input filters, payload generators, and optional client factory.
  */
-export const walkAll = <TFsm = unknown, TClient extends object = object>(
+export const walkAll = <TClient extends object = object, TFsm = unknown>(
     factory: () => TFsm,
     config: WalkConfig<TClient, InputMapOfInstance<TFsm>>
 ): WalkResult => {

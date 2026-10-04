@@ -199,7 +199,7 @@ export type InputMapOfInstance<TFsm> = 0 extends 1 & TFsm
             infer _TStateNames extends string,
             infer _TInputNames extends string,
             infer _TBubbles extends string,
-            infer TInputs extends InputMap
+            infer TInputs extends InputMapLike<TInputs>
         >
       ? TInputs
       : TFsm extends import("./behavioral-fsm").BehavioralFsm<
@@ -207,7 +207,7 @@ export type InputMapOfInstance<TFsm> = 0 extends 1 & TFsm
               infer _TStateNames extends string,
               infer _TInputNames extends string,
               infer _TBubbles extends string,
-              infer TInputs extends InputMap
+              infer TInputs extends InputMapLike<TInputs>
           >
         ? TInputs
         : InputMap;
@@ -247,6 +247,26 @@ export type InputMapOfInstance<TFsm> = 0 extends 1 & TFsm
  * ```
  */
 export type InputMap = Record<string, unknown[]>;
+
+/**
+ * The constraint a user-supplied input map must satisfy: every declared
+ * property is an argument tuple. Self-mapped instead of `InputMap` because a
+ * named interface has no string index signature, and a bare
+ * `Record<string, unknown[]>` bound rejects it with TS2344.
+ */
+export type InputMapLike<T> = { [K in keyof T]: unknown[] };
+
+/**
+ * The complete argument list of one `handle()` call: an input name paired
+ * with that input's own payload tuple. The union distributes over the map,
+ * which keeps the pair correlated when the caller's input name is itself a
+ * union — `handle(name, payload)` with `name: "a" | "b"` only accepts a
+ * payload that matches the member it is paired with, never a payload from
+ * the other member.
+ */
+export type InputCall<TInputNames extends string, TInputs extends InputMapLike<TInputs>> = {
+    [K in TInputNames & keyof TInputs & string]: [inputName: K, ...payload: TInputs[K]];
+}[TInputNames & keyof TInputs & string];
 
 /**
  * Builds an input payload map from a discriminated event union, matching the
@@ -534,7 +554,7 @@ export type ValidateStates<
     TCtx,
     TStates extends Record<string, Record<string, unknown>>,
     TStateNames extends string = keyof TStates & string,
-    TInputs extends InputMap = InputMap,
+    TInputs extends InputMapLike<TInputs> = InputMap,
 > = Record<
     TStateNames,
     {
@@ -579,9 +599,7 @@ type HasCatchAll<TStates> = {
  * anywhere — literally anything.
  */
 type CoverageOf<TStates, TBubbles extends string> =
-    | OwnInputNamesOf<TStates>
-    | TBubbles
-    | (HasCatchAll<TStates> extends true ? string : never);
+    OwnInputNamesOf<TStates> | TBubbles | (HasCatchAll<TStates> extends true ? string : never);
 
 /**
  * For state `S`, if it mounts a `_child`, the child's declared bubbles that
@@ -659,7 +677,10 @@ export type ChildCoverage<
  * TStates' wide constraint (the `string extends keyof TState` short-circuit —
  * see the module comment above).
  */
-type UndeclaredInputsIn<TState, TInputs extends InputMap> = string extends keyof TState & string
+type UndeclaredInputsIn<
+    TState,
+    TInputs extends InputMapLike<TInputs>,
+> = string extends keyof TState & string
     ? never
     : Exclude<keyof TState & string, (keyof TInputs & string) | SpecialStateKeys>;
 
@@ -674,7 +695,7 @@ type UndeclaredInputsIn<TState, TInputs extends InputMap> = string extends keyof
 export type InputVocabulary<
     TStates extends Record<string, Record<string, unknown>>,
     TStateNames extends string,
-    TInputs extends InputMap,
+    TInputs extends InputMapLike<TInputs>,
 > = {
     [S in TStateNames]: UndeclaredInputsIn<TStates[S], TInputs> extends never
         ? unknown
@@ -780,7 +801,7 @@ export interface FsmConfig<
     >,
     TStateNames extends string = keyof TStates & string,
     TBubbles extends string = never,
-    TInputs extends InputMap = InputMap,
+    TInputs extends InputMapLike<TInputs> = InputMap,
 > {
     /** Unique identifier for this FSM */
     id: string;

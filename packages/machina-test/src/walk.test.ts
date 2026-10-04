@@ -1438,4 +1438,42 @@ describe("walkAll with a typed input payload map", () => {
             expect(result).toBe("checked");
         });
     });
+
+    describe("when a pre-8.0 caller supplies TClient as the first type argument", () => {
+        interface LegacyClient {
+            tag: string;
+        }
+
+        const legacyFactory = () =>
+            createBehavioralFsm<LegacyClient>()({
+                id: "legacy-walk",
+                initialState: "idle",
+                states: {
+                    idle: { go: "done" },
+                    done: {},
+                },
+            });
+
+        // walkAll<TClient> was the public call form before the typed path
+        // existed; TClient must stay the first type parameter (PR #200
+        // review, finding 3). Explicit TClient leaves TFsm at its default,
+        // which routes these callers to the legacy untyped generator path.
+        const _legacyExplicitClient = () =>
+            walkAll<LegacyClient>(legacyFactory, {
+                seed: 1,
+                walks: 1,
+                invariant: () => true,
+                client: () => ({ tag: "t" }),
+            });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should keep compiling with TClient in the first position", () => {
+            expect(result).toBe("checked");
+        });
+    });
 });

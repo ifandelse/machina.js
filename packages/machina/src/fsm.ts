@@ -18,6 +18,8 @@ import {
     type DisposeOptions,
     type SpecialStateKeys,
     type InputMap,
+    type InputCall,
+    type InputMapLike,
 } from "./types";
 
 /**
@@ -45,7 +47,7 @@ export class Fsm<
     TInputNames extends string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- phantom marker: never referenced in the class body, only read back out externally via BubblesOfInstance's `infer`.
     TBubbles extends string = never,
-    TInputs extends InputMap = InputMap,
+    TInputs extends InputMapLike<TInputs> = InputMap,
 > {
     readonly id: string;
     readonly initialState: TStateNames;
@@ -109,14 +111,17 @@ export class Fsm<
      * there first; unhandled inputs bubble up to the parent.
      * No-ops silently when disposed.
      */
-    handle<I extends TInputNames & keyof TInputs & string>(
-        inputName: I,
-        ...args: TInputs[I]
-    ): void {
+    handle(...call: InputCall<TInputNames, TInputs>): void {
         if (this.disposed) {
             return;
         }
-        this.bfsm.handle(this.context, inputName, ...args);
+        // The rest tuple keeps the input name and its payload correlated at
+        // the call site; past this point the runtime treats them uniformly.
+        const [inputName, ...args] = call;
+        this.bfsm.handle(
+            this.context,
+            ...([inputName, ...args] as InputCall<TInputNames, TInputs>)
+        );
     }
 
     /**
@@ -284,7 +289,7 @@ export class Fsm<
  * light.handle("emergency", { severity: 5 }); // payload enforced
  * ```
  */
-export function createFsm<TInputs extends InputMap>(): <
+export function createFsm<TInputs extends InputMapLike<TInputs>>(): <
     TCtx extends object,
     const TStates extends Record<string, Record<string, unknown>>,
     TStateNames extends string = keyof TStates & string,

@@ -2498,4 +2498,75 @@ describe("#195 — input payload maps", () => {
             expect(result).toBe("checked");
         });
     });
+
+    describe("when the input name is a union of declared names", () => {
+        const unionFsm = createFsm<{
+            alpha: [payload: { alpha: number }];
+            beta: [payload: { beta: string }];
+        }>()({
+            id: "union-name",
+            initialState: "idle",
+            context: {},
+            states: {
+                idle: {
+                    alpha: () => undefined,
+                    beta: () => undefined,
+                },
+            },
+        });
+
+        const inputName = (Math.random() > 2 ? "alpha" : "beta") as "alpha" | "beta";
+
+        // @ts-expect-error -- the payload fits only "alpha"; a union input name must not decorrelate the name/payload pair (PR #200 review, finding 2)
+        unionFsm.handle(inputName, { alpha: 1 });
+
+        // A correlated union of complete calls stays legal.
+        const call: ["alpha", { alpha: number }] | ["beta", { beta: string }] =
+            Math.random() > 2 ? ["alpha", { alpha: 1 }] : ["beta", { beta: "b" }];
+        unionFsm.handle(...call);
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should keep the input name and payload correlated under a union name", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when the map is declared as a named interface", () => {
+        interface IfaceInputs {
+            ping: [n: number];
+        }
+
+        // An interface has no string index signature; the factory constraint
+        // must accept it anyway (PR #200 review, finding 4).
+        const ifaceFsm = createFsm<IfaceInputs>()({
+            id: "iface-map",
+            initialState: "idle",
+            context: {},
+            states: {
+                idle: {
+                    ping: () => undefined,
+                },
+            },
+        });
+
+        ifaceFsm.handle("ping", 1);
+
+        // @ts-expect-error -- wrong payload type under an interface-declared map
+        ifaceFsm.handle("ping", "nope");
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should accept a named interface as the input map", () => {
+            expect(result).toBe("checked");
+        });
+    });
 });
