@@ -55,7 +55,7 @@
     },
     "peerDependencies": {
         "jest": ">=29",
-        "machina": ">=7.0.1",
+        "machina": ">=8.0.0",
         "vitest": ">=1"
     },
     "peerDependenciesMeta": {

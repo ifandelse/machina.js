@@ -2,7 +2,7 @@
 
 Focused finite state machines for JavaScript and TypeScript. States in, states out.
 
-**v7 is current.** The v6 line redesigned the API: cleaner handler signatures, TypeScript-first, and a BehavioralFsm that tracks state per-client instead of stamping properties on your objects. v7 tightens the type checking (typos in previously-unchecked configs now surface as compile errors), makes hierarchical delegation reach any depth, and adds `bubbles`, typed declarations of the inputs an FSM sends up to whatever mounts it. v7.1 adds [typed input payloads](https://machina-js.org/guide/typed-payloads/): declare each input's argument tuple once, and handlers and `handle()` calls are checked against it. See the [v6 → v7 migration notes](https://machina-js.org/migration/v6-to-v7/).
+**v7 is current.** The v6 line redesigned the API: cleaner handler signatures, TypeScript-first, and a BehavioralFsm that tracks state per-client instead of stamping properties on your objects. v7 tightens the type checking (typos in previously-unchecked configs now surface as compile errors), makes hierarchical delegation reach any depth, and adds `bubbles`, typed declarations of the inputs an FSM sends up to whatever mounts it. v8 adds [typed input payloads](https://machina-js.org/guide/typed-payloads/): declare each input's argument tuple once, and handlers and `handle()` calls are checked against it. See the [v6 → v7 migration notes](https://machina-js.org/migration/v6-to-v7/).
 
 - [Documentation](https://machina-js.org)
 - [npm](https://www.npmjs.com/package/machina)
