@@ -7,10 +7,11 @@ on:
     types: [completed]
   workflow_dispatch:
 
+# The build job only reads the repo. The deploy job declares the Pages and
+# OIDC permissions itself, so a compromised build dependency gets a
+# read-only token.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -67,6 +68,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
