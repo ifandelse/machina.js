@@ -1,0 +1,13 @@
+# A skill's frontmatter is read by a loader with limits of its own: 64
+# characters for a name, 1,024 for a description. The lookahead keeps the
+# match to the key, so the alert names the field rather than quoting a
+# thousand characters back.
+extends: existence
+message: "'%s' runs past what a skill loader accepts: 64 characters for a name, 1,024 for a description."
+link: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#yaml-frontmatter-requirements
+level: error
+scope: raw
+nonword: true
+tokens:
+  - '(?m)^name:(?=.{66,}$)'
+  - '(?m)^description:(?=.{1026,}$)'

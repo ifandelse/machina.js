@@ -1,0 +1,9 @@
+{
+    "bannedCheck": {
+        "mode": "block",
+        "addons": ["gh"]
+    },
+    "outputCheck": {
+        "mode": "block"
+    }
+}

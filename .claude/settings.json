@@ -1,0 +1,14 @@
+{
+    "extraKnownMarketplaces": {
+        "just-say-so": {
+            "source": {
+                "source": "github",
+                "repo": "ifandelse/just-say-so",
+                "ref": "v0.4.1"
+            }
+        }
+    },
+    "enabledPlugins": {
+        "just-say-so@just-say-so": true
+    }
+}

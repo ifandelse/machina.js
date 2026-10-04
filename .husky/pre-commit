@@ -2,3 +2,10 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 npx lint-staged
+
+# Vale on the lines this commit adds (just-say-so). Errors block; warnings
+# and suggestions print and pass. Skip once: JUST_SAY_SO_PRECOMMIT=0 git commit ...
+# Without vale on PATH the check skips with a notice; CI still enforces it.
+if [ -x node_modules/.bin/just-say-so-staged ]; then
+  node_modules/.bin/just-say-so-staged
+fi

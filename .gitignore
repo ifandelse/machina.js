@@ -55,3 +55,10 @@ packages/docs/src/content/docs/api/
 docs/archive/
 
 .obsidian/
+
+# Vale — synced packages are reproducible from .vale.ini; only the vocabulary
+# under .vale/styles/config is tracked. config/templates is package content
+# that `vale sync` regenerates, so it stays untracked.
+.vale/styles/*
+!.vale/styles/config/
+.vale/styles/config/templates/

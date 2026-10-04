@@ -68,6 +68,25 @@ Prettier runs automatically on commit via a pre-commit hook (husky + lint-staged
 pnpm prettier --write .
 ```
 
+### Prose Linting
+
+[Vale](https://vale.sh) lints the Markdown in this repo. The configuration lives in `.vale.ini`, and the rule packages download on sync:
+
+```bash
+brew install vale   # or another installer from vale.sh
+vale sync           # downloads the pinned style packages into .vale/styles
+```
+
+The pre-commit hook checks staged Markdown and judges only the lines your commit adds. Error-level alerts block the commit. Warnings and suggestions print and pass. The same check runs in CI (`vale.yml`) over the lines a PR added, so a missing local `vale` install never blocks you. The hook skips with a notice when `vale` is not on your PATH.
+
+To skip the check for one commit:
+
+```bash
+JUST_SAY_SO_PRECOMMIT=0 git commit ...
+```
+
+When Vale flags a legitimate term, add it to the project vocabulary at `.vale/styles/config/vocabularies/Machina/accept.txt` (one term per line). Rule levels are policy. Each level change in `.vale.ini` carries a comment explaining the calibration behind it, so bring evidence (a false-positive class, not one annoying hit) when you propose one.
+
 ## Versioning and Publishing
 
 The repo uses [Changesets](https://github.com/changesets/changesets) to manage versions and publish.

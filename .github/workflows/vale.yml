@@ -1,0 +1,98 @@
+# Prose lint for pull requests. Lints the Markdown a PR changed against the
+# repo's .vale.ini, scoped to the lines the branch added, so a one-line edit
+# to a legacy doc reports that one line and not the file's history. Error-level
+# alerts fail the job; warnings and suggestions print and pass — the same
+# policy the local pre-commit hook and the just-say-so session hooks apply.
+#
+# The check itself lives in just-say-so (src/cli/check-staged.js), checked out
+# at the same tag package.json pins for the pre-commit hook. Bump both together.
+name: Vale prose lint
+
+on:
+  pull_request:
+    paths:
+      - "**.md"
+      - "**.mdx"
+      - ".vale.ini"
+      - ".vale/**"
+      - ".github/workflows/vale.yml"
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Ref to diff against for the added-lines scope"
+        required: false
+        type: string
+        default: "origin/master"
+
+concurrency:
+  group: vale-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  VALE_VERSION: 3.22.0
+  # From vale_3.22.0_checksums.txt on the GitHub release.
+  VALE_SHA256: 52f5cd0314a1b7384cac6aa102a68193977312f6ba9c9f3ae001b5deec8e3a10
+
+jobs:
+  vale:
+    runs-on: ubuntu-latest
+    # vale sync fetches release URLs on a cache miss; that is the step that hangs.
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The merge-base diff needs history on both sides.
+          fetch-depth: 0
+
+      - name: Checkout just-say-so
+        uses: actions/checkout@v4
+        with:
+          repository: ifandelse/just-say-so
+          ref: v0.4.1
+          path: .jss
+
+      # The binary changes only when VALE_VERSION does, so cache it by version.
+      - name: Restore Vale binary
+        id: valebin
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/vale
+          key: vale-bin-${{ runner.os }}-${{ env.VALE_VERSION }}
+
+      - name: Install Vale
+        if: steps.valebin.outputs.cache-hit != 'true'
+        run: |
+          curl -sSfL -o vale.tar.gz \
+            "https://github.com/vale-cli/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
+          echo "${VALE_SHA256}  vale.tar.gz" | sha256sum -c -
+          mkdir -p "$HOME/.local/bin"
+          tar -xzf vale.tar.gz -C "$HOME/.local/bin" vale
+
+      - name: Put Vale on PATH
+        run: |
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/vale" --version
+
+      # vale sync downloads every package .vale.ini names on every run. The key
+      # covers the config, the vendored local packages, and the tracked
+      # vocabulary under .vale/styles/config, which sits inside the cached path
+      # and would otherwise be restored stale over the checkout.
+      - name: Restore Vale styles
+        id: styles
+        uses: actions/cache@v4
+        with:
+          path: .vale/styles
+          key: vale-styles-${{ env.VALE_VERSION }}-${{ hashFiles('.vale.ini', '.vale/packages/**', '.vale/styles/config/**') }}
+
+      - name: Sync Vale styles
+        if: steps.styles.outputs.cache-hit != 'true'
+        run: vale sync
+
+      - name: Check added lines
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || inputs.base }}
+        run: node .jss/src/cli/check-staged.js --base "$BASE"

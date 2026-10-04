@@ -1,0 +1,13 @@
+# An instruction is a verb. "You should run the tests" asks; "Run the tests"
+# tells, and it is shorter by the part the model discards anyway. Anchored to
+# the start of the sentence, so a sentence that merely contains "please" or
+# "make sure" as a quoted phrase is left alone.
+extends: existence
+message: "Give the instruction, not the advice: '%s'."
+link: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#be-clear-and-direct
+level: warning
+scope: sentence
+ignorecase: true
+nonword: true
+tokens:
+  - '^(?:you (?:should|must|need to|have to|ought to|will want to)|please|it(?:''s| is) (?:important|essential|crucial) (?:to|that)|be sure to|make sure (?:to|that)|try to|remember to|don''t forget to)\b'

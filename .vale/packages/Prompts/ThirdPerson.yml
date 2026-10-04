@@ -1,0 +1,12 @@
+# A skill's description is injected into a system prompt beside every other
+# skill's, so it is read in the third person: "Processes Excel files", not "I
+# can help you" or "You can use this to". The skill guide: "inconsistent
+# point-of-view can cause discovery problems."
+extends: existence
+message: "A description reads in the third person: not '%s'."
+link: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#writing-effective-descriptions
+level: error
+scope: raw
+nonword: true
+tokens:
+  - '(?m)(?<=^description: )(?:I|I''m|I''ll|We|You can|Use me|This lets you)\b'

@@ -1,0 +1,12 @@
+# Every "always" and "never" spends the same attention, and past a handful
+# they stop landing: a file that never bends on forty things has no way to
+# say which one matters. Counted over the file's prose, so code samples and
+# quoted output do not count against it.
+extends: occurrence
+message: "%d absolutes in one file. Past ten, none of them lands."
+link: https://code.claude.com/docs/en/best-practices
+level: warning
+scope: summary
+ignorecase: true
+token: '\b(?:always|never|must|under no circumstances|at all times|without exception|no matter what)\b'
+max: 10
