@@ -4,7 +4,7 @@
             "source": {
                 "source": "github",
                 "repo": "ifandelse/just-say-so",
-                "ref": "v0.4.0"
+                "ref": "v0.4.1"
             }
         }
     },

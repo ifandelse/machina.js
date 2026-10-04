@@ -128,7 +128,7 @@
         "globals": "^17.13.0",
         "husky": "^9.1.7",
         "jest": "^30.5.2",
-        "just-say-so": "github:ifandelse/just-say-so#v0.4.0",
+        "just-say-so": "github:ifandelse/just-say-so#v0.4.1",
         "lint-staged": "^16.4.0",
         "prettier": "^3.9.9",
         "prettier-plugin-astro": "^0.14.1",
