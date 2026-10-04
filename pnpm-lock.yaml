@@ -47,6 +47,9 @@ importers:
       jest:
         specifier: ^30.5.2
         version: 30.5.2(@types/node@25.9.9)(ts-node@10.9.2(@types/node@25.9.9)(typescript@5.9.3))
+      just-say-so:
+        specifier: github:ifandelse/just-say-so#v0.4.0
+        version: https://codeload.github.com/ifandelse/just-say-so/tar.gz/44420b07e1ccb558f58d388955ddc57f8d10642e
       lint-staged:
         specifier: ^16.4.0
         version: 16.4.0
@@ -4394,6 +4397,12 @@ packages:
 
   jsonfile@4.0.0:
     resolution: {integrity: sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg==}
+
+  just-say-so@https://codeload.github.com/ifandelse/just-say-so/tar.gz/44420b07e1ccb558f58d388955ddc57f8d10642e:
+    resolution: {tarball: https://codeload.github.com/ifandelse/just-say-so/tar.gz/44420b07e1ccb558f58d388955ddc57f8d10642e}
+    version: 0.4.0
+    engines: {node: '>=18'}
+    hasBin: true
 
   katex@0.16.47:
     resolution: {integrity: sha512-Eeo8Ys1doU1z+x8AZsPpQu+p/QcZBI5PeOo7QGQdy2x2m0MU/hYagBbGOmXwr5KVbEfVuWv9LpnQWeehogurjg==}
@@ -10493,6 +10502,8 @@ snapshots:
   jsonfile@4.0.0:
     optionalDependencies:
       graceful-fs: 4.2.11
+
+  just-say-so@https://codeload.github.com/ifandelse/just-say-so/tar.gz/44420b07e1ccb558f58d388955ddc57f8d10642e: {}
 
   katex@0.16.47:
     dependencies:
