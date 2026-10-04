@@ -2,7 +2,7 @@
 
 Vale style for agent instruction files, from https://github.com/jdkato/prompts.
 
-Vendored because the upstream repo publishes no release for `vale sync` to pin.
+Vendored because the upstream repo doesn't publish releases for `vale sync` to pin.
 Copied at commit `0fb3361da35a7b5d6934a9a3b4a6effda4fbba77` (2026-09-04), MIT
 license (see LICENSE in this directory). `vale sync` copies this directory into
 StylesPath like any other package.

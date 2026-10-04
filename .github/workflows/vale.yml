@@ -28,6 +28,9 @@ concurrency:
   group: vale-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
   VALE_VERSION: 3.22.0
   # From vale_3.22.0_checksums.txt on the GitHub release.
