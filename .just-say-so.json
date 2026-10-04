@@ -1,6 +1,7 @@
 {
     "bannedCheck": {
-        "mode": "block"
+        "mode": "block",
+        "addons": ["gh"]
     },
     "outputCheck": {
         "mode": "block"
