@@ -88,5 +88,14 @@ Two factory functions, one mental model:
 ## PR Guidelines
 
 - Run `pnpm run checks` (lint + test + build) before submitting.
-- Keep PRs focused — one concern per PR.
+- Keep PRs focused. One concern per PR.
 - Tests live in `*.test.ts` files alongside the source they test.
+
+## Prose Linting
+
+Vale checks every Markdown file in this repo, through the just-say-so hooks in a session, at pre-commit, and in CI. Policy and scope:
+
+- **Only the lines you add are judged.** Legacy alerts on untouched lines never block anything.
+- **Error-level alerts block.** They stop the end of your turn (Stop gate), the commit, and the CI job. Warnings and suggestions are advice.
+- **A legitimate domain term that gets flagged** belongs in the vocabulary: `.vale/styles/config/vocabularies/Machina/accept.txt`, one term per line. The `/just-say-so:allow` command writes there too.
+- **Do not change rule levels in `.vale.ini` to pass a check.** Levels encode calibration decisions, and each override carries a comment with its evidence. Propose the change to the user instead.
