@@ -1440,10 +1440,10 @@ describe("walkAll with a typed input payload map", () => {
     });
 
     describe("when the caller supplies the FSM type explicitly", () => {
-        // v4 binds the first type parameter to the FSM. An explicit FSM type
-        // keeps the typed payload requirement, where the v3 TClient-first
-        // binding silently fell back to the untyped generator path (PR #200
-        // follow-up review). The machina-test major documents the respelling.
+        // The first type parameter is the FSM type, and an explicit FSM type
+        // must keep the typed payload requirement. A client-type-first
+        // signature cannot: an explicit client type leaves the FSM type at
+        // its default, and the untyped generator path takes over silently.
         const _explicitFsmKeepsPayloads = () =>
             walkAll<ReturnType<typeof makeTypedLight>>(makeTypedLight, {
                 seed: 1,

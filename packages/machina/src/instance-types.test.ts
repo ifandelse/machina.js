@@ -2517,7 +2517,7 @@ describe("#195 — input payload maps", () => {
 
         const inputName = (Math.random() > 2 ? "alpha" : "beta") as "alpha" | "beta";
 
-        // @ts-expect-error -- the payload fits only "alpha"; a union input name must not decorrelate the name/payload pair (PR #200 review, finding 2)
+        // @ts-expect-error -- the payload fits only "alpha"; a union input name must not decorrelate the name/payload pair
         unionFsm.handle(inputName, { alpha: 1 });
 
         // A correlated union of complete calls stays legal.
@@ -2542,7 +2542,7 @@ describe("#195 — input payload maps", () => {
         }
 
         // An interface has no string index signature; the factory constraint
-        // must accept it anyway (PR #200 review, finding 4).
+        // must accept it anyway.
         const ifaceFsm = createFsm<IfaceInputs>()({
             id: "iface-map",
             initialState: "idle",
@@ -2577,8 +2577,7 @@ describe("#195 — input payload maps", () => {
 
         // An optional entry erases payload safety: TInputs[K] includes
         // undefined, and the call side degrades to unknown[]. The constraint
-        // strips nothing silently — it rejects the map (PR #200 follow-up
-        // review).
+        // rejects the map instead of silently stripping the modifier.
         // @ts-expect-error -- optional properties are not valid input-map entries
         const _optionalRejected = () => createFsm<OptionalInputs>();
 
