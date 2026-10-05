@@ -16,5 +16,8 @@
         "starlight-typedoc": "^0.21.5",
         "typedoc": "^0.28.20",
         "typedoc-plugin-markdown": "^4.13.1"
+    },
+    "devDependencies": {
+        "starlight-llms-txt": "^0.7.0"
     }
 }
