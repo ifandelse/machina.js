@@ -368,7 +368,7 @@ const validateConfig = (config: WalkConfigBase, availableInputs: string[]): stri
  * @param config - Walk configuration: invariant, walk count, step limit, seed,
  *   input filters, payload generators, and optional client factory.
  */
-export const walkAll = <TClient extends object = object, TFsm = unknown>(
+export const walkAll = <TFsm = unknown, TClient extends object = object>(
     factory: () => TFsm,
     config: WalkConfig<TClient, InputMapOfInstance<TFsm>>
 ): WalkResult => {

@@ -1439,31 +1439,27 @@ describe("walkAll with a typed input payload map", () => {
         });
     });
 
-    describe("when a pre-8.0 caller supplies TClient as the first type argument", () => {
-        interface LegacyClient {
-            tag: string;
-        }
-
-        const legacyFactory = () =>
-            createBehavioralFsm<LegacyClient>()({
-                id: "legacy-walk",
-                initialState: "idle",
-                states: {
-                    idle: { go: "done" },
-                    done: {},
-                },
-            });
-
-        // walkAll<TClient> was the public call form before the typed path
-        // existed; TClient must stay the first type parameter (PR #200
-        // review, finding 3). Explicit TClient leaves TFsm at its default,
-        // which routes these callers to the legacy untyped generator path.
-        const _legacyExplicitClient = () =>
-            walkAll<LegacyClient>(legacyFactory, {
+    describe("when the caller supplies the FSM type explicitly", () => {
+        // v4 binds the first type parameter to the FSM. An explicit FSM type
+        // keeps the typed payload requirement, where the v3 TClient-first
+        // binding silently fell back to the untyped generator path (PR #200
+        // follow-up review). The machina-test major documents the respelling.
+        const _explicitFsmKeepsPayloads = () =>
+            walkAll<ReturnType<typeof makeTypedLight>>(makeTypedLight, {
                 seed: 1,
                 walks: 1,
-                invariant: () => true,
-                client: () => ({ tag: "t" }),
+                invariant: () => undefined,
+                payloads: { emergency: () => [{ severity: 5 }] },
+            });
+
+        const _explicitFsmRejectsLegacyInputs = () =>
+            walkAll<ReturnType<typeof makeTypedLight>>(makeTypedLight, {
+                seed: 1,
+                walks: 1,
+                invariant: () => undefined,
+                payloads: { emergency: () => [{ severity: 5 }] },
+                // @ts-expect-error -- the legacy inputs key stays rejected under an explicit FSM type
+                inputs: {},
             });
 
         let result: string;
@@ -1472,7 +1468,7 @@ describe("walkAll with a typed input payload map", () => {
             result = "checked";
         });
 
-        it("should keep compiling with TClient in the first position", () => {
+        it("should keep payload safety under an explicit FSM type argument", () => {
             expect(result).toBe("checked");
         });
     });

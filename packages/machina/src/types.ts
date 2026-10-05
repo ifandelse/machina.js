@@ -254,7 +254,7 @@ export type InputMap = Record<string, unknown[]>;
  * named interface has no string index signature, and a bare
  * `Record<string, unknown[]>` bound rejects it with TS2344.
  */
-export type InputMapLike<T> = { [K in keyof T]: unknown[] };
+export type InputMapLike<T> = { [K in keyof T]-?: unknown[] };
 
 /**
  * The complete argument list of one `handle()` call: an input name paired
@@ -264,9 +264,16 @@ export type InputMapLike<T> = { [K in keyof T]: unknown[] };
  * payload that matches the member it is paired with, never a payload from
  * the other member.
  */
-export type InputCall<TInputNames extends string, TInputs extends InputMapLike<TInputs>> = {
-    [K in TInputNames & keyof TInputs & string]: [inputName: K, ...payload: TInputs[K]];
-}[TInputNames & keyof TInputs & string];
+export type InputCall<TInputNames extends string, TInputs extends InputMapLike<TInputs>> = [
+    TInputNames & keyof TInputs & string,
+] extends [never]
+    ? // No nameable inputs (an empty or catch-all-only state set): keep the
+      // documented escape hatch callable — `handle("mystery" as never)` and
+      // its extra-args form predate the map and must survive it.
+      [inputName: never, ...args: unknown[]]
+    : {
+          [K in TInputNames & keyof TInputs & string]: [inputName: K, ...payload: TInputs[K]];
+      }[TInputNames & keyof TInputs & string];
 
 /**
  * Builds an input payload map from a discriminated event union, matching the

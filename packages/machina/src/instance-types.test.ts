@@ -2569,4 +2569,27 @@ describe("#195 — input payload maps", () => {
             expect(result).toBe("checked");
         });
     });
+
+    describe("when a map declares an optional property", () => {
+        interface OptionalInputs {
+            maybe?: [n: number];
+        }
+
+        // An optional entry erases payload safety: TInputs[K] includes
+        // undefined, and the call side degrades to unknown[]. The constraint
+        // strips nothing silently — it rejects the map (PR #200 follow-up
+        // review).
+        // @ts-expect-error -- optional properties are not valid input-map entries
+        const _optionalRejected = () => createFsm<OptionalInputs>();
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should reject optional properties in the input map", () => {
+            expect(result).toBe("checked");
+        });
+    });
 });
