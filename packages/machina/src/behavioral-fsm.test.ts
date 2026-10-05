@@ -5634,3 +5634,67 @@ describe("BehavioralFsm — rehydrate() malformed snapshot shapes", () => {
         });
     });
 });
+
+// =============================================================================
+// Input payload map (#195)
+//
+// Type-level pins live in instance-types.test.ts. This covers the runtime
+// seam specific to BehavioralFsm: a multi-element payload tuple spreading
+// through the typed handle() wrapper into the handler, per client.
+// =============================================================================
+
+describe("BehavioralFsm — input payload map (#195)", () => {
+    type ConnectionInputs = {
+        connect: [];
+        drop: [reason: string, code: number];
+    };
+    type TypedConnection = {
+        url: string;
+        attempts: number;
+        lastDrop?: { reason: string; code: number };
+    };
+
+    const makeTypedConnectivityFsm = () =>
+        createBehavioralFsm<TypedConnection, ConnectionInputs>()({
+            id: "typed-connectivity",
+            initialState: "offline",
+            states: {
+                offline: {
+                    connect({ ctx }) {
+                        ctx.attempts += 1;
+                        return "connecting";
+                    },
+                },
+                connecting: {
+                    drop({ ctx }, reason, code) {
+                        ctx.lastDrop = { reason, code };
+                        return "offline";
+                    },
+                },
+            },
+        });
+
+    describe("when a multi-element payload tuple is dispatched for a client", () => {
+        let fsm: ReturnType<typeof makeTypedConnectivityFsm>;
+        let client: TypedConnection;
+
+        beforeEach(() => {
+            fsm = makeTypedConnectivityFsm();
+            client = { url: "wss://cal.zone", attempts: 0 };
+            fsm.handle(client, "connect");
+            fsm.handle(client, "drop", "E_SOGGY_STROMBOLI", 8675309);
+        });
+
+        it("should spread the tuple into the handler's parameters", () => {
+            expect(client).toEqual({
+                url: "wss://cal.zone",
+                attempts: 1,
+                lastDrop: { reason: "E_SOGGY_STROMBOLI", code: 8675309 },
+            });
+        });
+
+        it("should transition on the handler's return value", () => {
+            expect(fsm.currentState(client)).toBe("offline");
+        });
+    });
+});

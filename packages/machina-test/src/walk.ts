@@ -17,7 +17,7 @@
 //     monkey-patching handle()
 // =============================================================================
 
-import { MACHINA_TYPE } from "machina";
+import { MACHINA_TYPE, type InputMap, type InputMapOfInstance } from "machina";
 
 // -----------------------------------------------------------------------------
 // Types
@@ -38,7 +38,11 @@ export interface InvariantArgs {
     ctx: unknown;
     /** The input name that triggered this transition */
     input: string;
-    /** The payload passed to handle(), or undefined if no generator was configured */
+    /**
+     * What the generator produced for this step, or undefined if none was
+     * configured. Legacy `inputs` generators: the single value passed to
+     * handle(). Typed `payloads` generators: the full argument tuple.
+     */
     payload: unknown;
     /** Which handle() call produced this transition (1-indexed) */
     step: number;
@@ -59,8 +63,72 @@ export interface WalkResult {
  *
  * @typeParam TClient - The client object type for BehavioralFsm walks.
  *   Not relevant for Fsm walks — omit `client` in that case.
+ * @typeParam TInputs - The FSM's input payload map (#195), extracted from
+ *   the factory's return type. Under the wide default (untyped FSMs), the
+ *   config carries the legacy `inputs` generators. Under a real map, the
+ *   config requires `payloads` instead — one typed, tuple-returning
+ *   generator per payload-carrying input.
  */
-export interface WalkConfig<TClient extends object = object> {
+export type WalkConfig<
+    TClient extends object = object,
+    TInputs = InputMap,
+> = WalkConfigBase<TClient> & PayloadGeneratorsFor<TInputs>;
+
+/** Input names in the map whose tuples are non-empty — they carry payloads. */
+type PayloadCarryingInputs<TInputs> = {
+    [K in keyof TInputs & string]: TInputs[K] extends [] ? never : K;
+}[keyof TInputs & string];
+
+/**
+ * The generator half of WalkConfig, selected by the map.
+ *
+ * Wide map (untyped FSM): the legacy `inputs` shape — string-keyed, one
+ * value per call, passed as one argument.
+ *
+ * Real map with payload-carrying inputs: `payloads` is REQUIRED, with one
+ * key per payload-carrying input. Each generator returns that input's full
+ * argument tuple and walkAll spreads it. This is what turns a forgotten
+ * generator from a mid-walk TypeError into a compile error naming the
+ * input. The legacy `inputs` key is absent on this path on purpose — one
+ * way to do it.
+ *
+ * Real map with no payload-carrying inputs: nothing to generate, so the
+ * config carries neither key.
+ */
+type PayloadGeneratorsFor<TInputs> = string extends keyof TInputs
+    ? {
+          /**
+           * Payload generators keyed by input name. When walkAll fires input
+           * "X" and `inputs["X"]` is defined, it calls that function and
+           * passes the return value as the payload to handle(). Inputs
+           * without generators are fired with no payload.
+           *
+           * If the FSM fixes an input payload map (machina #195), walkAll's
+           * config switches to the typed `payloads` key instead, and the
+           * compiler requires a generator for every payload-carrying input.
+           */
+          inputs?: Record<string, () => unknown>;
+      }
+    : [PayloadCarryingInputs<TInputs>] extends [never]
+      ? unknown
+      : {
+            /**
+             * Typed payload generators, one per payload-carrying input in
+             * the FSM's map. Each returns the input's full argument tuple;
+             * walkAll spreads it into handle(). Required — handlers written
+             * against a map trust their payloads, so every payload-carrying
+             * input a walk can fire must have a generator.
+             */
+            payloads: {
+                [K in PayloadCarryingInputs<TInputs>]: () => TInputs[K];
+            };
+        };
+
+/**
+ * The generator-independent half of WalkConfig. Exported only through
+ * `WalkConfig` — consumers never name this directly.
+ */
+interface WalkConfigBase<TClient extends object = object> {
     /**
      * How many independent walks to run. Each walk creates a fresh FSM
      * via the factory and runs up to `maxSteps` random inputs.
@@ -94,14 +162,6 @@ export interface WalkConfig<TClient extends object = object> {
     exclude?: string[];
 
     /**
-     * Payload generators keyed by input name. When walkAll fires input "X"
-     * and `inputs["X"]` is defined, it calls that function and passes the
-     * return value as the payload to handle(). Inputs without generators
-     * are fired with no payload.
-     */
-    inputs?: Record<string, () => unknown>;
-
-    /**
      * BehavioralFsm client factory. Required when the FSM produced by the
      * factory is a BehavioralFsm — each walk calls this to get a fresh client.
      * Omit for Fsm walks.
@@ -115,6 +175,16 @@ export interface WalkConfig<TClient extends object = object> {
      */
     invariant: (args: InvariantArgs) => boolean | void;
 }
+
+/**
+ * Runtime view of the config: both generator keys optional, element types
+ * erased. The conditional half of WalkConfig exists for callers; the walk
+ * loop treats the two keys uniformly, with `payloads` taking precedence.
+ */
+type RuntimeWalkConfig<TClient extends object> = WalkConfigBase<TClient> & {
+    inputs?: Record<string, () => unknown>;
+    payloads?: Record<string, () => unknown[]>;
+};
 
 /** A recorded step in the input sequence — used for replay and error reporting */
 interface InputRecord {
@@ -237,7 +307,7 @@ export const extractInputs = (fsm: {
 // Config validation
 // -----------------------------------------------------------------------------
 
-const validateConfig = (config: WalkConfig, availableInputs: string[]): string[] => {
+const validateConfig = (config: WalkConfigBase, availableInputs: string[]): string[] => {
     const walks = config.walks ?? 100;
     const maxSteps = config.maxSteps ?? 50;
 
@@ -298,29 +368,34 @@ const validateConfig = (config: WalkConfig, availableInputs: string[]): string[]
  * @param config - Walk configuration: invariant, walk count, step limit, seed,
  *   input filters, payload generators, and optional client factory.
  */
-export const walkAll = <TClient extends object = object>(
-    factory: () => any,
-    config: WalkConfig<TClient>
+export const walkAll = <TFsm = unknown, TClient extends object = object>(
+    factory: () => TFsm,
+    config: WalkConfig<TClient, InputMapOfInstance<TFsm>>
 ): WalkResult => {
-    const walks = config.walks ?? 100;
-    const maxSteps = config.maxSteps ?? 50;
+    // The conditional generator half of WalkConfig exists for callers; the
+    // runtime treats both generator keys uniformly through this view.
+    const cfg = config as RuntimeWalkConfig<TClient>;
+    const walks = cfg.walks ?? 100;
+    const maxSteps = cfg.maxSteps ?? 50;
 
     // Build the input list from the first FSM instance — we only need this
     // for validation, not for actual walking (each walk creates its own FSM).
-    const probeFsm = factory();
+    const probeFsm = factory() as { states: Record<string, Record<string, unknown>> } & {
+        dispose?: () => void;
+    };
     const allInputs = extractInputs(probeFsm);
-    const inputs = validateConfig(config, allInputs);
+    const inputs = validateConfig(cfg, allInputs);
 
     // Dispose the probe FSM if possible — it was only needed for input extraction.
     if (typeof probeFsm.dispose === "function") {
         probeFsm.dispose();
     }
 
-    const seed = config.seed ?? Math.floor(Math.random() * 2 ** 32);
+    const seed = cfg.seed ?? Math.floor(Math.random() * 2 ** 32);
     const prng = createPrng(seed);
 
     for (let walkIndex = 0; walkIndex < walks; walkIndex++) {
-        runSingleWalk(factory, config, inputs, prng, seed, maxSteps);
+        runSingleWalk(factory, cfg, inputs, prng, seed, maxSteps);
     }
 
     return { seed, walksCompleted: walks };
@@ -331,14 +406,15 @@ export const walkAll = <TClient extends object = object>(
  * check invariant after every transition. Throws WalkFailureError on violation.
  */
 const runSingleWalk = <TClient extends object>(
-    factory: () => any,
-    config: WalkConfig<TClient>,
+    factory: () => unknown,
+    config: RuntimeWalkConfig<TClient>,
     inputs: string[],
     prng: () => number,
     seed: number,
     maxSteps: number
 ): void => {
-    const fsm = factory();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the walk loop drives any FSM shape; the public walkAll signature owns the typing
+    const fsm = factory() as any;
     const isBehavioral = fsm[MACHINA_TYPE] === "BehavioralFsm";
 
     // For BehavioralFsm: create a client and track it separately.
@@ -436,13 +512,31 @@ const runSingleWalk = <TClient extends object>(
         for (let step = 1; step <= maxSteps; step++) {
             currentStep = step;
             const inputName = inputs[randomInt(prng, inputs.length)];
-            const payload = config.inputs?.[inputName]?.();
+            let extraArgs: unknown[];
+            let payload: unknown;
+            const tupleGen = config.payloads?.[inputName];
+            if (tupleGen) {
+                // Typed generators return the input's full argument tuple;
+                // walkAll spreads it. An untyped caller reaching this path
+                // from JavaScript could return anything — fail loudly rather
+                // than guess whether a non-array was meant as one argument.
+                const tuple = tupleGen();
+                if (!Array.isArray(tuple)) {
+                    throw new Error(
+                        `walkAll: payloads.${inputName} must return the input's argument tuple (an array)`
+                    );
+                }
+                extraArgs = tuple;
+                payload = tuple;
+            } else {
+                // Legacy generators return one value, passed as one argument.
+                // Only spread when a generator produced one — handlers with no
+                // generator shouldn't receive a spurious undefined argument,
+                // which could mask bugs in handlers that check arguments.length.
+                payload = config.inputs?.[inputName]?.();
+                extraArgs = payload !== undefined ? [payload] : [];
+            }
             inputSequence.push({ input: inputName, payload });
-
-            // Only spread the payload arg when a generator produced one — handlers
-            // with no generator shouldn't receive a spurious undefined argument,
-            // which could mask bugs in handlers that check arguments.length.
-            const extraArgs = payload !== undefined ? [payload] : [];
             if (isBehavioral && client !== undefined) {
                 fsm.handle(client, inputName, ...extraArgs);
             } else {

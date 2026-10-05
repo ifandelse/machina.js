@@ -1272,3 +1272,204 @@ describe("walkAll export from machina-test", () => {
         });
     });
 });
+
+// =============================================================================
+// Typed input payload maps (#195)
+//
+// Pins compatibility: an instance built with the curried typed form must pass
+// through walkAll's untyped factory boundary. Payload-carrying inputs need
+// generators — handlers written against a map trust the payload, and walkAll
+// bypasses the compile-time check that normally guarantees it.
+// =============================================================================
+
+type TypedLightInputs = {
+    timeout: [];
+    emergency: [event: { severity: number }];
+};
+
+const makeTypedLight = () =>
+    createFsm<TypedLightInputs>()({
+        id: "typed-traffic-light",
+        initialState: "green",
+        context: { emergencies: 0 },
+        states: {
+            green: {
+                timeout: "yellow",
+                emergency({ ctx }, event) {
+                    if (event.severity < 3) {
+                        return;
+                    }
+                    ctx.emergencies += 1;
+                    return "red";
+                },
+            },
+            yellow: { timeout: "red" },
+            red: { timeout: "green" },
+        },
+    });
+
+describe("walkAll with a typed input payload map", () => {
+    // The typed path replaces the legacy `inputs` key with `payloads`:
+    // tuple-returning generators, one REQUIRED per payload-carrying input,
+    // spread into handle(). See PayloadGeneratorsFor in walk.ts.
+    describe("when every payload-carrying input has a generator", () => {
+        let result: ReturnType<typeof walkAll>;
+        let severity: number;
+
+        beforeEach(() => {
+            severity = 0;
+            result = walkAll(makeTypedLight, {
+                seed: 8675309,
+                walks: 25,
+                maxSteps: 20,
+                payloads: {
+                    // Alternate below and above the guard threshold so walks
+                    // exercise both branches of the emergency handler.
+                    emergency: () => {
+                        severity = severity === 1 ? 5 : 1;
+                        return [{ severity }];
+                    },
+                },
+                invariant({ state }) {
+                    if (!["green", "yellow", "red"].includes(state)) {
+                        throw new Error(`undeclared state: ${state}`);
+                    }
+                },
+            });
+        });
+
+        it("should complete every walk against the typed instance", () => {
+            expect(result).toEqual({ seed: 8675309, walksCompleted: 25 });
+        });
+    });
+
+    describe("when an input declares a multi-element tuple", () => {
+        type DimmerInputs = {
+            dim: [level: number, durationMs: number];
+        };
+
+        const makeDimmer = () =>
+            createFsm<DimmerInputs>()({
+                id: "dimmer",
+                initialState: "bright",
+                context: { lastDim: "" },
+                states: {
+                    bright: {
+                        dim({ ctx }, level, durationMs) {
+                            ctx.lastDim = `${level}:${durationMs}`;
+                            return "dimmed";
+                        },
+                    },
+                    dimmed: {
+                        dim: "bright",
+                    },
+                },
+            });
+
+        let result: ReturnType<typeof walkAll>;
+
+        beforeEach(() => {
+            result = walkAll(makeDimmer, {
+                seed: 90210,
+                walks: 10,
+                maxSteps: 10,
+                payloads: {
+                    dim: () => [3, 250],
+                },
+                invariant({ ctx, input, state }) {
+                    // The handler writes "level:durationMs" — proof the walk
+                    // spread the tuple into two arguments, not one array.
+                    if (
+                        input === "dim" &&
+                        state === "dimmed" &&
+                        (ctx as { lastDim: string }).lastDim !== "3:250"
+                    ) {
+                        throw new Error("tuple was not spread into handler arguments");
+                    }
+                },
+            });
+        });
+
+        it("should spread the generated tuple into the handler", () => {
+            expect(result).toEqual({ seed: 90210, walksCompleted: 10 });
+        });
+    });
+
+    describe("when the generator contract is violated at compile time", () => {
+        // Each pin below MUST be a genuine compile error — ts-jest fails the
+        // suite if a directive goes unused.
+        const invariant = () => undefined;
+
+        // @ts-expect-error -- payloads is required: the map declares a payload-carrying input (emergency)
+        const _missingPayloadsKey = () => walkAll(makeTypedLight, { seed: 1, walks: 1, invariant });
+
+        const _missingGenerator = () =>
+            // @ts-expect-error -- the emergency generator is required; an empty payloads object must be rejected
+            walkAll(makeTypedLight, { seed: 1, walks: 1, invariant, payloads: {} });
+
+        const _wrongTupleShape = () =>
+            walkAll(makeTypedLight, {
+                seed: 1,
+                walks: 1,
+                invariant,
+                payloads: {
+                    // @ts-expect-error -- the generator must return emergency's tuple: [event: { severity: number }]
+                    emergency: () => [{ severity: "high" }],
+                },
+            });
+
+        const _legacyInputsRejected = () =>
+            walkAll(makeTypedLight, {
+                seed: 1,
+                walks: 1,
+                invariant,
+                payloads: { emergency: () => [{ severity: 5 }] },
+                // @ts-expect-error -- the legacy inputs key is absent on the typed path; payloads is the one way
+                inputs: {},
+            });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should reject missing, incomplete, mistyped, and legacy generator configs", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when the caller supplies the FSM type explicitly", () => {
+        // The first type parameter is the FSM type, and an explicit FSM type
+        // must keep the typed payload requirement. A client-type-first
+        // signature cannot: an explicit client type leaves the FSM type at
+        // its default, and the untyped generator path takes over silently.
+        const _explicitFsmKeepsPayloads = () =>
+            walkAll<ReturnType<typeof makeTypedLight>>(makeTypedLight, {
+                seed: 1,
+                walks: 1,
+                invariant: () => undefined,
+                payloads: { emergency: () => [{ severity: 5 }] },
+            });
+
+        const _explicitFsmRejectsLegacyInputs = () =>
+            walkAll<ReturnType<typeof makeTypedLight>>(makeTypedLight, {
+                seed: 1,
+                walks: 1,
+                invariant: () => undefined,
+                payloads: { emergency: () => [{ severity: 5 }] },
+                // @ts-expect-error -- the legacy inputs key stays rejected under an explicit FSM type
+                inputs: {},
+            });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should keep payload safety under an explicit FSM type argument", () => {
+            expect(result).toBe("checked");
+        });
+    });
+});

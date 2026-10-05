@@ -58,7 +58,7 @@ The descendant chain gets first shot, and the parent's handlers act as a fallbac
 
 ## Declaring bubbled inputs
 
-The nohandler-bubbling mechanism above works whether or not the child says anything about it — but an undeclared bubble gives you zero compile-time signal that a container needs to catch it. `bubbles` closes that gap: it's a config property listing the inputs an FSM fires at itself without handling, so TypeScript can enforce that whatever mounts it via `_child` actually deals with them.
+The nohandler-bubbling mechanism above works whether or not the child says anything about it. Without a declaration, though, the compiler cannot warn that a container needs to catch the bubble. `bubbles` adds that declaration: a config property listing the inputs an FSM fires at itself without handling. TypeScript can then enforce that whatever mounts the FSM via `_child` actually deals with them. Under an [input payload map](/guide/typed-payloads/), bubble entries must also be keys of the map: a bubble the FSM can never fire is rejected at the declaration.
 
 ```ts
 // `fsm` is declared before createFsm() and assigned after, so _onEnter can

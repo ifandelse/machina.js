@@ -42,13 +42,21 @@ Dungeon Critters spawns up to 80 animated critters on a canvas dungeon floor, ea
 
 ## Key Pattern
 
-One FSM definition, created once, drives every critter:
+One FSM definition, created once, drives every critter. An [input payload map](/guide/typed-payloads/) declares what each input carries, so handlers receive typed payloads with no annotations or casts:
 
 ```ts
 import { createBehavioralFsm } from "machina";
 
+export type CritterInputs = {
+    tick: [payload: TickPayload];
+    playerDetected: [];
+    playerInRange: [];
+    playerLostContact: [];
+    attacked: [payload: TickPayload];
+};
+
 export function createCritterBehavior() {
-    return createBehavioralFsm<CritterClient>()({
+    return createBehavioralFsm<CritterClient, CritterInputs>()({
         id: "critter-behavior",
         initialState: "idle",
 
@@ -73,8 +81,9 @@ export function createCritterBehavior() {
             },
 
             chase: {
+                // `payload` is a typed TickPayload via CritterInputs — no cast
                 tick({ ctx }, payload) {
-                    const { playerX, playerY } = payload as TickPayload;
+                    const { playerX, playerY } = payload;
                     const dir = directionTo(ctx.x, ctx.y, playerX, playerY);
                     ctx.vx = dir.dx * CHASE_SPEED;
                     ctx.vy = dir.dy * CHASE_SPEED;
@@ -85,7 +94,7 @@ export function createCritterBehavior() {
                 // Function handler — needed here to capture playerX/playerY before
                 // transitioning, since _onEnter does not receive the triggering args.
                 attacked({ ctx }, payload) {
-                    const { playerX, playerY } = payload as TickPayload;
+                    const { playerX, playerY } = payload;
                     const dir = directionTo(ctx.x, ctx.y, playerX, playerY);
                     ctx.fleeDirection = { dx: -dir.dx, dy: -dir.dy };
                     return "flee";

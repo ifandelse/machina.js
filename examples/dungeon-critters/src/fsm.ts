@@ -69,10 +69,10 @@ import {
 } from "./config";
 
 // -----------------------------------------------------------------------------
-// TickPayload — extra args passed to every tick handler
+// TickPayload and the input payload map
 //
 // The game loop calls: fsm.handle(critter, "tick", payload)
-// Handlers receive it as the second argument (after HandlerArgs).
+// Handlers receive the payload as the second argument (after HandlerArgs).
 //
 // playerX/playerY: cursor position in canvas coords.
 // dt: delta-time in milliseconds since the last frame. Currently unused by
@@ -81,15 +81,30 @@ import {
 // -----------------------------------------------------------------------------
 
 /**
- * Extra arguments passed to tick (and attacked) handlers by the game loop.
- * Carries player position so handlers can calculate direction without touching
- * shared mutable state outside the FSM.
+ * Payload passed to tick and attacked by the game loop. Carries player
+ * position so handlers can calculate direction without touching shared
+ * mutable state outside the FSM.
  */
 export interface TickPayload {
     playerX: number;
     playerY: number;
     dt: number;
 }
+
+/**
+ * Input payload map for the critter FSM. Declares every input and the
+ * argument tuple its handlers receive. Because the map is supplied to the
+ * curried factory below, handler payload parameters are inferred from it,
+ * handle() rejects a missing or malformed payload at compile time, and a
+ * typo'd handler key in the states config is a compile error.
+ */
+export type CritterInputs = {
+    tick: [payload: TickPayload];
+    playerDetected: [];
+    playerInRange: [];
+    playerLostContact: [];
+    attacked: [payload: TickPayload];
+};
 
 // -----------------------------------------------------------------------------
 // Internal helpers — kept private to this module
@@ -135,9 +150,11 @@ function randomWaypointInTerritory(critter: CritterClient): { x: number; y: numb
 // -----------------------------------------------------------------------------
 // FSM definition
 //
-// createBehavioralFsm<CritterClient>()(...) — the curried call fixes TClient
-// as CritterClient, so every handler's `ctx` is a CritterClient. No separate
-// context object needed.
+// createBehavioralFsm<CritterClient, CritterInputs>()(...) — the curried call
+// fixes two things before config inference starts. TClient is CritterClient,
+// so every handler's `ctx` is a CritterClient with no separate context object.
+// CritterInputs is the input payload map, so tick and attacked handlers
+// receive a typed TickPayload with no annotation or cast.
 //
 // -----------------------------------------------------------------------------
 
@@ -147,7 +164,7 @@ function randomWaypointInTerritory(critter: CritterClient): { x: number; y: numb
  * via WeakMap. Call handle(critter, inputName) to drive individual critters.
  */
 export function createCritterBehavior() {
-    return createBehavioralFsm<CritterClient>()({
+    return createBehavioralFsm<CritterClient, CritterInputs>()({
         id: "critter-behavior",
         initialState: "idle",
 
@@ -275,7 +292,10 @@ export function createCritterBehavior() {
                 },
 
                 tick({ ctx }, payload) {
-                    const { playerX = 0, playerY = 0 } = (payload ?? {}) as TickPayload;
+                    // payload is a typed TickPayload via CritterInputs — the old
+                    // defensive (payload ?? {}) cast is unnecessary now that a
+                    // payload-less tick is a compile error.
+                    const { playerX, playerY } = payload;
 
                     // Face the player (velocity is zero but direction is tracked
                     // for the nose indicator in the renderer).
@@ -311,7 +331,7 @@ export function createCritterBehavior() {
             // ------------------------------------------------------------------
             chase: {
                 tick({ ctx }, payload) {
-                    const { playerX = 0, playerY = 0 } = (payload ?? {}) as TickPayload;
+                    const { playerX, playerY } = payload;
 
                     const dir = directionTo(ctx.x, ctx.y, playerX, playerY);
                     ctx.vx = dir.dx * CHASE_SPEED;
@@ -329,7 +349,7 @@ export function createCritterBehavior() {
                 // This is an intentional BehavioralFsm pattern: prepare client state
                 // in the source-state handler, finalize bookkeeping in _onEnter.
                 attacked({ ctx }, payload) {
-                    const { playerX, playerY } = payload as TickPayload;
+                    const { playerX, playerY } = payload;
 
                     // Calculate flee direction NOW while we have the player position.
                     // Away from the player = negate the toward-player vector.

@@ -1453,3 +1453,109 @@ describe("Fsm — hierarchical (Task 4)", () => {
         });
     });
 });
+
+// =============================================================================
+// Input payload map (#195)
+//
+// The map is type-only, so the compile-time pins live in instance-types.test.ts.
+// These tests cover the runtime seams the feature touched: payloads flowing
+// through the typed handle() wrapper into handler guards, and the deferred
+// replay path, which now re-dispatches through the private untyped core.
+// =============================================================================
+
+type TrafficLightInputs = {
+    timeout: [];
+    emergency: [event: { severity: number }];
+    reset: [];
+};
+
+const makeTypedTrafficLight = () =>
+    createFsm<TrafficLightInputs>()({
+        id: "typed-traffic-light",
+        initialState: "green",
+        context: { minSeverity: 3, emergencies: 0 },
+        states: {
+            green: {
+                timeout: "yellow",
+                emergency({ ctx }, event) {
+                    if (event.severity < ctx.minSeverity) {
+                        return;
+                    }
+                    ctx.emergencies += 1;
+                    return "red";
+                },
+            },
+            yellow: {
+                timeout: "red",
+            },
+            red: {
+                reset: "green",
+            },
+        },
+    });
+
+describe("Fsm — input payload map (#195)", () => {
+    let light: ReturnType<typeof makeTypedTrafficLight>;
+
+    describe("when the payload passes the handler's guard", () => {
+        beforeEach(() => {
+            light = makeTypedTrafficLight();
+            light.handle("emergency", { severity: 5 });
+        });
+
+        it("should transition to the state the handler returned", () => {
+            expect(light.currentState()).toBe("red");
+        });
+
+        it("should apply the payload-driven context mutation", () => {
+            expect(light.context).toEqual({ minSeverity: 3, emergencies: 1 });
+        });
+    });
+
+    describe("when the payload fails the handler's guard", () => {
+        beforeEach(() => {
+            light = makeTypedTrafficLight();
+            light.handle("emergency", { severity: 1 });
+        });
+
+        it("should stay in the current state", () => {
+            expect(light.currentState()).toBe("green");
+        });
+
+        it("should leave context unchanged", () => {
+            expect(light.context).toEqual({ minSeverity: 3, emergencies: 0 });
+        });
+    });
+
+    describe("when a deferred input is replayed after a transition", () => {
+        let seen: Array<{ id: number }>;
+
+        beforeEach(() => {
+            seen = [];
+            const job = createFsm<{ start: []; report: [payload: { id: number }] }>()({
+                id: "job",
+                initialState: "idle",
+                context: {},
+                states: {
+                    idle: {
+                        report({ defer }) {
+                            defer({ until: "running" });
+                        },
+                        start: "running",
+                    },
+                    running: {
+                        report(_args, payload) {
+                            seen.push(payload);
+                        },
+                    },
+                },
+            });
+            job.handle("report", { id: 8675309 });
+            job.handle("start");
+        });
+
+        it("should replay the input with its original payload", () => {
+            expect(seen).toEqual([{ id: 8675309 }]);
+        });
+    });
+});

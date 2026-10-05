@@ -183,6 +183,117 @@ export type BubblesOfInstance<TFsm> = TFsm extends import("./fsm").Fsm<
       ? TBubbles
       : never;
 
+/**
+ * Extracts the input payload map from a concrete machina FSM instance (#195).
+ *
+ * Falls back to the wide map — not `never` — for non-FSM types and for
+ * `any`: tooling (machina-test's walkAll) derives config types from this,
+ * and the wide map is what keeps the untyped path's config shape unchanged.
+ * The `0 extends 1 & TFsm` clause detects `any`, which would otherwise take
+ * both conditional branches and produce a useless union.
+ */
+export type InputMapOfInstance<TFsm> = 0 extends 1 & TFsm
+    ? InputMap
+    : TFsm extends import("./fsm").Fsm<
+            infer _TCtx extends object,
+            infer _TStateNames extends string,
+            infer _TInputNames extends string,
+            infer _TBubbles extends string,
+            infer TInputs extends InputMapLike<TInputs>
+        >
+      ? TInputs
+      : TFsm extends import("./behavioral-fsm").BehavioralFsm<
+              infer _TClient extends object,
+              infer _TStateNames extends string,
+              infer _TInputNames extends string,
+              infer _TBubbles extends string,
+              infer TInputs extends InputMapLike<TInputs>
+          >
+        ? TInputs
+        : InputMap;
+
+// -----------------------------------------------------------------------------
+// Input payload map (#195)
+//
+// An opt-in map from input name to the argument tuple its handlers receive.
+// The curried factory forms supply it: `createFsm<TInputs>()` and
+// `createBehavioralFsm<TClient, TInputs>()`. Currying is forced, not styled:
+// TypeScript has no partial type-argument inference, so a map passed
+// alongside the config would disable inference for TStates and kill every
+// literal validation. The map is type-only; the runtime never reads it
+// (same contract as `bubbles`).
+//
+// When a map is supplied it becomes the COMPLETE input vocabulary: handler
+// keys are validated against it (see `InputVocabulary`), `handle()` is keyed
+// by it, and each handler's extra parameters are typed by its tuple. When no
+// map is supplied, the wide default (`Record<string, unknown[]>`) degenerates
+// every per-input type to today's untyped behavior.
+// -----------------------------------------------------------------------------
+
+/**
+ * Constraint for input payload maps: input name → argument tuple.
+ *
+ * An empty tuple means the input carries no payload.
+ *
+ * @example
+ * ```ts
+ * type TrafficLightInputs = {
+ *   timeout: [];
+ *   emergency: [event: { severity: number }];
+ * };
+ *
+ * const light = createFsm<TrafficLightInputs>()({ ... });
+ * light.handle("emergency", { severity: 5 }); // payload enforced
+ * ```
+ */
+export type InputMap = Record<string, unknown[]>;
+
+/**
+ * The constraint a user-supplied input map must satisfy: every declared
+ * property is an argument tuple. Self-mapped instead of `InputMap` because a
+ * named interface has no string index signature, and a bare
+ * `Record<string, unknown[]>` bound rejects it with TS2344.
+ */
+export type InputMapLike<T> = { [K in keyof T]-?: unknown[] };
+
+/**
+ * The complete argument list of one `handle()` call: an input name paired
+ * with that input's own payload tuple. The union distributes over the map,
+ * which keeps the pair correlated when the caller's input name is itself a
+ * union — `handle(name, payload)` with `name: "a" | "b"` only accepts a
+ * payload that matches the member it is paired with, never a payload from
+ * the other member.
+ */
+export type InputCall<TInputNames extends string, TInputs extends InputMapLike<TInputs>> = [
+    TInputNames & keyof TInputs & string,
+] extends [never]
+    ? // No nameable inputs (an empty or catch-all-only state set): keep the
+      // documented escape hatch callable — `handle("mystery" as never)` and
+      // its extra-args form predate the map and must survive it.
+      [inputName: never, ...args: unknown[]]
+    : {
+          [K in TInputNames & keyof TInputs & string]: [inputName: K, ...payload: TInputs[K]];
+      }[TInputNames & keyof TInputs & string];
+
+/**
+ * Builds an input payload map from a discriminated event union, matching the
+ * common "dispatch the whole event" pattern: `handle(event.type, event)`.
+ *
+ * @example
+ * ```ts
+ * type TrafficLightEvent =
+ *   | { type: "emergency"; severity: number }
+ *   | { type: "pedestrianRequest"; crossingId: string };
+ *
+ * type TrafficLightInputs = InputMapFromUnion<TrafficLightEvent>;
+ * // => { emergency:         [event: { type: "emergency"; severity: number }];
+ * //      pedestrianRequest: [event: { type: "pedestrianRequest"; crossingId: string }] }
+ * ```
+ */
+export type InputMapFromUnion<TEvent extends { type: string }> = {
+    [E in TEvent as E["type"]]: [event: E];
+};
+
 // -----------------------------------------------------------------------------
 // Handler argument object
 //
@@ -291,9 +402,11 @@ export interface HandlerArgs<TCtx, TStateNames extends string = string> {
  * Guards are just `if` statements. Actions are just code before the return.
  *
  * The `...extra` rest parameter captures additional arguments passed through
- * `handle(inputName, ...extraArgs)`. These are untyped (`unknown[]`) because
- * correlating per-input arg types with handle() call sites would require
- * prohibitively complex mapped types for minimal benefit.
+ * `handle(inputName, ...extraArgs)`. By default these are untyped
+ * (`unknown[]`). An input payload map types them per input (#195): supply it
+ * through the curried factory form (`createFsm<TInputs>()`), and `TPayload`
+ * becomes that input's declared tuple. Handler parameters are then inferred —
+ * no annotation, no cast.
  *
  * @example
  * ```ts
@@ -315,10 +428,11 @@ export interface HandlerArgs<TCtx, TStateNames extends string = string> {
  * success({ ctx }, data) { ctx.result = data; }
  * ```
  */
-export type HandlerFn<TCtx, TStateNames extends string = string> = (
-    args: HandlerArgs<TCtx, TStateNames>,
-    ...extra: unknown[]
-) => TStateNames | void;
+export type HandlerFn<
+    TCtx,
+    TStateNames extends string = string,
+    TPayload extends unknown[] = unknown[],
+> = (args: HandlerArgs<TCtx, TStateNames>, ...extra: TPayload) => TStateNames | void;
 
 // -----------------------------------------------------------------------------
 // Handler definition forms
@@ -361,10 +475,11 @@ export type HandlerFn<TCtx, TStateNames extends string = string> = (
  * }
  * ```
  */
-export type HandlerDef<TCtx, TStateNames extends string = string> =
-    | TStateNames
-    | HandlerFn<TCtx, TStateNames>
-    | MachinaInstance;
+export type HandlerDef<
+    TCtx,
+    TStateNames extends string = string,
+    TPayload extends unknown[] = unknown[],
+> = TStateNames | HandlerFn<TCtx, TStateNames, TPayload> | MachinaInstance;
 
 // -----------------------------------------------------------------------------
 // State validation
@@ -433,11 +548,20 @@ export type HandlerDef<TCtx, TStateNames extends string = string> =
  * @typeParam TStateNames - The state-name union. Defaults to
  *   `keyof TStates & string`, but callers that already resolved it
  *   (the factory functions) pass it through explicitly.
+ * @typeParam TInputs - The input payload map (#195). Ordinary inputs are a
+ *   mapped type over its keys rather than an index signature, which is what
+ *   makes per-input payload typing possible. The wide default
+ *   (`keyof = string`) makes the mapped member degenerate to an index
+ *   signature, reproducing the untyped behavior exactly — one formulation
+ *   serves both paths. Lifecycle hooks and the catch-all keep `unknown[]`
+ *   either way: they can receive the arguments of ANY input, so no single
+ *   tuple fits them.
  */
 export type ValidateStates<
     TCtx,
     TStates extends Record<string, Record<string, unknown>>,
     TStateNames extends string = keyof TStates & string,
+    TInputs extends InputMapLike<TInputs> = InputMap,
 > = Record<
     TStateNames,
     {
@@ -446,7 +570,7 @@ export type ValidateStates<
         _child?: MachinaInstance;
         "*"?: HandlerFn<TCtx, NoInfer<TStateNames>>;
     } & {
-        [input: string]: HandlerDef<TCtx, NoInfer<TStateNames>>;
+        [I in keyof TInputs]?: HandlerDef<TCtx, NoInfer<TStateNames>, TInputs[I]>;
     }
 >;
 
@@ -482,9 +606,7 @@ type HasCatchAll<TStates> = {
  * anywhere — literally anything.
  */
 type CoverageOf<TStates, TBubbles extends string> =
-    | OwnInputNamesOf<TStates>
-    | TBubbles
-    | (HasCatchAll<TStates> extends true ? string : never);
+    OwnInputNamesOf<TStates> | TBubbles | (HasCatchAll<TStates> extends true ? string : never);
 
 /**
  * For state `S`, if it mounts a `_child`, the child's declared bubbles that
@@ -533,6 +655,66 @@ export type ChildCoverage<
 };
 
 // -----------------------------------------------------------------------------
+// Input vocabulary contract (#195)
+//
+// When a config supplies an input payload map, the map is the COMPLETE input
+// vocabulary: every handler key in every state must be a key of the map.
+// A typo'd handler key becomes a compile error — something the untyped path
+// cannot catch, since its index signature accepts any key. Enforced on the
+// `states` property itself, same anchoring pattern as ChildCoverage.
+//
+// ⚠️ Constraint-robustness: validation members intersected onto `states` get
+// evaluated against TStates' wide CONSTRAINT (`Record<string, Record<string,
+// unknown>>`) during the context-sensitive handler-body pass — before the
+// literal settles. ChildCoverage survives that pass by accident: its
+// `extends { _child: ... }` probe naturally fails on the wide Record. A
+// keyof-based guard does not. `keyof Record<string, unknown>` is `string`,
+// the Exclude passes `string` through, and the guard demands the error
+// property on CLEAN states. So the guard must short-circuit whenever the key
+// union is non-literal — the `string extends keyof TState` test below. Any
+// future validation member intersected onto `states` needs this same
+// property.
+// -----------------------------------------------------------------------------
+
+/**
+ * For one state object, the handler keys that are not declared in the input
+ * map (special keys excluded). Resolves to `never` in three cases: every key
+ * is declared; the map is the wide untyped default (`keyof TInputs` is
+ * `string`, so the Exclude strips everything); or the evaluation ran against
+ * TStates' wide constraint (the `string extends keyof TState` short-circuit —
+ * see the module comment above).
+ */
+type UndeclaredInputsIn<
+    TState,
+    TInputs extends InputMapLike<TInputs>,
+> = string extends keyof TState & string
+    ? never
+    : Exclude<keyof TState & string, (keyof TInputs & string) | SpecialStateKeys>;
+
+/**
+ * Enforces the input vocabulary contract across an entire `states` config.
+ * Intersected onto `FsmConfig.states` alongside `ValidateStates` and
+ * `ChildCoverage`. Inert (`unknown` per state) on the untyped path; on the
+ * typed path, a state declaring an undeclared input gets an
+ * impossible-to-satisfy member whose property name IS the error message,
+ * naming the offending keys.
+ */
+export type InputVocabulary<
+    TStates extends Record<string, Record<string, unknown>>,
+    TStateNames extends string,
+    TInputs extends InputMapLike<TInputs>,
+> = {
+    [S in TStateNames]: UndeclaredInputsIn<TStates[S], TInputs> extends never
+        ? unknown
+        : {
+              "state declares a handler for an input missing from the input map": UndeclaredInputsIn<
+                  TStates[S],
+                  TInputs
+              >;
+          };
+};
+
+// -----------------------------------------------------------------------------
 // FSM configuration
 //
 // The config shape passed to createFsm() and createBehavioralFsm().
@@ -563,6 +745,12 @@ export type ChildCoverage<
  *
  * @typeParam TBubbles - The union of inputs this FSM declares via `bubbles`.
  *   Defaults to `never` — most FSMs bubble nothing.
+ *
+ * @typeParam TInputs - The input payload map (#195). The curried factory
+ *   forms fix it before inference starts, so it adds nothing to the
+ *   inference machinery above. Defaults to the wide map, which keeps
+ *   `ValidateStates` and `InputVocabulary` behaving exactly as the untyped
+ *   path always has.
  *
  * @example
  * ```ts
@@ -620,6 +808,7 @@ export interface FsmConfig<
     >,
     TStateNames extends string = keyof TStates & string,
     TBubbles extends string = never,
+    TInputs extends InputMapLike<TInputs> = InputMap,
 > {
     /** Unique identifier for this FSM */
     id: string;
@@ -675,8 +864,9 @@ export interface FsmConfig<
      * source themselves.
      */
     states: TStates &
-        ValidateStates<TCtx, TStates, TStateNames> &
-        ChildCoverage<TStates, TStateNames, TBubbles>;
+        ValidateStates<TCtx, TStates, TStateNames, TInputs> &
+        ChildCoverage<TStates, TStateNames, TBubbles> &
+        InputVocabulary<TStates, TStateNames, TInputs>;
 }
 
 // -----------------------------------------------------------------------------

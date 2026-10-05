@@ -635,3 +635,54 @@ describe("toNeverReach", () => {
         });
     });
 });
+
+// =============================================================================
+// Typed input payload maps (#195)
+//
+// Pins compatibility: an instance built with the curried typed form must be
+// accepted as a matcher subject.
+// =============================================================================
+
+type TypedLightInputs = {
+    timeout: [];
+    emergency: [event: { severity: number }];
+};
+
+const makeTypedLight = () =>
+    createFsm<TypedLightInputs>()({
+        id: "typed-traffic-light",
+        initialState: "green",
+        context: { emergencies: 0 },
+        states: {
+            green: {
+                timeout: "yellow",
+                emergency({ ctx }, event) {
+                    if (event.severity < 3) {
+                        return;
+                    }
+                    ctx.emergencies += 1;
+                    return "red";
+                },
+            },
+            yellow: { timeout: "red" },
+            red: { timeout: "green" },
+        },
+    });
+
+describe("matchers with a typed input payload map", () => {
+    describe("when a typed instance is the matcher subject", () => {
+        let fsm: ReturnType<typeof makeTypedLight>;
+
+        beforeEach(() => {
+            fsm = makeTypedLight();
+        });
+
+        it("should pass toAlwaysReach along the shorthand cycle", () => {
+            expect(fsm).toAlwaysReach("red", { from: "green" });
+        });
+
+        it("should report no unreachable states", () => {
+            expect(fsm).toHaveNoUnreachableStates();
+        });
+    });
+});

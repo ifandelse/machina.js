@@ -4,7 +4,7 @@ Focused finite state machine library for JavaScript and TypeScript. States in, s
 
 - **Repo**: https://github.com/ifandelse/machina.js
 - **Docs**: https://machina-js.org
-- **Version**: 7.0.0
+- **Version**: 7.0.1
 - **License**: MIT
 
 ## Architecture
@@ -28,7 +28,7 @@ packages/
 examples/           # Working examples (connectivity, dungeon-critters, etc.)
 ```
 
-The core library is ~1000 lines of TypeScript across 5 files.
+The core library is ~2,900 lines of TypeScript across 5 files.
 
 ## Build / Test / Lint
 
@@ -63,6 +63,8 @@ Two factory functions, one mental model:
 **Child FSMs**: `_child: fsmInstance` on a state delegates inputs to the child first — `canHandle()` answers for the entire `_child` chain, so delegation reaches any depth and the deepest handler wins over ancestors. Unhandled inputs bubble up. `compositeState()` returns the dot-delimited path (e.g. `"active.uploading.retrying"`). Children auto-reset when the parent re-enters their state.
 
 **Bubbled inputs**: `bubbles: ["someInput"]` on a config declares inputs the FSM fires at itself but never handles, expecting a container to catch them. Declared bubbles join the FSM's typed input union, and any config mounting it via `_child` must handle or re-declare them (or carry a `"*"`) or it fails to compile. Type-level only — the engine never reads `bubbles`.
+
+**Input payload maps**: `createFsm<TInputs>()(config)` and `createBehavioralFsm<TClient, TInputs>()(config)` fix a map of input name → argument tuple before config inference starts. Handler payload parameters are inferred from the map, `handle()` enforces payloads at the call site, and the map is the complete input vocabulary: undeclared handler keys, undeclared `bubbles` entries, and wrong payloads are compile errors. Type-only; the engine never reads it. `InputMapFromUnion` derives a map from a discriminated event union. `InputMapOfInstance` extracts it from an instance (machina-test's `walkAll` uses this to require typed payload generators). A forwarder that takes a whole event union and calls `handle(event.type, event)` does not compile, because TypeScript cannot correlate the two unions; narrow with a `switch` or cast the payload.
 
 **Deferred input**: `defer()` in a handler queues the current input for replay after the next transition. `defer({ until: "stateName" })` targets a specific state.
 

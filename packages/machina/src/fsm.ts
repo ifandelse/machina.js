@@ -17,6 +17,9 @@ import {
     type InputNamesOfInstance,
     type DisposeOptions,
     type SpecialStateKeys,
+    type InputMap,
+    type InputCall,
+    type InputMapLike,
 } from "./types";
 
 /**
@@ -34,6 +37,9 @@ import {
  * @typeParam TBubbles - String literal union of inputs this FSM declares via
  *   `bubbles`. Type-only — carried so `BubblesOfInstance` can extract it from
  *   a constructed instance; nothing at runtime reads this generic.
+ * @typeParam TInputs - The input payload map (#195). Defaults to the wide
+ *   map, under which `handle()`'s signature reduces to exactly the untyped
+ *   behavior. `createFsm<TInputs>()` passes the user's map here.
  */
 export class Fsm<
     TCtx extends object,
@@ -41,6 +47,7 @@ export class Fsm<
     TInputNames extends string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- phantom marker: never referenced in the class body, only read back out externally via BubblesOfInstance's `infer`.
     TBubbles extends string = never,
+    TInputs extends InputMapLike<TInputs> = InputMap,
 > {
     readonly id: string;
     readonly initialState: TStateNames;
@@ -50,7 +57,7 @@ export class Fsm<
     // Set from config.states — same object reference as BehavioralFsm.states,
     // so ChildLink wrapping done by wrapChildLinks() is reflected automatically.
     readonly states: Record<string, Record<string, unknown>>;
-    private readonly bfsm: BehavioralFsm<TCtx, TStateNames, TInputNames>;
+    private readonly bfsm: BehavioralFsm<TCtx, TStateNames, TInputNames, never, TInputs>;
     // Public readonly so external tooling (and walkAll's invariant) can read
     // context without needing to plumb it through every call site. The context
     // is already visible inside handlers via ctx — this just makes it accessible
@@ -104,11 +111,17 @@ export class Fsm<
      * there first; unhandled inputs bubble up to the parent.
      * No-ops silently when disposed.
      */
-    handle(inputName: TInputNames, ...args: unknown[]): void {
+    handle(...call: InputCall<TInputNames, TInputs>): void {
         if (this.disposed) {
             return;
         }
-        this.bfsm.handle(this.context, inputName, ...args);
+        // The rest tuple keeps the input name and its payload correlated at
+        // the call site; past this point the runtime treats them uniformly.
+        const [inputName, ...args] = call;
+        this.bfsm.handle(
+            this.context,
+            ...([inputName, ...args] as InputCall<TInputNames, TInputs>)
+        );
     }
 
     /**
@@ -222,6 +235,16 @@ export class Fsm<
  *
  * State names, input names, and all handler signatures derive from `TStates`.
  *
+ * To type each input's payload as well (#195), call the curried form with an
+ * input payload map: `createFsm<TInputs>()({...})`. The zero-argument call
+ * fixes `TInputs`; the returned function infers everything else from the
+ * config exactly as the direct form does. The split exists because TypeScript
+ * has no partial type-argument inference — the map can't ride along with the
+ * inferred parameters. Under a map, handler payload parameters are inferred
+ * from the map's tuples and `handle()` enforces them at the call site. The
+ * map is also the complete input vocabulary: handler keys outside it are
+ * compile errors.
+ *
  * @example
  * ```ts
  * const light = createFsm({
@@ -237,7 +260,60 @@ export class Fsm<
  *
  * light.handle("timeout"); // transitions green → yellow
  * ```
+ *
+ * @example Typed input payloads via the curried form
+ * ```ts
+ * type TrafficLightInputs = {
+ *   timeout: [];
+ *   emergency: [event: { severity: number }];
+ * };
+ *
+ * const light = createFsm<TrafficLightInputs>()({
+ *   id: "traffic-light",
+ *   initialState: "green",
+ *   context: { minSeverity: 3 },
+ *   states: {
+ *     green: {
+ *       timeout: "yellow",
+ *       // `event` is inferred as { severity: number }
+ *       emergency({ ctx }, event) {
+ *         if (event.severity < ctx.minSeverity) { return; }
+ *         return "red";
+ *       },
+ *     },
+ *     yellow: { timeout: "red" },
+ *     red: {},
+ *   },
+ * });
+ *
+ * light.handle("emergency", { severity: 5 }); // payload enforced
+ * ```
  */
+export function createFsm<TInputs extends InputMapLike<TInputs>>(): <
+    TCtx extends object,
+    const TStates extends Record<string, Record<string, unknown>>,
+    TStateNames extends string = keyof TStates & string,
+    // Constrained to the map: a bubble declares "I will fire this input",
+    // and the map is the complete set of fireable inputs. A bubble outside
+    // the map is unfireable — reject it at the declaration (#195).
+    TBubbles extends keyof TInputs & string = never,
+>(
+    config: FsmConfig<TCtx, TStates, TStateNames, TBubbles, TInputs>
+) => Fsm<
+    TCtx,
+    keyof TStates & string,
+    // The map is the complete input vocabulary (#195), so it replaces the
+    // config-inferred union as handle()'s key source. Payload flow through
+    // `_child` mounts is phase 2 — a typed parent does not yet accept its
+    // children's inputs.
+    keyof TInputs & string,
+    TBubbles,
+    TInputs
+>;
+// The direct overload must stay LAST (matching createBehavioralFsm). Utility
+// types that collapse an overload set — ReturnType<typeof createFsm> in
+// particular — resolve to the final signature. Downstream code relies on that
+// signature being the Fsm-returning form, not the curried function.
 export function createFsm<
     TCtx extends object = Record<string, never>,
     const TStates extends Record<string, Record<string, unknown>> = Record<
@@ -265,6 +341,19 @@ export function createFsm<
       }[keyof TStates]
     | TBubbles,
     TBubbles
-> {
+>;
+export function createFsm<
+    TCtx extends object = Record<string, never>,
+    const TStates extends Record<string, Record<string, unknown>> = Record<
+        string,
+        Record<string, unknown>
+    >,
+    TStateNames extends string = keyof TStates & string,
+    TBubbles extends string = never,
+>(config?: FsmConfig<TCtx, TStates, TStateNames, TBubbles>) {
+    if (config === undefined) {
+        return (curriedConfig: FsmConfig<TCtx, TStates, TStateNames, TBubbles>) =>
+            new Fsm(curriedConfig as FsmConfig<TCtx, Record<string, Record<string, unknown>>>);
+    }
     return new Fsm(config as FsmConfig<TCtx, Record<string, Record<string, unknown>>>);
 }

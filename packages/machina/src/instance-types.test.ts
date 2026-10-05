@@ -12,6 +12,9 @@ import {
     type StateNamesOfInstance,
     type BubblesOfInstance,
     type FsmConfig,
+    type InputMapFromUnion,
+    type InputMap,
+    type InputMapOfInstance,
 } from "./index";
 
 type Expect<T extends true> = T;
@@ -2194,6 +2197,397 @@ describe("compat — FsmConfig used directly as a type annotation", () => {
         });
 
         it("should infer TBubbles from a fully-typed hoisted FsmConfig annotation", () => {
+            expect(result).toBe("checked");
+        });
+    });
+});
+
+describe("#195 — input payload maps", () => {
+    type TrafficLightInputs = {
+        timeout: [];
+        emergency: [event: { severity: number }];
+        reset: [];
+    };
+
+    describe("when a map is supplied through the curried single-client form", () => {
+        const light = createFsm<TrafficLightInputs>()({
+            id: "typed-traffic-light",
+            initialState: "green",
+            context: { minSeverity: 3 },
+            states: {
+                green: {
+                    timeout: "yellow",
+                    // `event` is inferred from the map — no annotation, no cast
+                    emergency({ ctx }, event) {
+                        type _Payload = Expect<Equal<typeof event, { severity: number }>>;
+                        if (event.severity < ctx.minSeverity) {
+                            return;
+                        }
+                        return "red";
+                    },
+                },
+                yellow: { timeout: "red" },
+                red: { reset: "green" },
+            },
+        });
+
+        light.handle("timeout");
+        light.handle("emergency", { severity: 5 });
+
+        // @ts-expect-error -- payload is required: emergency declares [event: { severity: number }]
+        light.handle("emergency");
+
+        // @ts-expect-error -- wrong payload type: severity must be a number
+        light.handle("emergency", { severity: "high" });
+
+        // @ts-expect-error -- "emergencyy" is not a key of the input map
+        light.handle("emergencyy", { severity: 5 });
+
+        // @ts-expect-error -- timeout declares an empty tuple; stray arguments must be rejected
+        light.handle("timeout", { stray: true });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should infer handler payloads from the map and key handle() by it", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when the map is extracted back off an instance", () => {
+        // InputMapOfInstance feeds tooling (machina-test's walkAll derives
+        // its typed generator config from it), so both directions are pinned:
+        // a typed instance yields its map, an untyped instance yields the
+        // wide map — never `never`, which would poison downstream conditionals.
+        const typedLight = createFsm<TrafficLightInputs>()({
+            id: "extraction-typed",
+            initialState: "green",
+            context: {},
+            states: {
+                green: { timeout: "green" },
+            },
+        });
+
+        const untypedLight = createFsm({
+            id: "extraction-untyped",
+            initialState: "green",
+            context: {},
+            states: {
+                green: { timeout: "green" },
+            },
+        });
+
+        type _TypedMap = Expect<Equal<InputMapOfInstance<typeof typedLight>, TrafficLightInputs>>;
+        type _WideMap = Expect<Equal<InputMapOfInstance<typeof untypedLight>, InputMap>>;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pins the any-detector: a factory typed () => any must fall back to the wide map, not a both-branches union
+        type _AnyFalls = Expect<Equal<InputMapOfInstance<any>, InputMap>>;
+        type _NonFsmFalls = Expect<Equal<InputMapOfInstance<{ states: object }>, InputMap>>;
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should extract the map from typed instances and widen everything else", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when bubbles are declared under a map", () => {
+        // A bubble declares "I will fire this input at myself". The map is
+        // the complete set of fireable inputs, so TBubbles is constrained to
+        // the map's keys on the typed factory forms: a bubble outside the
+        // map is unfireable and gets rejected at the declaration.
+        type PhaseInputs = {
+            advance: [];
+            phaseComplete: [event: { phase: string }];
+        };
+
+        const phaseController = createFsm<PhaseInputs>()({
+            id: "phase-controller",
+            initialState: "green",
+            context: {},
+            bubbles: ["phaseComplete"],
+            states: {
+                green: { advance: "red" },
+                red: {},
+            },
+        });
+
+        // The bubble joined the typed input union — self-dispatch compiles,
+        // payload included.
+        phaseController.handle("phaseComplete", { phase: "green" });
+
+        // The bubble still flows to the mounting contract.
+        type _Bubbles = Expect<Equal<BubblesOfInstance<typeof phaseController>, "phaseComplete">>;
+
+        const _bubbleOutsideMap = createFsm<PhaseInputs>()({
+            id: "bubble-outside-map",
+            initialState: "green",
+            context: {},
+            // @ts-expect-error -- "phaseComplet" is not a key of the input map; an unfireable bubble must be rejected at the declaration
+            bubbles: ["phaseComplet"],
+            states: {
+                green: { advance: "red" },
+                red: {},
+            },
+        });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should accept map-keyed bubbles and reject bubbles outside the map", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when the map's vocabulary or the state names are violated", () => {
+        const _typoInHandlerKey = createFsm<TrafficLightInputs>()({
+            id: "typo-handler-key",
+            initialState: "green",
+            context: {},
+            states: {
+                // @ts-expect-error -- "emrgency" is not declared in the input map; InputVocabulary must reject the state that declares it, naming the key in the error property
+                green: {
+                    emrgency: "green",
+                },
+            },
+        });
+
+        const _typoShorthandTarget = createFsm<TrafficLightInputs>()({
+            id: "typo-shorthand-target",
+            initialState: "green",
+            context: {},
+            states: {
+                green: {
+                    // @ts-expect-error -- "yelow" is not a declared state name; #188-style shorthand validation must survive the typed path. Anchors on the property (not the state object) because the mapped member types each key individually instead of through one index signature.
+                    timeout: "yelow",
+                },
+                yellow: {
+                    reset: "green",
+                },
+            },
+        });
+
+        const _invalidInitialState = createFsm<TrafficLightInputs>()({
+            id: "invalid-initial-state",
+            // @ts-expect-error -- "gren" is not a key of states; initialState must stay validated under the curried typed form
+            initialState: "gren",
+            context: {},
+            states: {
+                green: {
+                    timeout: "green",
+                },
+            },
+        });
+
+        const _deferNarrowing = createFsm<TrafficLightInputs>()({
+            id: "defer-narrowing",
+            initialState: "green",
+            context: {},
+            states: {
+                green: {
+                    timeout({ defer }) {
+                        // #189 guarantee holds on the typed path: until is narrowed
+                        defer({ until: "yellow" });
+                        // @ts-expect-error -- "yellw" is not a state name; defer({ until }) must stay narrowed under the typed form
+                        defer({ until: "yellw" });
+                    },
+                },
+                yellow: {
+                    reset: "green",
+                },
+            },
+        });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should reject undeclared handler keys and keep #188/#189 validation on the typed path", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when the map is derived from a discriminated event union", () => {
+        type TrafficLightEvent =
+            | { type: "emergency"; severity: number }
+            | { type: "pedestrianRequest"; crossingId: string };
+
+        const unionLight = createFsm<InputMapFromUnion<TrafficLightEvent>>()({
+            id: "union-derived",
+            initialState: "green",
+            context: {},
+            states: {
+                green: {
+                    emergency(_args, event) {
+                        // The whole union member, discriminant included, is the payload
+                        type _Discriminant = Expect<Equal<typeof event.type, "emergency">>;
+                        type _Severity = Expect<Equal<typeof event.severity, number>>;
+                        return "red";
+                    },
+                    pedestrianRequest: "yellow",
+                },
+                yellow: {},
+                red: {},
+            },
+        });
+
+        unionLight.handle("emergency", { type: "emergency", severity: 5 });
+        unionLight.handle("pedestrianRequest", {
+            type: "pedestrianRequest",
+            crossingId: "8675309",
+        });
+
+        // @ts-expect-error -- the payload must be the matching union member, not a sibling
+        unionLight.handle("pedestrianRequest", { type: "emergency", severity: 5 });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should derive per-input payload tuples from the union members", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when a map is supplied to the curried behavioral form", () => {
+        type ProbeClient = { url: string; retries: number };
+        type ProbeInputs = {
+            probe: [latencyMs: number];
+        };
+
+        const typedBehavioral = createBehavioralFsm<ProbeClient, ProbeInputs>()({
+            id: "typed-behavioral",
+            initialState: "disconnected",
+            states: {
+                disconnected: {
+                    probe({ ctx }, latencyMs) {
+                        type _Client = Expect<Equal<typeof ctx, ProbeClient>>;
+                        type _Latency = Expect<Equal<typeof latencyMs, number>>;
+                        return "connecting";
+                    },
+                },
+                connecting: {},
+            },
+        });
+
+        typedBehavioral.handle({ url: "wss://example.com", retries: 0 }, "probe", 12);
+
+        // @ts-expect-error -- payload is required: probe declares [latencyMs: number]
+        typedBehavioral.handle({ url: "wss://example.com", retries: 0 }, "probe");
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should type the client and the payload together under the two-argument curried form", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when the input name is a union of declared names", () => {
+        const unionFsm = createFsm<{
+            alpha: [payload: { alpha: number }];
+            beta: [payload: { beta: string }];
+        }>()({
+            id: "union-name",
+            initialState: "idle",
+            context: {},
+            states: {
+                idle: {
+                    alpha: () => undefined,
+                    beta: () => undefined,
+                },
+            },
+        });
+
+        const inputName = (Math.random() > 2 ? "alpha" : "beta") as "alpha" | "beta";
+
+        // @ts-expect-error -- the payload fits only "alpha"; a union input name must not decorrelate the name/payload pair
+        unionFsm.handle(inputName, { alpha: 1 });
+
+        // A correlated union of complete calls stays legal.
+        const call: ["alpha", { alpha: number }] | ["beta", { beta: string }] =
+            Math.random() > 2 ? ["alpha", { alpha: 1 }] : ["beta", { beta: "b" }];
+        unionFsm.handle(...call);
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should keep the input name and payload correlated under a union name", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when the map is declared as a named interface", () => {
+        interface IfaceInputs {
+            ping: [n: number];
+        }
+
+        // An interface has no string index signature; the factory constraint
+        // must accept it anyway.
+        const ifaceFsm = createFsm<IfaceInputs>()({
+            id: "iface-map",
+            initialState: "idle",
+            context: {},
+            states: {
+                idle: {
+                    ping: () => undefined,
+                },
+            },
+        });
+
+        ifaceFsm.handle("ping", 1);
+
+        // @ts-expect-error -- wrong payload type under an interface-declared map
+        ifaceFsm.handle("ping", "nope");
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should accept a named interface as the input map", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when a map declares an optional property", () => {
+        interface OptionalInputs {
+            maybe?: [n: number];
+        }
+
+        // An optional entry erases payload safety: TInputs[K] includes
+        // undefined, and the call side degrades to unknown[]. The constraint
+        // rejects the map instead of silently stripping the modifier.
+        // @ts-expect-error -- optional properties are not valid input-map entries
+        const _optionalRejected = () => createFsm<OptionalInputs>();
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should reject optional properties in the input map", () => {
             expect(result).toBe("checked");
         });
     });

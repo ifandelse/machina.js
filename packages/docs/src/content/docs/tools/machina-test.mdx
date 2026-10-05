@@ -20,7 +20,7 @@ npm install --save-dev machina-test
 pnpm add -D machina-test
 ```
 
-`machina` >= 6.1.0 is a peer dependency. Either `jest` or `vitest` must be available as the host test runner.
+`machina` >= 7.0.1 is a peer dependency. Either `jest` or `vitest` must be available as the host test runner.
 
 ## Setup
 
@@ -252,6 +252,33 @@ Only inputs that need payloads get generators. Everything else fires with no arg
     failure, use a deterministic generator instead (a fixed value, or your own seeded PRNG).
 </Aside>
 
+### Typed payload generators
+
+If the factory returns an FSM built with an [input payload map](/guide/typed-payloads/), the config changes shape. The `inputs` key is gone. In its place, `payloads` is required: one generator per payload-carrying input, each returning that input's full argument tuple, which `walkAll` spreads into `handle()`.
+
+```ts
+type TrafficLightInputs = {
+    timeout: []; // no payload — needs no generator
+    emergency: [event: { severity: number }];
+};
+
+const makeTypedLight = () => createFsm<TrafficLightInputs>()({ ... });
+
+walkAll(makeTypedLight, {
+    walks: 100,
+    payloads: {
+        // Required. Omitting it — or misspelling "emergency" — is a
+        // compile error that names the input.
+        emergency: () => [{ severity: Math.floor(Math.random() * 6) }],
+    },
+    invariant({ state }) {
+        // ...
+    },
+});
+```
+
+The requirement exists because handlers written against a map trust their payloads, because the compiler guarantees them at every application call site. `walkAll` builds its calls at runtime, outside the compiler's view. The required `payloads` key moves the guarantee into your test's compile step. A forgotten generator fails at the keyboard, before the walk ever runs.
+
 ### Filtering inputs
 
 By default, `walkAll` fires every input it finds. You can narrow the set with `include` or `exclude` (mutually exclusive):
@@ -302,18 +329,12 @@ This is particularly useful in CI — a test fails, you grab the seed from the e
 `walkAll` detects `BehavioralFsm` instances automatically. Pass a `client` factory to create a fresh client per walk:
 
 ```ts
-walkAll(
-    () =>
-        createBehavioralFsm({
-            /* ... */
-        }),
-    {
-        client: () => ({ balance: 1000, transferAmount: 0 }),
-        invariant({ ctx }) {
-            // ctx is the client object for BehavioralFsm walks
-        },
-    }
-);
+walkAll(() => createBehavioralFsm({/* ... */}), {
+    client: () => ({ balance: 1000, transferAmount: 0 }),
+    invariant({ ctx }) {
+        // ctx is the client object for BehavioralFsm walks
+    },
+});
 ```
 
 If you don't provide a `client` factory, `walkAll` uses an empty object `{}`.

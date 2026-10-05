@@ -109,6 +109,7 @@ export default defineConfig({
                         { slug: "guide/hierarchical" },
                         { slug: "guide/events" },
                         { slug: "guide/defer" },
+                        { slug: "guide/typed-payloads" },
                         { slug: "guide/persisting-clients" },
                     ],
                 },

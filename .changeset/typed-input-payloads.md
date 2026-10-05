@@ -1,0 +1,7 @@
+---
+"machina": major
+---
+
+Add typed input payloads (#195). A curried factory form fixes an input payload map (input name → argument tuple) before config inference starts: `createFsm<TInputs>()({...})` and `createBehavioralFsm<TClient, TInputs>()({...})`. Under a map, handler payload parameters are inferred from the map's tuples, `handle()` enforces them at the call site, and the map is the complete input vocabulary: handler keys outside it are compile errors. `handle()` keeps the input name and its payload correlated when the caller's input name is a union. A named interface works as a map. `InputMapFromUnion` derives a map from a discriminated event union. `InputMapOfInstance` extracts the map back off a constructed instance, for tooling. Under a map, `bubbles` entries are constrained to the map's keys: an unfireable bubble is rejected at the declaration. The map is type-only, and runtime behavior is unchanged.
+
+The major bump covers one type-level break. The curried factories gained a type parameter, and an instantiation expression that supplies explicit type arguments (`typeof createBehavioralFsm<Client, X>`) now binds its second argument to the input map instead of the states object, and the old binding fails to compile. Direct calls compile unchanged. Spell such annotations with the class and extraction types instead: `BehavioralFsm<Client, StateNamesOf<typeof states>, InputNamesOf<typeof states>>`.
