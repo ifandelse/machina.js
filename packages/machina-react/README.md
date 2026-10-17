@@ -70,6 +70,8 @@ The exports split into snapshot hooks, which rerender your component, and event 
 - `handle(inputName, ...args)`
 - `canHandle(inputName)`
 
+Under an FSM with an [input payload map](https://machina-js.org/guide/typed-payloads/), the snapshot's `handle` enforces the declared payloads, with the same checking core's `handle` applies.
+
 `useBehavioralFsm(fsm, client)` returns the matching snapshot shape for a behavioral client, with `client` in place of `context`. The snapshot's `handle` is bound to the client. A client the FSM hasn't handled yet reports `state: undefined` and `compositeState: ""` until machina initializes it.
 
 ```tsx
