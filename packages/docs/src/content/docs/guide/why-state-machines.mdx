@@ -102,8 +102,10 @@ const connection = createFsm({
             _onEnter({ ctx }) {
                 ctx.retries = 0;
             },
-            send(_args, data: string) {
-                // write to the socket
+            send(_args, data: unknown) {
+                if (typeof data === "string") {
+                    // write data to the socket
+                }
             },
             errored: "connecting",
         },
@@ -129,7 +131,7 @@ Hopefully you can see, now, just how much readability an FSM brings to a tangled
 ## The day-to-day payoff
 
 - Instead of that forensic reconstruction of call order, debugging starts with `connection.currentState()`, which returns the state name.
-- The machine records how it got there. Subscribe to [lifecycle events](/guide/events/) such as `transitioned` and `nohandler` for logging and metrics without adding code to each handler.
+- A subscriber can record each transition that led to the current state. [Lifecycle events](/guide/events/) such as `transitioned` and `nohandler` give you logging and metrics without adding code to each handler.
 - Changes stay local. A new handler in `online` cannot change how `connecting` behaves.
 - The config is reviewable. A reader can check the states and transitions against the requirements without tracing the implementation.
 

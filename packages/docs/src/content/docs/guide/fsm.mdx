@@ -1,11 +1,11 @@
 ---
 title: createFsm
-description: "The single-client FSM: one config, one instance, one context object."
+description: "The single-client FSM. One config produces one instance with its own context object."
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-`createFsm` is the standard choice for most use cases. One config object produces one FSM instance with one internal context object — there's no separate client to pass around. Handler signatures receive `({ ctx, inputName, defer, emit }, ...args)` as a plain destructurable object, so arrow functions work without caveats and there's no `this` to think about. Return a state name to transition; return nothing to stay put.
+`createFsm` is the standard choice for most use cases. One config object produces one FSM instance with one internal context object (there's no separate client to pass around). Handler signatures receive `({ ctx, inputName, defer, emit }, ...args)` as a plain destructurable object, so arrow functions work without caveats and there's no `this` to think about. Return a state name to transition, or return nothing to stay put.
 
 If you need one FSM definition to manage many independent client objects, see [createBehavioralFsm](/guide/behavioral-fsm/).
 
@@ -31,17 +31,17 @@ createFsm({
 
 Within each state, the following keys have special meaning:
 
-| Key           | Type                   | Description                                                                                      |
-| ------------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
-| `_onEnter`    | `HandlerFn`            | Lifecycle hook — called when entering this state.                                                |
-| `_onExit`     | `HandlerFn`            | Lifecycle hook — called when exiting this state.                                                 |
-| `_child`      | `Fsm \| BehavioralFsm` | Child FSM — inputs are delegated here first; unhandled inputs bubble up.                         |
-| `"*"`         | `HandlerFn`            | Catch-all — handles any input not explicitly defined.                                            |
-| anything else | `string \| HandlerFn`  | Named input handler. String shorthand always transitions; function returns a state name or void. |
+| Key           | Type                   | Description                                                                                            |
+| ------------- | ---------------------- | ------------------------------------------------------------------------------------------------------ |
+| `_onEnter`    | `HandlerFn`            | Lifecycle hook. Called when entering this state.                                                       |
+| `_onExit`     | `HandlerFn`            | Lifecycle hook. Called when exiting this state.                                                        |
+| `_child`      | `Fsm \| BehavioralFsm` | Child FSM. Inputs are delegated here first, and unhandled inputs bubble up.                            |
+| `"*"`         | `HandlerFn`            | Catch-all. Handles any input without its own handler.                                                  |
+| anything else | `string \| HandlerFn`  | Named input handler. String shorthand always transitions, and a function returns a state name or void. |
 
 ## Handler signatures
 
-Every handler — whether a named input handler, `_onEnter`, `_onExit`, or the catch-all — receives the same args object as its first parameter:
+Every handler (a named input handler, `_onEnter`, `_onExit`, or the catch-all) receives the same args object as its first parameter:
 
 ```ts
 states: {
@@ -74,12 +74,12 @@ states: {
 | `emit`      | Emits a custom event through the FSM's event emitter.                                               |
 | `...args`   | Additional arguments passed through `handle("inputName", arg1, arg2)`.                              |
 
-Handlers return a state name to transition or `void`/`undefined` to stay in the current state. This is the dynamic equivalent of string shorthand — same concept, two expressions.
+Handlers return a state name to transition or `void`/`undefined` to stay in the current state. A returned state name and string shorthand express the same transition in two forms.
 
 <Aside type="tip">
     Returning a state name is the preferred way to trigger transitions from inside handlers. The
-    public `transition()` method is there when you need to transition from *outside* the FSM — e.g.,
-    in response to an external event.
+    public `transition()` method is there when you need to transition from *outside* the FSM, such
+    as in response to an external event.
 </Aside>
 
 ## Public API
@@ -102,7 +102,7 @@ Handlers return a state name to transition or `void`/`undefined` to stay in the 
 // Basic dispatch
 light.handle("timeout");
 
-// With extra args — received as ...args in the handler
+// With extra args, received as ...args in the handler
 fsm.handle("success", responseData);
 ```
 
@@ -110,7 +110,7 @@ Extra args are untyped by default. To type them per input, and have `handle()` r
 
 ### `canHandle`
 
-Useful for conditionally triggering inputs without swallowing `nohandler` events. When the current state mounts a child FSM, `canHandle()` answers for the whole `_child` chain — the same reach `handle()`'s delegation has:
+This method is used internally by machina when dealing with hierarchical FSMs. It's useful for conditionally triggering inputs without swallowing `nohandler` events (since the parent will ask the child FSM "can you handle this input?"). When the current state mounts a child FSM, `canHandle()` answers for the whole `_child` chain, the same depth that `handle()`'s delegation covers:
 
 ```ts
 if (light.canHandle("timeout")) {
@@ -120,16 +120,21 @@ if (light.canHandle("timeout")) {
 
 Returns `false` after `dispose()`.
 
+<Aside type="tip">
+    It's unlikely you'll need to use `canHandle` unless you are extending machina's internals in
+    some way.
+</Aside>
+
 ### `transition`
 
-For transitioning from _outside_ a handler — a timer, an event listener, anything external to the FSM:
+For transitioning from _outside_ a handler (a timer, an event listener, anything external to the FSM):
 
 ```ts
 // Fires _onExit on current state, _onEnter on "red", emits transitioning/transitioned
 light.transition("red");
 ```
 
-Prefer returning a state name from inside handlers over calling this from within handlers — it keeps transition logic declarative and co-located with the state.
+Prefer returning a state name from inside handlers over calling `transition()` there. The transition logic then stays declarative and co-located with the state.
 
 ### `on` and `emit`
 
@@ -185,11 +190,11 @@ fsm.dispose(); // also disposes child FSMs
 fsm.dispose({ preserveChildren: true }); // leave child FSMs running
 ```
 
-After `dispose()`, every method call is a silent no-op. `on()` returns a no-op `Subscription`. This is intentional — you don't need to null-guard callsites just because something may have been torn down.
+After `dispose()`, every method call is a silent no-op. `on()` returns a no-op `Subscription`. This is intentional: you don't need to null-guard callsites just because something may have been torn down.
 
 ## TypeScript
 
-No manual type parameters are needed for `createFsm`. TypeScript infers the context type from `config.context`, the state name union from the keys of `config.states`, and the input name union from the handler keys across all states.
+You don't pass manual type parameters to `createFsm`. TypeScript infers the context type from `config.context`, the state name union from the keys of `config.states`, and the input name union from the handler keys across all states.
 
 ```ts
 const light = createFsm({
@@ -213,17 +218,17 @@ light.handle("bogus"); // "bogus" is not a valid input name
 light.transition("yellw"); // "yellw" is not a valid state name
 ```
 
-String shorthand targets are validated against actual state keys. `timeout: "yellw"` is a type error, not a runtime surprise.
+String shorthand targets are validated against actual state keys, so `timeout: "yellw"` is a compile-time type error.
 
 <Aside type="note">
     A shorthand typo like `timeout: "yellw"` is always caught, but *where* TypeScript anchors the
-    error varies with the shape of the neighboring states: it can land on the containing state
-    object's line (e.g. `green: {`) or directly on the `timeout` property itself. Either way, the
-    error chain names the exact property and ends with a "Did you mean" suggestion — if the first
-    line looks broad, read past it.
+    error varies with the structure of the neighboring states: the compiler can report it on the
+    containing state object's line (e.g. `green: {`) or directly on the `timeout` property itself.
+    Either way, the error chain identifies the exact property and ends with a "Did you mean"
+    suggestion. If the first line looks broad, read past it.
 </Aside>
 
-When you need the inferred types explicitly — say, for a function that receives input names — the `StateNamesOf` and `InputNamesOf` utility types extract them from your states config:
+When you need the inferred types explicitly, the `StateNamesOf` and `InputNamesOf` utility types extract them from your states config. A function that takes input names is the typical case:
 
 ```ts
 import type { StateNamesOf, InputNamesOf } from "machina";
@@ -248,7 +253,7 @@ type States = StateNamesOf<typeof config.states>; // "green" | "yellow" | "red"
 type Inputs = InputNamesOf<typeof config.states>; // "timeout" | "tick"
 ```
 
-In practice, you won't need these often — the FSM's own `handle()` and `transition()` methods are already narrowed to the correct literal unions.
+You won't need these often, because the FSM's own `handle()` and `transition()` methods are already narrowed to the correct literal unions.
 
 ## Full example
 
@@ -276,7 +281,7 @@ const light = createFsm({
             },
         },
         yellow: {
-            // String shorthand — always transitions to "red", no logic needed
+            // String shorthand: always transitions to "red", no logic needed
             timeout: "red",
         },
         red: {
@@ -294,7 +299,7 @@ const sub = light.on("transitioned", ({ fromState, toState }) => {
 for (let i = 0; i < 5; i++) {
     light.handle("tick");
 }
-light.handle("timeout"); // tickCount is 5 — transitions to yellow
+light.handle("timeout"); // tickCount is 5, transitions to yellow
 // logs: green -> yellow
 
 light.handle("timeout"); // transitions to red
@@ -303,7 +308,7 @@ light.handle("timeout"); // transitions to red
 light.currentState(); // "red"
 light.compositeState(); // "red"
 
-light.canHandle("tick"); // false — red has no "tick" handler
+light.canHandle("tick"); // false: red has no "tick" handler
 
 sub.off(); // unsubscribe
 

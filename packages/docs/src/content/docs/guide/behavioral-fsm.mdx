@@ -7,17 +7,17 @@ import { Aside } from "@astrojs/starlight/components";
 
 ## Overview
 
-`createBehavioralFsm` defines a set of states and transitions once, then applies that behavior to any number of independent client objects. Per-client state is tracked in a `WeakMap` — nothing is stamped onto the client object itself. The client IS the context; every handler receives it as `ctx`.
+`createBehavioralFsm` defines a set of states and transitions once, then applies that behavior to any number of independent client objects. machina tracks per-client state in a `WeakMap` and doesn't stamp anything onto the client object itself. The client IS the context. Handlers receive it as `ctx`.
 
 ## When to use it
 
 Use `createBehavioralFsm` when:
 
-- You have many instances that share the same state machine logic — network connections, game entities, UI components
+- You have many instances that share the same state-machine logic, such as network connections or game entities (or if you want the primitives for an actor pattern)
 - You don't want the FSM to own or modify the client object's shape
 - The client already exists and you want to layer FSM behavior onto it without touching its structure
 
-Use `createFsm` when you have a single instance with its own dedicated context object.
+Use `createFsm` when you have one instance with its own dedicated context object.
 
 ## Config
 
@@ -32,53 +32,55 @@ const connFsm = createBehavioralFsm<Connection>()({
 ```
 
 <Aside type="tip">
-    You can skip the type argument entirely by annotating `ctx` inline on a handler instead — e.g.
-    `connect({ ctx }: { ctx: Connection }) { ... }` — and calling `createBehavioralFsm({ ... })` with
-    zero type arguments. This only works when the annotation is visible directly on a handler; it
+    You can skip the type argument entirely by annotating `ctx` inline on a handler instead (e.g.
+    `connect({ ctx }: { ctx: Connection }) { ... }`) and calling `createBehavioralFsm({ ... })`
+    without any type arguments. This only works when the annotation is visible directly on a handler; it
     won't be picked up through object spread (`...sharedHandlers`). The curried form above works
     either way, so it's the recommended default.
 </Aside>
 
-State names, input names, and transition target validation all work identically — inferred from the `states` config at compile time.
+State names, input names, and transition-target validation all work identically, inferred from the `states` config at compile time.
 
 ## API
 
-Every method takes the client object as its first argument. The rest of the API mirrors `Fsm`.
+The client-scoped methods take the client object as their first argument, and the rest of the API mirrors `Fsm`. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client.
 
-| Method                               | Description                                                                        |
-| ------------------------------------ | ---------------------------------------------------------------------------------- |
-| `handle(client, inputName, ...args)` | Dispatch an input to the client's current state handler                            |
-| `canHandle(client, inputName)`       | True if the client's current state — or its `_child` chain — can handle this input |
-| `transition(client, toState)`        | Directly transition the client; fires `_onExit`, `_onEnter`, events                |
-| `reset(client)`                      | Transition the client back to `initialState`                                       |
-| `currentState(client)`               | Returns the client's current state, or `undefined` if never initialized            |
-| `compositeState(client)`             | Dot-delimited path including active child FSM states                               |
-| `rehydrate(client, compositeState)`  | Silently place a client at a state — no lifecycle hooks or events                  |
-| `dehydrate(client)`                  | Snapshot everything tracked for a client — state, deferrals, children              |
-| `rehydrate(client, snapshot)`        | Restore a `dehydrate()` snapshot — state and deferred queues, no hooks             |
-| `on(eventName, callback)`            | Subscribe to a lifecycle event — returns `{ off() }`                               |
-| `emit(eventName, data?)`             | Emit a custom event to subscribers                                                 |
-| `dispose()`                          | Permanently shut down the entire FSM; cascades to child FSMs by default            |
+| Method                                            | Description                                                                        |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `handle(client, inputName, ...args)`              | Dispatch an input to the client's current state handler                            |
+| `canHandle(client, inputName)`                    | True when the client's current state (or its `_child` chain) handles this input    |
+| `transition(client, toState)`                     | Directly transition the client; fires `_onExit`, `_onEnter`, events                |
+| `reset(client)`                                   | Transition the client back to `initialState`                                       |
+| `currentState(client)`                            | Returns the client's current state, or `undefined` if never initialized            |
+| `compositeState(client)`                          | Dot-delimited path including active child FSM states                               |
+| `dehydrate(client)`                               | Snapshot everything tracked for a client: state, deferrals, children               |
+| `rehydrate(client, compositeState)` (string form) | Place a client at the given (string) state with lifecycle hooks and events skipped |
+| `rehydrate(client, snapshot)` (snapshot form)     | Restore a `dehydrate()` snapshot: state and deferred queues, hooks skipped         |
+| `on(eventName, callback)`                         | Subscribe to a lifecycle event. Returns a `{ off() }` subscription                 |
+| `emit(eventName, data?)`                          | Emit a custom event to subscribers                                                 |
+| `dispose()`                                       | Permanently shut down the entire FSM; cascades to child FSMs by default            |
 
 <Aside type="note">
-    `currentState(client)` returns `undefined` for a client the FSM has never seen — it does not
+    `currentState(client)` returns `undefined` for a client the FSM has never seen, and it does not
     trigger initialization. The first call to `handle()`, `transition()`, or `reset()` initializes
     the client in `initialState`.
 </Aside>
 
 ## State storage
 
-Client state is tracked in a `WeakMap<TClient, ClientMeta>` inside the FSM instance — no properties are added to the client object. When a client is garbage collected, its state entry goes with it automatically. You don't need to clean up.
+Client state is tracked in a `WeakMap<TClient, ClientMeta>` inside the FSM instance (machina doesn't add properties to your client object to keep track of machina-specific state). When a client is garbage collected, its state entry goes with it automatically. You don't need to clean up.
 
-First contact with a new client (via `handle()`, `transition()`, or `reset()`) runs the full initialization: transitions into `initialState`, fires `_onEnter`, emits lifecycle events. A client the FSM has never seen is transparently initialized on the first call.
+First contact with a new client (via `handle()`, `transition()`, or `reset()`) runs the full initialization. The client transitions into `initialState`, and `_onEnter` and the lifecycle events fire. A client the FSM has never seen is transparently initialized on the first call.
 
 ## Rehydrating persisted clients
 
-The behavioral pattern naturally supports a cold-resume workflow: serialize the client, store it externally (database, file, message queue), and later feed it back to the FSM. The client is just data — the FSM behavior is stateless.
+The behavioral pattern naturally supports a cold-resume workflow: serialize the client, store it externally (database, file, message queue), and later feed it back to the FSM. The client is just data, and the FSM behavior is stateless.
 
-The problem is placement. When a new process tries to use a deserialized client, `handle()` and `transition()` both trigger initialization at `initialState` first — `_onEnter` fires, events emit, handlers run for states the client should never visit during resume.
+The problem is placement. When a new process tries to use a deserialized client, `handle()` and `transition()` both trigger initialization at `initialState` first, so `_onEnter` fires and events emit for states the client should never visit during resume.
 
-`rehydrate()` solves this. It writes the client directly into the FSM's internal tracking at the specified state with no lifecycle activity — no `_onEnter`, no `_onExit`, no events.
+`rehydrate()` solves this. It writes the client directly into the FSM's internal tracking at the specified state, and it skips the lifecycle hooks and events. `rehydrate` accepts either a specific state name (string) or a captured snapshot.
+
+### Rehydrating With a State Name (string)
 
 ```ts
 // ---- Persist ----
@@ -102,16 +104,16 @@ parentFsm.rehydrate(client, "active.uploading.retrying");
 // No _onEnter at any level. No events.
 ```
 
-`rehydrate()` throws synchronously on invalid state names or structural mismatches (missing `_child`, Fsm children). Writes are atomic — if validation fails at any level of a composite path, no state is written at any level.
+`rehydrate()` throws synchronously on invalid state names or structural mismatches (missing `_child`, Fsm children). Writes are atomic. When validation fails at any level of a composite path, the FSM leaves the client's state untouched at every level.
 
 <Aside type="tip">
     `compositeState()` produces the dot-path string that this string form of `rehydrate()` consumes.
     Use the former to grab the state value to persist with your client, use the latter to restore.
 </Aside>
 
-### Snapshots: persisting deferred inputs too
+### Rehydrating With Snapshots: persisting deferred inputs too
 
-The string form above only captures the composite state — it drops anything sitting in a client's deferred queue. If a client can have pending deferrals when it gets persisted, use `dehydrate()` and the object form of `rehydrate()` instead. `dehydrate()` returns a plain, JSON-serializable snapshot of everything machina tracks for a client — current state, pending deferred inputs (with their args and `until` targets), and the same for every `_child` in the hierarchy, active or not:
+The string form above only captures the composite state, and it drops anything sitting in a client's deferred queue. If a client can have pending deferrals when it gets persisted, use `dehydrate()` and the object form of `rehydrate()` instead. `dehydrate()` returns a plain, JSON-serializable snapshot of everything machina tracks for a client (current state, pending deferred inputs with their args and `until` targets, and the same for every `_child` in the hierarchy, active or not):
 
 ```ts
 // ---- Persist ----
@@ -125,25 +127,25 @@ connFsm.rehydrate(theClient, snapshot); // silent placement, deferrals requeued
 connFsm.handle(theClient, "connected"); // "retry" replays once "online" is reached
 ```
 
-`dehydrate()` returns `undefined` for a client the FSM has never seen — it does not trigger initialization, mirroring `currentState()`. It throws if any deferred input's arguments contain something that can't survive a serialization boundary (a function, `undefined`, a `Date`/`Map`/class instance, a symbol, `NaN`/`Infinity`, or a circular reference) — the error names the exact input, its `until` target if any, and the precise path to the offending value.
+`dehydrate()` returns `undefined` for a client the FSM has never seen, and it does not trigger initialization, which mirrors `currentState()`. It throws if any deferred input's arguments contain something that serialization would lose or corrupt (a function, `undefined`, a `Date`/`Map`/class instance, a symbol, `NaN`/`Infinity`, or a circular reference). The error identifies the exact input and the path to the offending value, plus the `until` target if one exists.
 
 <Aside type="caution">
-    `dehydrate()` is for a client **at rest** between `handle()` calls, not from inside a handler —
-    the in-flight arguments for a currently-executing input aren't part of the snapshot. Call it
-    after your service layer's `handle()` call returns, right before persisting.
+    `dehydrate()` expects a client **at rest** between `handle()` calls. The in-flight arguments for
+    a currently-executing input aren't part of the snapshot, so call it after your service layer's
+    `handle()` call returns, right before persisting.
 </Aside>
 
-Both the string and object forms of `rehydrate()` place the client silently — no `_onEnter`, no `_onExit`, no `transitioning`/`transitioned` events — and both validate the entire hierarchy before writing anything, at any level. The object form additionally requeues each level's deferred inputs so they replay exactly as they would have if the client had never left memory. For hierarchical FSMs, `dehydrate()` walks every state's `_child` recursively, including states the client currently isn't in — a child left mid-flight when the parent moved on is captured too, so its pending `_onExit`/`_onEnter` and deferred replay behavior on the parent's next re-entry survives the round trip. See [Persisting clients](/guide/persisting-clients/) for the full repository/service pattern.
+Both the string and object forms of `rehydrate()` place the client silently (`_onEnter`, `_onExit`, and the `transitioning`/`transitioned` events are all skipped), and both validate the entire hierarchy before writing anything, at any level. The object form also requeues each level's deferred inputs so they replay exactly as they would have if the client had never left memory. For hierarchical FSMs, `dehydrate()` walks every state's `_child` recursively, including states the client currently isn't in. A child left mid-flight when the parent moved on is captured too, so its pending `_onExit`/`_onEnter` and deferred replay behavior still runs on the parent's next re-entry. See [Persisting clients](/guide/persisting-clients/) for the full repository/service pattern.
 
 <Aside type="note">
-    The [Job Queue example](/examples/job-queue/) demonstrates the full persist/restore cycle —
-    serializing state to localStorage on every transition and cold-resuming jobs via `rehydrate()`
+    The [Job Queue example](/examples/job-queue/) demonstrates the full persist/restore cycle: it
+    serializes state to localStorage on every transition and cold-resumes jobs via `rehydrate()`
     after a page reload.
 </Aside>
 
 ## Events
 
-`BehavioralFsm` emits the same lifecycle events as `Fsm`. The difference is every payload includes a `client` field so you can identify which client the event pertains to:
+`BehavioralFsm` emits the same lifecycle events as `Fsm`, and each built-in payload includes a `client` field, so you can identify which client the event pertains to:
 
 | Event           | Payload                          | Fired when                              |
 | --------------- | -------------------------------- | --------------------------------------- |
@@ -160,6 +162,8 @@ connFsm.on("transitioned", ({ fromState, toState, client }) => {
     console.log(`[${client.url}] ${fromState} -> ${toState}`);
 });
 ```
+
+A custom event emitted with `emit()` passes through with exactly the payload you supply. machina doesn't add a `client` field to it.
 
 ## Full example
 
@@ -225,7 +229,7 @@ connFsm.dispose();
 
 ## TypeScript
 
-The client type is the only thing you need to supply explicitly — via the curried call, `createBehavioralFsm<Connection>()`. State names and input names are inferred from the `states` config the same way `createFsm` handles it.
+The client type is the one thing you supply explicitly, via the curried call `createBehavioralFsm<Connection>()`. State names and input names are inferred from the `states` config the same way `createFsm` handles it.
 
 ```ts
 import type { BehavioralFsmEventMap, HandlerArgs } from "machina";
@@ -243,25 +247,24 @@ type ConnEvents = BehavioralFsmEventMap<
 String shorthand transition targets are validated against actual state keys at compile time. A typo like `connect: "conecting"` is a type error.
 
 <Aside type="note">
-    Like `createFsm`, the error's *anchor* varies with the shape of the neighboring states — it can
-    land on the state object's line or on the property itself — but the error chain always names the
-    specific property, with a "Did you mean" suggestion. See the [`createFsm` TypeScript
+    Like `createFsm`, the error's anchor varies with the structure of the neighboring states: it can
+    point at the state object's line or at the property itself. The error chain always identifies
+    the specific property, with a "Did you mean" suggestion. See the [`createFsm` TypeScript
     section](/guide/fsm/#typescript) for the full explanation.
 </Aside>
 
 There's a third, rarely-needed call form: supplying both the client type and an already-resolved
-`states` type explicitly — `createBehavioralFsm<Connection, typeof connectivityStates>({ ... })`.
-It skips inference entirely, which is why it predates (and was never affected by) the curried form's
+`states` type explicitly, as `createBehavioralFsm<Connection, typeof connectivityStates>({ ... })`.
+It skips inference entirely, so it predates (and was never affected by) the curried form's
 introduction.
 
 <Aside type="caution">
     That explicit-both form has one sharp edge with `bubbles`: supplying only the first two type
-    arguments leaves the trailing `TStateNames` and `TBubbles` parameters at their *defaults* rather
-    than inferring them from the config — TypeScript does not infer later positional type arguments
+    arguments leaves the trailing `TStateNames` and `TBubbles` parameters at their defaults rather
+    than inferring them from the config. TypeScript does not infer later positional type arguments
     once earlier ones were supplied explicitly. `TBubbles` defaults to `never`, so any non-empty
     `bubbles` array is rejected (`Type 'string' is not assignable to type 'never'`). The workaround
     is to supply all four type arguments explicitly: `createBehavioralFsm<Connection, typeof
     connectivityStates, "disconnected" | "connecting" | "online", "somethingBubbled">({ ... })`. The
-    curried form and the zero-type-argument direct call are unaffected — this only bites the
-    explicit-both form.
+    curried form and the zero-type-argument direct call are unaffected.
 </Aside>

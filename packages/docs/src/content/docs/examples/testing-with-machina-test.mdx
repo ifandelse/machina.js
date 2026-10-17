@@ -1,0 +1,89 @@
+---
+title: Testing with machina-test
+description: Graph matchers and walkAll runtime testing, demonstrated in a runnable jest suite.
+---
+
+A runnable jest suite demonstrating [machina-test](/tools/machina-test/): graph matchers for the wiring, and `walkAll` for property-based testing at runtime. This example has test files in place of a UI, so the suite itself is the demo.
+
+## What it demonstrates
+
+- **`toHaveNoUnreachableStates()`**: assert that each state is reachable from `initialState`
+- **`toAlwaysReach(target, { from })`**: assert that a path exists between two states
+- **`toNeverReach(target, { from })`**: assert that a target is unreachable from a starting state
+- **`.not` variants**: standard Jest negation for all three matchers
+- **Invalid state names**: a typo produces a normal test failure whose message lists the available states
+- **Hierarchical FSM testing**: parent and child FSMs tested independently
+- **`walkAll(factory, config)`**: property-based runtime testing with randomized inputs
+- **Payload generators and seed replay**: realistic payloads per input, and deterministic reproduction of a failing walk
+
+## Hierarchical FSMs
+
+`toAlwaysReach` and `toNeverReach` operate on the top-level graph only, and they do not traverse into `_child` FSMs. To test a child FSM's internal reachability, pass the child instance directly to `expect()`:
+
+```ts
+import "machina-test";
+import { createPaymentFsm, createCheckoutFlow } from "./checkout-flow";
+
+// Test the parent: browsing, checkout, confirmation
+const payment = createPaymentFsm();
+const checkout = createCheckoutFlow(payment);
+expect(checkout).toAlwaysReach("confirmation", { from: "browsing" });
+
+// Test the child: entering-details, processing, authorized, declined
+expect(payment).toAlwaysReach("authorized", { from: "entering-details" });
+expect(payment).toNeverReach("entering-details", { from: "authorized" });
+```
+
+`toHaveNoUnreachableStates()` is the exception: it recurses into children through machina-inspect's `inspectGraph()`, and an orphaned state in a child fails the assertion on the parent.
+
+## Runtime testing with walkAll
+
+The matchers check graph topology: does a path exist? `walkAll` checks runtime behavior: does the FSM behave correctly when you feed it random inputs?
+
+```ts
+import { walkAll } from "machina-test";
+import { createAccountTransfer } from "./account-transfer";
+
+// 200 walks of up to 20 random inputs each. After every transition,
+// the invariant checks that the balance never went negative.
+const result = walkAll(() => createAccountTransfer(1000), {
+    walks: 200,
+    maxSteps: 20,
+    seed: 42,
+    invariant({ ctx }) {
+        const { balance } = ctx as { balance: number };
+        if (balance < 0) {
+            throw new Error(`balance went negative: ${balance}`);
+        }
+    },
+});
+```
+
+The account-transfer FSM is the right target for `walkAll` because its `validating._onEnter` bounces to `failed` on overdraw. Graph matchers cannot see that conditional logic, and random walks exercise it.
+
+The seed drives walkAll's choice of inputs. It does not seed your payload generators, so a generator that calls `Math.random()` produces different payloads on each run. `src/account-transfer.test.ts` demonstrates both styles: a randomized generator for invariants that must hold for any payload, and deterministic generators for replayable walks.
+
+## Running
+
+```sh
+# From the monorepo root
+pnpm --filter @machina-examples/testing-with-machina-test test
+
+# From the example directory
+pnpm test
+```
+
+## Files
+
+| File                           | What it covers                                                               |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| `src/order-workflow.ts`        | Flat FSM: order processing with branching paths and terminal states          |
+| `src/order-workflow.test.ts`   | All three matchers, `.not` variants, invalid state names                     |
+| `src/checkout-flow.ts`         | Hierarchical FSM: checkout parent with a payment child                       |
+| `src/checkout-flow.test.ts`    | Parent and child tested independently, `toHaveNoUnreachableStates` recursion |
+| `src/account-transfer.ts`      | FSM with handler logic: conditional transitions and context mutations        |
+| `src/account-transfer.test.ts` | `walkAll` runs with a minimal config, payload generators, and seed replay    |
+
+## Source
+
+[examples/testing-with-machina-test/](https://github.com/ifandelse/machina.js/tree/master/examples/testing-with-machina-test)

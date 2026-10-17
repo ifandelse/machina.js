@@ -5,16 +5,16 @@ description: Deferred input showcase with a shopping cart checkout flow.
 
 import { LinkCard } from "@astrojs/starlight/components";
 
-A shopping cart checkout flow built to showcase machina's `defer()` mechanism. Actions that arrive at the wrong time — clicking "Apply Coupon" while validation is already running, for instance — get queued and replayed automatically when the FSM reaches a state that can handle them. The caller fires and forgets; the FSM sorts it out.
+A checkout flow for a shopping cart, built to demonstrate machina's `defer()` mechanism. An input sent at the wrong time, like a coupon click while validation runs, gets queued and replayed automatically when the FSM enters a state that can handle it. The caller fires the input once, and the FSM replays it at the right time.
 
 <LinkCard title="Run the Shopping Cart" href="/demos/shopping-cart/" target="_blank" />
 
 ## What it demonstrates
 
-- **`defer({ until: "stateName" })`** — queue an input to replay when the FSM enters a specific named state
-- **`defer()`** (untargeted) — queue an input to replay on the next transition to _any_ state; used in the `error` state's catch-all handler
-- **`_onEnter` / `_onExit` lifecycle hooks** — `_onEnter` starts an async timer and stores the ID on context; `_onExit` clears it so stale callbacks can't fire into the wrong state
-- **State-driven UI** — buttons enable and disable based on the current state; the confirm button only appears in `checkout`; the checkout button stays disabled until the cart has items
+- **`defer({ until: "stateName" })`**: queue an input to replay when the FSM enters a specific named state
+- **`defer()`** (untargeted): queue an input to replay on the next transition to any state, used in the `error` state's catch-all handler
+- **`_onEnter` / `_onExit` lifecycle hooks**: `_onEnter` starts an async timer and stores the ID on context, and `_onExit` clears it so stale callbacks can't fire into the wrong state
+- **State-driven UI**: buttons enable and disable based on the current state. The confirm button appears in `checkout` alone, and the checkout button stays disabled until the cart has items
 
 ## States
 
@@ -23,16 +23,16 @@ A shopping cart checkout flow built to showcase machina's `defer()` mechanism. A
 | `browsing`           | Idle. Accepts `addItem`, `applyCoupon`, `checkout` (if items > 0). `recordPurchaseAnalytics` defers to `checkout`.                                 |
 | `validating`         | Async inventory/price check (~2s). `applyCoupon` and `checkout` defer to `browsing`.                                                               |
 | `applyingDiscount`   | Async discount calculation (~1.8s). `addItem`, `applyCoupon`, and `checkout` all defer to `browsing`.                                              |
-| `reservingInventory` | Intent chokepoint (~1.5s). No deferral — unhandled inputs emit `nohandler` and are dropped.                                                        |
+| `reservingInventory` | Intent chokepoint (~1.5s). This state doesn't defer: an unhandled input emits `nohandler` and drops.                                               |
 | `checkout`           | Review page. Deferred `recordPurchaseAnalytics` inputs replay here. `confirm` transitions to `confirmed`.                                          |
 | `confirmed`          | Terminal state. Only `reset` works.                                                                                                                |
 | `error`              | Not in the normal flow. Demonstrates untargeted `defer()` via a catch-all `"*"` handler. Reachable via `fsm.transition("error")` from the console. |
 
 ## Defer in action
 
-### Targeted defer — `defer({ until: "stateName" })`
+### Targeted defer with `defer({ until: "stateName" })`
 
-The user clicks "Apply Coupon" while validation is already running. The FSM is in `validating` and can't handle it yet. Rather than dropping the input or making the caller retry, the handler defers it to `browsing`:
+The user clicks "Apply Coupon" while validation is already running. The FSM is in `validating` and can't handle the input yet. The handler defers it to `browsing` and spares the caller a retry:
 
 ```ts
 // validating state
@@ -41,9 +41,9 @@ applyCoupon({ defer }) {
 },
 ```
 
-When `validationComplete` fires and the FSM transitions to `browsing`, machina automatically replays the deferred `applyCoupon` input. FIFO order is preserved — if the user clicked it three times, all three replay in sequence.
+When `validationComplete` fires and the FSM transitions to `browsing`, machina automatically replays the deferred `applyCoupon` input. Machina preserves FIFO order, so three clicks replay as three inputs in sequence.
 
-The same pattern keeps `recordPurchaseAnalytics` parked across _multiple_ state transitions. It's deferred to `checkout` from `browsing`, `validating`, and `applyingDiscount`. It will sit in the queue through as many cycles as it takes to reach `checkout`, then execute exactly once per queued entry.
+The same pattern queues `recordPurchaseAnalytics` across several state transitions. The handlers defer it to `checkout` from `browsing`, `validating`, and `applyingDiscount`. It waits in the queue through as many cycles as the flow needs, then runs exactly once per queued entry.
 
 ```ts
 // browsing, validating, applyingDiscount states
@@ -51,15 +51,15 @@ recordPurchaseAnalytics({ defer }) {
     defer({ until: "checkout" });
 },
 
-// checkout state — this is where it finally runs
+// checkout state: this is where it finally runs
 recordPurchaseAnalytics({ emit }) {
     emit("analyticsRecorded");
 },
 ```
 
-### Untargeted defer — `defer()`
+### Untargeted defer with `defer()`
 
-The `error` state uses a catch-all `"*"` handler with no target state. The deferred inputs replay on the _next_ transition to any state, letting the landing state sort them out:
+The `error` state uses a catch-all `"*"` handler without a target state. The deferred inputs replay on the next transition to any state, and the destination state handles them:
 
 ```ts
 error: {
@@ -75,7 +75,7 @@ error: {
 },
 ```
 
-This is the right pattern when recovery destination isn't known at defer time — error classification and retry logic determine the next state, and queued inputs ride along.
+Untargeted defer fits the case where the recovery destination is unknown at defer time. Error classification and retry logic pick the next state, and the queued inputs replay there.
 
 ## Source
 

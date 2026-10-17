@@ -1,17 +1,19 @@
 ---
 title: Concepts
-description: "The mental model behind machina: states, inputs, handlers, transitions, and context."
+description: "How machina models states, inputs, handlers, transitions, and context."
 ---
 
-A finite state machine is a model that is always in exactly one state, transitions between states in response to inputs, and can run logic on entry and exit. That's the whole idea. Everything in machina is an expression of that model.
+import { Aside } from "@astrojs/starlight/components";
+
+A finite state machine is a model that is always in exactly one state, transitions between states in response to inputs, and can run logic on entry and exit. Everything in machina is an expression of that model.
 
 ---
 
 ## Synchronous by Design
 
-machina's methods — `handle()`, `transition()`, `canHandle()`, `currentState()` — are all synchronous. When you call `handle("timeout")`, the entire transition sequence (exit → state change → enter → deferred replay) completes before `handle()` returns.
+machina's methods (`handle()`, `transition()`, `canHandle()`, `currentState()`) are all synchronous. When you call `handle("timeout")`, the entire transition sequence (exit → state change → enter → deferred replay) completes before `handle()` returns.
 
-This doesn't mean you can't use machina in async workflows — you absolutely can. The pattern is: a handler kicks off async work (a fetch, a timer, a promise), and when that work resolves, it feeds a new input back into the FSM. The FSM stays synchronous; the async world calls back in.
+machina still works in async workflows. A handler starts the async work (a fetch or a timer), and when that work resolves, it feeds a new input back into the FSM. The FSM stays synchronous, and the async world calls back in.
 
 ```ts
 checking: {
@@ -32,7 +34,7 @@ The FSM doesn't await anything. It enters `checking`, the `_onEnter` fires the f
 
 ## States
 
-An FSM is always in exactly one state. States are defined as keys of the `states` object in your config. TypeScript infers state names as string literals from those keys — no separate type declaration needed.
+An FSM is always in exactly one state. States are defined as keys of the `states` object in your config. TypeScript infers the state names as string literals from those keys, and you don't declare a separate type.
 
 ```ts
 const light = createFsm({
@@ -68,7 +70,7 @@ If the current state has no handler for that input name and no wildcard handler,
 
 A handler is a property on a state object. There are two forms:
 
-**Function handler**: receives a `HandlerArgs` object plus any extra args passed to `handle()`. Return a state name to transition; return nothing to stay put. Extra args are untyped by default; an [input payload map](/guide/typed-payloads/) types them per input.
+**Function handler**: receives a `HandlerArgs` object plus any extra args passed to `handle()`. Return a state name to transition, or return nothing to stay put. Extra args are untyped by default, and an [input payload map](/guide/typed-payloads/) types them per input.
 
 ```ts
 green: {
@@ -93,7 +95,7 @@ The `HandlerArgs` object contains:
 | `defer`     | Function to defer this input for later replay             |
 | `emit`      | Function to emit a custom event                           |
 
-**String shorthand** — always transitions to the named state. `timeout: "yellow"` is exactly equivalent to `timeout() { return "yellow"; }`.
+**String shorthand**: always transitions to its target state. `timeout: "yellow"` is exactly equivalent to `timeout() { return "yellow"; }`.
 
 ```ts
 green: {
@@ -101,7 +103,7 @@ green: {
 }
 ```
 
-**Wildcard handler** — `"*"` matches any input not handled by a named handler in that state. Use `inputName` to see what arrived.
+**Wildcard handler**: `"*"` matches any input that has no handler of its own in that state. Use `inputName` to identify the input.
 
 ```ts
 green: {
@@ -111,6 +113,12 @@ green: {
   },
 }
 ```
+
+<Aside type="tip">
+    While machina provides the wildcard handler, consider it primarily a diagnostic utility for
+    logging. In general, you want to model your FSMs with explicitly defined handlers, not rely on a
+    catch-all handler for normal operations.
+</Aside>
 
 ---
 
@@ -125,7 +133,7 @@ When a handler returns a state name (or a string shorthand resolves), machina ru
 5. Emits a `transitioned` event: `{ fromState, toState }`
 6. Replays any deferred inputs targeting the new state
 
-If `_onEnter` returns a state name, machina immediately begins another transition — a "bounce" to a third state. This is useful for conditional initialization logic.
+If `_onEnter` returns a state name, machina immediately begins another transition, a "bounce" to a third state. This is useful for conditional initialization logic.
 
 ---
 
@@ -143,7 +151,7 @@ createFsm({
 // ctx is inferred as { tickCount: number; lastEvent: string | null }
 ```
 
-For `createBehavioralFsm`, there is no separate context object — the **client object itself is the context**. Each call to `handle(client, inputName)` passes the client as `ctx`.
+For `createBehavioralFsm`, there is no separate context object: the **client object itself is the context**. Each call to `handle(client, inputName)` passes the client as `ctx`.
 
 See [createFsm](/guide/fsm/) and [createBehavioralFsm](/guide/behavioral-fsm/) for the full API.
 
@@ -151,11 +159,11 @@ See [createFsm](/guide/fsm/) and [createBehavioralFsm](/guide/behavioral-fsm/) f
 
 ## Lifecycle Hooks
 
-Two reserved keys on a state run automatically during transitions:
+The reserved keys `_onEnter` and `_onExit` run automatically during transitions:
 
-**`_onEnter`** — called when the FSM enters that state. Receives the same `HandlerArgs` as regular handlers. Can return a state name to immediately transition again (a "bounce").
+**`_onEnter`**: called when the FSM enters that state. It receives the same `HandlerArgs` as regular handlers and can return a state name to immediately transition again (a "bounce").
 
-**`_onExit`** — called when the FSM leaves that state. Receives the same `HandlerArgs`. Cannot trigger a transition — return values are ignored.
+**`_onExit`**: called when the FSM leaves that state. It receives the same `HandlerArgs`. Because machina ignores its return value, `_onExit` cannot start a transition.
 
 ```ts
 yellow: {
@@ -192,7 +200,7 @@ Without `{ until }`, the input replays on the next transition to any state.
 
 ## Disposal
 
-`dispose()` permanently shuts down an FSM. All subsequent method calls become silent no-ops — no errors, no events, nothing.
+`dispose()` permanently shuts down an FSM. All subsequent method calls become silent no-ops, without errors or events.
 
 ```ts
 light.dispose();

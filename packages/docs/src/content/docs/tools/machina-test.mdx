@@ -7,8 +7,8 @@ import { Aside } from "@astrojs/starlight/components";
 
 machina-test gives you two things:
 
-1. **Graph matchers** — `toAlwaysReach`, `toNeverReach`, `toHaveNoUnreachableStates`. These check the FSM's _topology_: does a path exist from A to B?
-2. **`walkAll`** — property-based runtime testing. Feeds randomized inputs into a live FSM and checks a rule you define after every transition.
+1. **Graph matchers**: `toAlwaysReach`, `toNeverReach`, and `toHaveNoUnreachableStates` check the FSM's topology. Does a path exist from A to B?
+2. **`walkAll`**: property-based runtime testing. It feeds randomized inputs into a live FSM and checks a rule you define after every transition.
 
 The matchers answer "is the wiring right?" `walkAll` answers "does it actually work when things happen in a random order?"
 
@@ -20,7 +20,7 @@ npm install --save-dev machina-test
 pnpm add -D machina-test
 ```
 
-`machina` >= 7.0.1 is a peer dependency. Either `jest` or `vitest` must be available as the host test runner.
+`machina` >= 8.0.0 is a peer dependency, and the host test runner must be `jest` >= 29 or `vitest` >= 1.
 
 ## Setup
 
@@ -32,7 +32,7 @@ import "machina-test";
 
 Or add it to your test runner's setup file (`jest.setup.ts` / `vitest.setup.ts`) to make the matchers available everywhere.
 
-TypeScript users get autocomplete automatically — the package ships ambient type augmentation for both `jest.Matchers` and Vitest's `Assertion<T>`.
+TypeScript users get autocomplete automatically. The package includes ambient type augmentation for both `jest.Matchers` and Vitest's `Assertion<T>`.
 
 ## Matchers
 
@@ -57,7 +57,7 @@ const fsm = createFsm({
 expect(fsm).toHaveNoUnreachableStates(); // passes
 ```
 
-This matcher delegates to `inspectGraph()` and filters for `unreachable-state` findings. It **recurses into child FSM graphs** — an orphaned state in a `_child` FSM surfaces as a failure when called on the parent.
+This matcher delegates to `inspectGraph()` and filters for `unreachable-state` findings. It recurses into child FSM graphs: an orphaned state in a `_child` FSM fails the assertion on the parent.
 
 ### `toAlwaysReach(targetState, { from })`
 
@@ -67,7 +67,7 @@ Asserts that a path exists from `from` to `targetState` in the FSM's top-level g
 expect(fsm).toAlwaysReach("delivered", { from: "placed" });
 ```
 
-BFS follows all edges — both `"definite"` (string shorthand, single return) and `"possible"` (conditional returns). The question is "does the plumbing exist?", not "will this path definitely execute at runtime?"
+The BFS follows all edges, both `"definite"` (string shorthand, one return) and `"possible"` (conditional returns). The matcher checks whether the plumbing exists.
 
 <Aside type="note">
     "Always" refers to graph topology, not runtime certainty. A pass means a path exists in the
@@ -94,7 +94,7 @@ expect(fsm).not.toNeverReach("delivered", { from: "placed" }); // a path does ex
 
 ### Invalid state names
 
-Typos in state names produce clean test failures (not thrown exceptions) with actionable messages listing available states:
+A typo in a state name produces a normal test failure, and the message lists the available states:
 
 ```
 State 'shiped' does not exist in FSM 'order-workflow'.
@@ -105,7 +105,7 @@ Available states: placed, validating, processing, shipped, delivered, cancelled,
 
 `toAlwaysReach` and `toNeverReach` operate on the **top-level graph only**. They do not traverse into `_child` FSMs.
 
-The pattern: test parent and child independently by passing each to `expect()` separately.
+Test the parent and the child independently by passing each to `expect()`.
 
 ```ts
 import "machina-test";
@@ -150,48 +150,46 @@ expect(paymentFsm).toNeverReach("entering-details", { from: "authorized" });
 
 <Aside type="tip">
     `toHaveNoUnreachableStates()` is the one matcher that **does** recurse into children. Calling it
-    on the parent validates both the parent and child graphs in a single assertion.
+    on the parent validates both the parent and child graphs in one assertion.
 </Aside>
 
 ### Why top-level only?
 
 Consider a parent with state `"checkout"` and a child with state `"processing"`. What would `toAlwaysReach("processing", { from: "browsing" })` mean?
 
-- "Can the parent reach a state called `processing`?" — No, it doesn't have one. But the child does.
-- "Can `browsing` eventually lead to the child's `processing`?" — That's a composite-state question, not a graph-topology question.
+- "Does the parent's graph contain a state called `processing`?" The answer is no, since only the child declares it.
+- "Can `browsing` eventually lead to the child's `processing`?" That question concerns composite state, which the matchers do not model.
 
 By keeping reachability matchers top-level-only, the answer is always unambiguous: you're asking about the states in the graph you passed to `expect()`.
 
 ---
 
-## walkAll — Runtime Testing
+## Runtime Testing with walkAll
 
-The matchers above check **graph topology** — they look at the map. `walkAll` actually **runs the FSM** with random inputs and checks that a rule you define holds true after every single transition. If the rule breaks, you get the exact sequence of inputs that caused it, plus a magic number that lets you replay the failure on demand.
+The matchers above check graph topology. `walkAll` runs the FSM with random inputs and checks a rule you define after each transition. When the rule breaks, you get the exact sequence of inputs that caused it, plus a seed that replays the input choices on demand.
 
-This matters because graph matchers can't see conditional logic. If a handler has an `if` statement that decides where to go next, the matchers see _both_ branches as possible. They can't tell you whether the branch logic is actually correct. `walkAll` can.
+Graph matchers cannot evaluate conditional logic. When a handler's `if` statement picks the next state, the matchers treat both branches as possible, and they cannot check whether the branch logic is correct. `walkAll` exercises the real handlers, so it can.
 
 ### Key concepts
 
-Before diving into the API, here's what the terminology means in plain language:
+**Factory function**: a function that creates a fresh FSM on each call. `walkAll` calls your factory once per walk so each walk starts clean. A shared instance would leak mutations from one walk into the next.
 
-**Factory function** — A function that creates a fresh FSM every time it's called. `walkAll` calls your factory once per walk so each walk starts clean. If you passed a single instance instead, mutations from walk #1 would bleed into walk #2 and your test results would be meaningless.
+**Invariant**: a rule that must stay true in every state, such as "the balance never goes negative" or "a user in state `admin` has a role." You write it as a function that throws (or returns `false`) when the rule is violated. `walkAll` checks the invariant after every transition.
 
-**Invariant** — A rule that must _always_ be true, no matter what state the FSM is in. "Balance must never go negative." "User must not be in state `admin` without a role." You write it as a function — if the rule is violated, throw an error (or return `false`). `walkAll` runs your invariant after every transition.
+**Walk**: one complete run through the FSM, from a fresh instance through a sequence of random inputs. One `walkAll` call runs many walks (default: 100).
 
-**Walk** — One complete run through the FSM. Create a fresh FSM, fire a sequence of random inputs, check the invariant after each transition. A single `walkAll` call runs many walks (default: 100).
+**Step**: one `handle()` call within a walk. With `maxSteps: 20`, each walk fires up to 20 random inputs before the next walk starts.
 
-**Step** — One `handle()` call within a walk. If `maxSteps` is 20, each walk fires up to 20 random inputs before moving on to the next walk.
-
-**Seed** — A number that makes "random" repeatable. Computers can't actually generate random numbers — they use a formula that _looks_ random but always produces the same sequence from the same starting number. That starting number is the seed. Same seed = same sequence of input names picked each step. This is what makes failures reproducible.
+**Seed**: a number that makes "random" repeatable. A pseudorandom generator produces the same sequence from the same starting number, and that starting number is the seed. The same seed picks the same sequence of input names, which makes failures reproducible.
 
 <Aside type="caution">
-    The seed controls which **input name** is picked each step. It does NOT control what your
-    payload generators return. If your generators use `Math.random()`, the payloads will differ
-    across runs even with the same seed. That's fine for tests that should always pass — but for
-    failure replay, your generators must be deterministic too.
+    The seed controls which **input name** is picked each step. It does not control what your
+    payload generators return. Generators that use `Math.random()` produce different payloads across
+    runs even with the same seed. That's fine for tests that should always pass, and failure replay
+    needs deterministic generators.
 </Aside>
 
-**Payload generator** — A function that produces data to pass along with a specific input. Without generators, inputs fire with no payload — which is fine for inputs like `reset` but useless for inputs like `begin` that expect a transfer amount. You configure generators per input name.
+**Payload generator**: a function that produces the data to pass with a specific input. Without a generator, an input fires with the input name alone, which is fine for `reset` and wrong for `begin`, an input that expects a transfer amount. You configure generators per input name.
 
 ### Basic usage
 
@@ -219,7 +217,7 @@ const result = walkAll(
 expect(result.walksCompleted).toBe(200);
 ```
 
-That's the minimal case. `walkAll` auto-extracts all input names from your FSM's `states` config (skipping reserved keys like `_onEnter`, `_onExit`, `_child`, and `*`), picks one at random each step, fires it via `handle()`, and runs your invariant after every transition.
+That's the minimal case. `walkAll` auto-extracts the input names from your FSM's `states` config, skipping reserved keys like `_onEnter`, `_onExit`, `_child`, and `*`. Each step it picks one input at random and fires it via `handle()`, and the invariant runs after every transition.
 
 ### Payload generators
 
@@ -247,14 +245,14 @@ walkAll(() => createAccountTransfer(500), {
 Only inputs that need payloads get generators. Everything else fires with no arguments.
 
 <Aside type="tip">
-    Using `Math.random()` in a generator is fine when the test should pass regardless of the payload
-    value — the FSM's logic handles all values correctly. But if you need to replay a specific
-    failure, use a deterministic generator instead (a fixed value, or your own seeded PRNG).
+    `Math.random()` in a generator is fine when the test should pass regardless of the payload
+    value. To replay a specific failure, use a deterministic generator: a fixed value, or your own
+    seeded PRNG.
 </Aside>
 
 ### Typed payload generators
 
-If the factory returns an FSM built with an [input payload map](/guide/typed-payloads/), the config changes shape. The `inputs` key is gone. In its place, `payloads` is required: one generator per payload-carrying input, each returning that input's full argument tuple, which `walkAll` spreads into `handle()`.
+If the factory returns an FSM built with an [input payload map](/guide/typed-payloads/), the config changes. The `inputs` key is gone, and the config requires `payloads` in its place. You supply one generator per payload-carrying input. Each generator returns that input's full argument tuple, and `walkAll` spreads the tuple into `handle()`.
 
 ```ts
 type TrafficLightInputs = {
@@ -297,11 +295,11 @@ walkAll(factory, {
 });
 ```
 
-Unknown names in `include` throw immediately — catches typos before the walk even starts.
+Unknown names in `include` throw immediately, which catches typos before the walks start.
 
 ### Seed replay
 
-The killer feature. When an invariant violation occurs, `walkAll` throws a `WalkFailureError` that carries the seed, the step number, and the full input sequence. Pass that seed back to `walkAll` and you get the exact same walk — same inputs, same order, same failure.
+When an invariant violation occurs, `walkAll` throws a `WalkFailureError` that contains the `seed`, `step`, `state`, and `inputSequence` fields. Passing that seed back to `walkAll` replays the same sequence of input choices, and the walk is identical when the payload generators are deterministic. The captured `inputSequence` records the payloads from the failed run either way.
 
 ```ts
 import { walkAll, WalkFailureError } from "machina-test";
@@ -322,7 +320,7 @@ try {
 }
 ```
 
-This is particularly useful in CI — a test fails, you grab the seed from the error output, paste it into your test, and you have a deterministic reproduction. No more "works on my machine."
+In CI, copy the seed from the failing log into your test and the reproduction is deterministic.
 
 ### BehavioralFsm support
 
@@ -353,7 +351,7 @@ Thrown when the invariant fails. All properties are readonly:
 | `ctx`            | `unknown`                   | The FSM context (or client for BehavioralFsm) at violation time |
 | `inputSequence`  | `Array<{ input, payload }>` | Every input fired up to and including the failing step          |
 
-The error message itself is human-readable and includes the seed, states, cause, and full input sequence — designed for CI log output.
+The error message itself is human-readable and includes the seed, states, cause, and full input sequence. The format suits CI log output.
 
 ### Configuration reference
 
@@ -404,7 +402,7 @@ The `InvariantArgs` object passed to your invariant:
 | Question                                                       | Tool                             |
 | -------------------------------------------------------------- | -------------------------------- |
 | Is every state reachable?                                      | `toHaveNoUnreachableStates()`    |
-| Can state A reach state B?                                     | `toAlwaysReach` / `toNeverReach` |
+| Does a path exist from state A to state B?                     | `toAlwaysReach` / `toNeverReach` |
 | Does the FSM behave correctly under random inputs?             | `walkAll`                        |
 | Is there a conditional logic bug the graph can't see?          | `walkAll`                        |
 | Will the guard in `_onEnter` actually prevent bad transitions? | `walkAll`                        |
@@ -413,5 +411,5 @@ The matchers and `walkAll` are complementary. Use matchers for fast structural s
 
 ## See also
 
-- [machina-inspect](/tools/machina-inspect/) — the graph analysis engine the matchers are built on
-- [ESLint plugin](/tools/eslint-plugin/) — catch structural issues at lint time in your editor
+- [machina-inspect](/tools/machina-inspect/), the graph analysis engine behind the matchers
+- [ESLint plugin](/tools/eslint-plugin/), the same structural checks at lint time in your editor

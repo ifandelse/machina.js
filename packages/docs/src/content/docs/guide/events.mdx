@@ -1,6 +1,6 @@
 ---
 title: Events
-description: Subscribe to lifecycle events, emit custom events, and use wildcards.
+description: How to subscribe to lifecycle events, emit custom events, use wildcards, and type the payloads.
 ---
 
 Both `Fsm` and `BehavioralFsm` emit lifecycle events throughout the input-handling and transition cycle. Subscribe with `on()`, which returns a `{ off() }` subscription object.
@@ -15,7 +15,7 @@ const sub = fsm.on("transitioned", ({ fromState, toState }) => {
 sub.off(); // unsubscribe
 ```
 
-`on()` is safe to call multiple times with the same callback — the underlying `Set` deduplicates. The returned `Subscription` is the only way to remove a specific listener; there's no `off(eventName, callback)` API.
+`on()` is safe to call multiple times with the same callback, because the underlying `Set` deduplicates. To remove a specific listener, call `off()` on the returned `Subscription`. machina doesn't provide an `off(eventName, callback)` API.
 
 ## Built-in events
 
@@ -33,7 +33,7 @@ Events follow a grammatical pattern: present participle (`transitioning`, `handl
 
 ## BehavioralFsm events
 
-`BehavioralFsm` shares the same event names, but every payload is intersected with a `client` field identifying which client the event pertains to:
+`BehavioralFsm` shares the same event names, and each built-in payload is intersected with a `client` field identifying which client the event pertains to:
 
 ```ts
 connFsm.on("transitioned", ({ client, fromState, toState }) => {
@@ -41,7 +41,9 @@ connFsm.on("transitioned", ({ client, fromState, toState }) => {
 });
 ```
 
-This is necessary because a single `BehavioralFsm` instance manages many independent clients — without `client` in the payload you'd have no idea whose event just fired.
+The field is necessary because one `BehavioralFsm` instance manages many independent clients. Without `client` in the payload, you couldn't tell whose event just fired.
+
+Custom events emitted with `emit()` pass through with the payload you supply, and machina doesn't add a `client` field to them.
 
 ## Wildcard subscriber
 
@@ -53,11 +55,11 @@ fsm.on("*", (eventName, data) => {
 });
 ```
 
-Wildcard listeners fire **before** named listeners for the same event. This is intentional — it lets relay listeners observe all events before specific subscribers react.
+Wildcard listeners fire before named listeners for the same event. The ordering is intentional: it lets relay listeners observe each event before specific subscribers react.
 
 ## Custom events
 
-Handlers can emit custom events via the `emit` argument on the handler args object. Built-in lifecycle events are emitted automatically by the engine; `emit` is for user-defined events.
+Handlers can emit custom events via the `emit` argument on the handler args object. The engine emits built-in lifecycle events automatically, and `emit` is for user-defined events.
 
 ```ts
 const fsm = createFsm({
@@ -74,16 +76,19 @@ const fsm = createFsm({
     },
 });
 
-fsm.on("checkCountUpdated", ({ count }) => {
-    console.log("check count:", count);
+fsm.on("*", (eventName, data) => {
+    if (eventName === "checkCountUpdated") {
+        const { count } = data as { count: number };
+        console.log("check count:", count);
+    }
 });
 ```
 
-Custom events are received by `on()` subscribers the same way as built-in events. The wildcard `"*"` subscription catches them too.
+The named `on()` overloads accept the built-in event names, so you subscribe to custom events with the `"*"` wildcard. The wildcard callback receives the event name and the payload, and your code narrows the payload type.
 
 ## TypeScript
 
-The built-in event payloads are fully typed via `FsmEventMap` and `BehavioralFsmEventMap`. You won't normally need to reference these directly — `on()` is already typed through the FSM instance — but they're exported if you need them for callbacks defined outside the `on()` call.
+The built-in event payloads are fully typed via `FsmEventMap` and `BehavioralFsmEventMap`. You won't normally need to reference these directly, because `on()` is already typed through the FSM instance. They're exported for callbacks defined outside the `on()` call.
 
 ```ts
 import type { FsmEventMap, BehavioralFsmEventMap } from "machina";
@@ -97,4 +102,4 @@ type NarrowedPayload = FsmEventMap<"green" | "yellow" | "red">["transitioned"];
 // => { fromState: "green" | "yellow" | "red"; toState: "green" | "yellow" | "red" }
 ```
 
-Custom events emitted via `emit()` are untyped — they flow through as `unknown` on the wildcard path. If you need typed custom events, narrow them at the subscriber.
+Custom events emitted via `emit()` are untyped, and they flow through as `unknown` on the wildcard path. If you need typed custom events, narrow them at the subscriber.

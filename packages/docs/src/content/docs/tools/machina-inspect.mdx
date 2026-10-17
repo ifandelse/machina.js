@@ -5,7 +5,7 @@ description: Static analysis and structural inspection for machina FSM configs.
 
 import { Aside } from "@astrojs/starlight/components";
 
-machina-inspect parses your FSM config (or a live instance) into a directed graph IR, then runs structural checks against it. It's the engine behind both the [ESLint plugin](/tools/eslint-plugin/) and [machina-explorer](/examples/machina-explorer/) — but it's also a standalone tool you can use programmatically.
+machina-inspect parses your FSM config (or a live instance) into a directed graph IR, then runs structural checks against it. It's the engine behind both the [ESLint plugin](/tools/eslint-plugin/) and [machina-explorer](/examples/machina-explorer/). It is also a standalone tool for programmatic use.
 
 ## Install
 
@@ -36,7 +36,7 @@ const findings = inspect({
 // findings: [{ type: "unreachable-state", states: ["broken"], ... }]
 ```
 
-Pass a config object or a live `Fsm` / `BehavioralFsm` instance — both work.
+`inspect()` accepts a config object or a live `Fsm` / `BehavioralFsm` instance.
 
 ## Checks
 
@@ -44,24 +44,24 @@ machina-inspect runs three structural checks:
 
 ### Unreachable states
 
-BFS from `initialState`. Any state with no inbound path is reported. Both `"definite"` and `"possible"` edges count — if there's any path at all, the state is considered reachable.
+The unreachable check reports each state that the machine cannot enter from `initialState`. Both `"definite"` and `"possible"` edges count, because any path at all makes a state reachable. The search is a breadth-first traversal from `initialState`.
 
 ### `_onEnter` loops
 
-DFS cycle detection on the subgraph of `_onEnter` transitions. Only reports cycles where **every** edge is unconditional. Conditional bounces like `if (ctx.error) return "failed"` are intentional patterns, not bugs.
+The loop check runs a depth-first cycle search over the subgraph of `_onEnter` transitions and reports only cycles in which each edge is unconditional. A conditional bounce like `if (ctx.error) { return "failed"; }` is an intentional pattern, and the check skips it.
 
 ### Missing handlers
 
-Collects the union of all input names across all states, then flags states that don't handle inputs present elsewhere. States with a `*` catch-all are excluded. This check is best-effort — only inputs visible as graph edges are included.
+The missing-handler check collects the input names that appear anywhere in the FSM, then reports the states that leave some of those inputs unhandled. A state with a `*` catch-all is exempt. The check is best-effort: only inputs visible as graph edges enter the set.
 
 <Aside type="tip">
     The missing-handler check intentionally produces noise on FSMs with asymmetric state handlers.
-    That's why the [ESLint plugin](/tools/eslint-plugin/) ships it as `"off"` by default.
+    The [ESLint plugin](/tools/eslint-plugin/) defaults it to `"off"` for that reason.
 </Aside>
 
 ## Two-step usage
 
-When you need the graph IR for other purposes (visualization, custom analysis), build it once and run checks separately:
+Sometimes the graph IR is itself an output, for visualization or custom analysis. Build it once with `buildStateGraph()` and run the checks separately:
 
 ```ts
 import { buildStateGraph, inspectGraph } from "machina-inspect";
@@ -73,11 +73,11 @@ const graph = buildStateGraph(config);
 const findings = inspectGraph(graph);
 ```
 
-This is the pattern [machina-explorer](/examples/machina-explorer/) uses — build the graph once, then feed it to both the check runner and the mermaid diagram generator.
+This is the pattern [machina-explorer](/examples/machina-explorer/) uses: it builds the graph once, then feeds it to both the check runner and the mermaid diagram generator.
 
 ## Graph IR
 
-The `StateGraph` is the intermediate representation downstream tools consume:
+Downstream tools consume the `StateGraph`, the intermediate representation:
 
 ```ts
 interface StateGraph {
@@ -102,10 +102,10 @@ interface TransitionEdge {
 
 ### Confidence levels
 
-- **`"definite"`** — Unconditional. String shorthands (`timeout: "yellow"`) and functions with a single top-level return.
-- **`"possible"`** — Conditional. Returns inside `if`, `switch`, ternary, logical expressions, or `try` blocks.
+- **`"definite"`**: an unconditional transition. String shorthands (`timeout: "yellow"`) and functions with one top-level return.
+- **`"possible"`**: a conditional transition. Returns inside `if`, `switch`, ternary, logical expressions, or `try` blocks.
 
-Handler functions are analyzed via acorn AST parsing of `handler.toString()`. Non-string returns, template literals, and variable references are ignored — the analysis is best-effort, not exhaustive.
+machina-inspect parses `handler.toString()` with acorn to find transition targets in function handlers. Non-string returns, template literals, and variable references are ignored. The analysis is best-effort.
 
 ## Child FSMs
 
@@ -113,6 +113,6 @@ Handler functions are analyzed via acorn AST parsing of `handler.toString()`. No
 
 ## See also
 
-- [machina-test](/tools/machina-test/) — Jest/Vitest custom matchers built on machina-inspect's graph analysis
-- [ESLint plugin](/tools/eslint-plugin/) — get these checks inline in your editor
-- [machina-explorer](/examples/machina-explorer/) — paste-and-analyze browser UI
+- [machina-test](/tools/machina-test/), Jest and Vitest matchers built on machina-inspect's graph analysis
+- [ESLint plugin](/tools/eslint-plugin/), the same checks inline in your editor
+- [machina-explorer](/examples/machina-explorer/), a paste-and-analyze browser UI

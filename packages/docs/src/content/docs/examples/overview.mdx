@@ -3,26 +3,27 @@ title: Examples Overview
 description: Runnable example applications demonstrating machina patterns.
 ---
 
-machina ships with eight runnable examples covering real-world patterns — from async health checks to React integration to test suite patterns. Each one is a self-contained app you can run locally, and on the deployed docs site they're live at their own routes.
+The examples cover real-world patterns, from async health checks to React integration to test-suite design. Each one is a self-contained app you can run locally, and the deployed docs site hosts the browser ones at their own routes.
 
 ## Examples
 
-| Example                                                 | What it demonstrates                                                    | Key machina features                                                                    |
-| ------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Connectivity Monitor](/examples/connectivity/)         | Network connectivity tracking with async health checks                  | `createFsm`, async in `_onEnter`, `AbortController` cleanup in `_onExit`, custom events |
-| [Traffic Intersection](/examples/traffic-intersection/) | Hierarchical traffic light controller with pedestrian signals           | `_child` delegation, `compositeState()`, input bubbling, `defer()`, child auto-reset    |
-| [Dungeon Critters](/examples/dungeon-critters/)         | Multiple critter instances sharing one FSM definition                   | `createBehavioralFsm`, per-client state via `WeakMap`, shared behavior definition       |
-| [Shopping Cart](/examples/shopping-cart/)               | Checkout flow with deferred operations                                  | `createFsm`, `defer()`, `defer({ until })`, lifecycle hooks                             |
-| [Job Queue](/examples/job-queue/)                       | Persist/restore pattern with `rehydrate()` and localStorage             | `createBehavioralFsm`, `rehydrate()`, silent state restoration, side-effect recovery    |
-| [With React](/examples/with-react/)                     | React integration for a todo app                                        | `createFsm`, `useSyncExternalStore`, framework integration                              |
-| [machina-explorer](/examples/machina-explorer/)         | Interactive FSM inspector and state diagram visualizer                  | `buildStateGraph`, `inspectGraph`, mermaid `stateDiagram-v2`, CodeMirror 6              |
-| Testing with machina-test                               | Graph matchers, hierarchical FSM testing, and `walkAll` runtime testing | `machina-test` matchers, `walkAll`, payload generators, seed replay                     |
+| Example                                                           | What it demonstrates                                                    | Key machina features                                                                      |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [Connectivity Monitor](/examples/connectivity/)                   | Network connectivity tracking with async health checks                  | `createFsm`, async in `_onEnter`, `AbortController` cleanup in `_onExit`, custom events   |
+| [Traffic Intersection](/examples/traffic-intersection/)           | Hierarchical traffic light controller with pedestrian signals           | `_child` delegation, `compositeState()`, input bubbling, `defer()`, child auto-reset      |
+| [Dungeon Critters](/examples/dungeon-critters/)                   | Multiple critter instances sharing one FSM definition                   | `createBehavioralFsm`, per-client state via `WeakMap`, shared behavior definition         |
+| [Shopping Cart](/examples/shopping-cart/)                         | Checkout flow with deferred operations                                  | `createFsm`, `defer()`, `defer({ until })`, lifecycle hooks                               |
+| [Job Queue](/examples/job-queue/)                                 | Persist/restore pattern with `rehydrate()` and localStorage             | `createBehavioralFsm`, `dehydrate()`, `rehydrate()`, silent restore, side-effect recovery |
+| [With React](/examples/with-react/)                               | A checkout flow with the machina-react hooks                            | `createFsm`, machina-react (`useFsm`, `useFsmSelector`), framework integration            |
+| [machina-explorer](/examples/machina-explorer/)                   | Interactive FSM inspector and state diagram visualizer                  | `buildStateGraph`, `inspectGraph`, mermaid `stateDiagram-v2`, CodeMirror 6                |
+| [Testing with machina-test](/examples/testing-with-machina-test/) | Graph matchers, hierarchical FSM testing, and `walkAll` runtime testing | `machina-test` matchers, `walkAll`, payload generators, seed replay                       |
+| [inspect-demo](/examples/inspect-demo/)                           | A terminal tour of `inspect()` against intentionally buggy configs      | `machina-inspect`, `inspect()`, `buildStateGraph()`, child FSM findings                   |
 
 ## Try them live
 
-On the deployed docs site, each example is a working app at `/demos/{name}/`. The doc pages above explain the patterns; the "Run" link at the top of each page opens the live app in a new tab.
+On the deployed docs site, each browser example is a working app at `/demos/{name}/`. The doc pages above explain the patterns, and the "Run" link at the top of each page opens the live app in a new tab.
 
-During local development, examples run on their own Vite dev server — the docs site doesn't serve them. See below.
+During local development, each browser example runs on its own Vite dev server, which the docs site doesn't serve. See below.
 
 ## Running locally
 
@@ -34,6 +35,6 @@ pnpm --filter @machina-examples/connectivity dev
 cd examples/connectivity && pnpm dev
 ```
 
-Swap `connectivity` for any of the example names: `traffic-intersection`, `dungeon-critters`, `shopping-cart`, `job-queue`, `with-react`, `machina-explorer`, or `testing-with-machina-test`.
+Swap `connectivity` for any of the browser example names: `traffic-intersection`, `dungeon-critters`, `shopping-cart`, `job-queue`, `with-react`, or `machina-explorer`.
 
-The `testing-with-machina-test` example is test-only (no Vite dev server) — run it with `pnpm --filter @machina-examples/testing-with-machina-test test`.
+The `testing-with-machina-test` example runs as a jest suite: `pnpm --filter @machina-examples/testing-with-machina-test test`. The `inspect-demo` example prints to the terminal: `pnpm --filter @machina-examples/inspect-demo demo`.

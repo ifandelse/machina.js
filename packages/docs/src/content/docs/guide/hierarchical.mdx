@@ -7,11 +7,11 @@ import { Aside } from "@astrojs/starlight/components";
 
 ## Overview
 
-Any state can own a child FSM by setting `_child` to an FSM instance. While the parent is in that state, inputs dispatched via `handle()` are checked against the child first using `canHandle()`, which looks through the child's entire `_child` chain. If anything down the chain can handle the input, it's forwarded. If not, the parent's own state handlers get it. If the child itself sends an input it can't handle (e.g. from `_onEnter`), that fires `nohandler` on the child and bubbles up to the parent.
+Any state can mount a child FSM by setting `_child` to an FSM instance. When the parent occupies that state, `handle()` checks the child first through `canHandle()`, which looks through the child's entire `_child` chain. If anything down the chain can handle the input, machina forwards it. Otherwise the parent's own state handlers get it. A child that sends itself an input it can't handle (e.g. from `_onEnter`) fires `nohandler` and bubbles the input up to the parent.
 
 ## Setting up a child
 
-Assign any `createFsm` (or `createBehavioralFsm`) instance to the `_child` property of a state definition. The parent delegates to it automatically — no other wiring required.
+Assign any `createFsm` (or `createBehavioralFsm`) instance to the `_child` property of a state definition. The parent delegates to it automatically, without any other wiring.
 
 ```ts
 import { createFsm } from "machina";
@@ -50,11 +50,11 @@ When `handle()` is called on the parent, the dispatch order is:
 
 1. Input arrives at the parent via `handle()`
 2. Parent checks if the current state has a `_child`
-3. If yes, parent calls `canHandle()` on the child — and `canHandle()` answers for the child's whole `_child` chain, not just the child itself, so a grandchild's input counts
-4. If anything down the chain can handle it, the input is forwarded to the child's `handle()`, which repeats the same dispatch one level down — until it reaches the FSM that actually handles it
+3. If yes, the parent calls `canHandle()` on the child, which answers for the child's whole `_child` chain. A grandchild's input counts.
+4. If anything down the chain can handle it, the child's `handle()` receives the input and repeats the same dispatch one level down. The forwarding stops at the FSM that handles the input.
 5. If nothing down the chain can handle it, the parent's own state handlers get the input
 
-The descendant chain gets first shot, and the parent's handlers act as a fallback — the same child-first precedence at every level. Delegation reaches as deep as your hierarchy nests (matching `compositeState()`'s reach), so an input handled three levels down can be dispatched from the root without any manual forwarding. Separately, if the child sends itself an input it can't handle (e.g. inside `_onEnter`), that fires `nohandler` on the child and bubbles up to the parent — this is how the traffic intersection's `phaseComplete` input reaches the parent from the child's `red` state.
+The descendant chain has precedence, and the parent's handlers act as a fallback, with the same child-first order at every level. Delegation goes as deep as your hierarchy nests, to the same depth as `compositeState()`. An input handled three levels down can be dispatched from the root without manual forwarding. Separately, a child that sends itself an input it can't handle (e.g. inside `_onEnter`) fires `nohandler` and bubbles the input up to the parent. The traffic intersection's `phaseComplete` input takes this path from the child's `red` state to the parent.
 
 ## Declaring bubbled inputs
 
@@ -89,7 +89,7 @@ fsm = phaseController;
 Declaring a bubble does two things:
 
 1. It joins the FSM's own typed input union, so the self-directed `fsm.handle("phaseComplete")` call above type-checks without a cast.
-2. It becomes part of the FSM's **mounting contract**. Any config that mounts `phaseController` via `_child` must satisfy it — otherwise the mount is a compile error:
+2. It becomes part of the FSM's **mounting contract**. Any config that mounts `phaseController` via `_child` must satisfy it. Otherwise the mount is a compile error:
 
 ```ts
 // Compile error on `_child` — "phaseComplete" is declared but neither
@@ -153,15 +153,15 @@ const intersection3 = createFsm({
 });
 ```
 
-The contract composes across arbitrarily many hierarchy levels — a grandparent that mounts a re-declaring parent inherits the same obligation, and so on up the chain. An FSM that declares no `bubbles` (the default) owes nothing and can be mounted anywhere with no obligation at all.
+The obligation repeats at each level. A grandparent that mounts a re-declaring parent must also cover the bubble, and so on up the chain. An FSM without a `bubbles` declaration (the default) mounts anywhere.
 
 <Aside type="note">
-    `bubbles` is type-level only — the engine never reads it. Runtime behavior is exactly the
-    nohandler-bubbling mechanism described above; `bubbles` just gives TypeScript enough information
-    to check that the wiring is actually correct.
+    `bubbles` is type-level only. The engine ignores it at runtime, and the runtime behavior is
+    exactly the nohandler-bubbling mechanism described above. `bubbles` gives TypeScript enough
+    information to check that the wiring is correct.
 </Aside>
 
-See the [Traffic Intersection example](/examples/traffic-intersection/) for `bubbles` in a real hierarchy — the phase controller declares `bubbles: ["phaseComplete"]`, and the intersection parent covers it with a handler on each phase state.
+See the [Traffic Intersection example](/examples/traffic-intersection/) for `bubbles` in a real hierarchy: the phase controller declares `bubbles: ["phaseComplete"]`, and the intersection parent covers it with a handler on each phase state.
 
 ## compositeState()
 
@@ -178,7 +178,7 @@ uploader.handle("done");
 uploader.compositeState(); // "active.verifying"
 ```
 
-This is useful for driving UIs from a single string — one `compositeState()` call tells you the full picture without interrogating multiple FSMs.
+This is useful for driving UIs: one `compositeState()` call reports the whole path, without a query to each FSM.
 
 Nesting is unbounded. A child can itself have a `_child`, and `compositeState()` walks the whole chain: `"stateA.stateB.stateC"`.
 
@@ -199,10 +199,10 @@ uploader.compositeState(); // "idle"
 
 // Re-entering "active" auto-resets childFsm back to "preparing"
 uploader.handle("start");
-uploader.compositeState(); // "active.preparing" — fresh start
+uploader.compositeState(); // "active.preparing", fresh start
 ```
 
-Re-entering a parent state always starts the child fresh. To restore a client at a specific point in a child hierarchy without triggering lifecycle hooks, use [`rehydrate()`](/guide/behavioral-fsm/#rehydrating-persisted-clients) with a composite dot-path — e.g. `fsm.rehydrate(client, "active.uploading")`.
+Re-entering a parent state always starts the child fresh. To restore a client at a specific point in a child hierarchy without triggering lifecycle hooks, use [`rehydrate()`](/guide/behavioral-fsm/#rehydrating-persisted-clients) with a composite dot-path, e.g. `fsm.rehydrate(client, "active.uploading")`.
 
 ## Disposal
 
@@ -210,7 +210,7 @@ Re-entering a parent state always starts the child fresh. To restore a client at
 
 ```ts
 uploader.dispose();
-// childFsm is also disposed — all method calls become silent no-ops
+// childFsm is also disposed: all method calls become silent no-ops
 ```
 
 Pass `{ preserveChildren: true }` to skip child disposal and keep the child FSM running independently:
@@ -266,7 +266,7 @@ uploader.compositeState(); // "active.verifying"
 uploader.handle("verified");
 uploader.compositeState(); // "active.complete"
 
-// "cancel" has no handler on childFsm — bubbles to parent
+// "cancel" has no handler on childFsm, bubbles to parent
 uploader.handle("cancel");
 uploader.compositeState(); // "idle"
 
@@ -275,4 +275,4 @@ uploader.handle("start");
 uploader.compositeState(); // "active.preparing"
 ```
 
-For a more complex real-world case — two independent child FSM instances, input bubbling across phases, `defer()` for pedestrian requests, and child auto-reset driving a full traffic signal cycle — see the [Traffic Intersection example](/examples/traffic-intersection/).
+For a more complex real-world case (two independent child FSM instances, input bubbling across phases, `defer()` for pedestrian requests, and child auto-reset driving a full traffic signal cycle), see the [Traffic Intersection example](/examples/traffic-intersection/).

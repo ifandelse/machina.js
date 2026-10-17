@@ -5,7 +5,7 @@ description: Lint machina FSM configs for structural issues in your editor.
 
 import { Aside } from "@astrojs/starlight/components";
 
-eslint-plugin-machina surfaces [machina-inspect](/tools/machina-inspect/) findings inline in your editor. Three rules, one import to set up. ESLint 9 flat config only.
+eslint-plugin-machina reports [machina-inspect](/tools/machina-inspect/) findings inline in your editor, with three rules and one import to set up. ESLint 9 flat config only.
 
 ## Install
 
@@ -58,7 +58,7 @@ export default [
 
 ### `machina/unreachable-state`
 
-Detects dead states — states that no transition leads to.
+The rule reports states that the machine cannot enter from `initialState`. Unreachable states are dead code.
 
 ```ts
 createFsm({
@@ -106,9 +106,9 @@ createFsm({
 ```
 
 <Aside type="tip">
-    Enable this rule selectively on files where comprehensive handler coverage matters. For FSMs
-    with intentionally sparse terminal or initialization states, leave it off or use
-    `eslint-disable` per-file.
+    Enable this rule selectively on files where full handler coverage matters. For FSMs with
+    intentionally sparse terminal or initialization states, leave it off or use `eslint-disable`
+    per-file.
 </Aside>
 
 ## How it works
@@ -117,10 +117,10 @@ The plugin listens for `createFsm()` and `createBehavioralFsm()` call expression
 
 ### `_child` resolution
 
-Child FSM references are resolved when they're inline `createFsm()` calls or `const` identifier references to such calls in the same module. Cross-module imports and `let`/`var` bindings are silently skipped — no false positives, just no analysis for those cases.
+The plugin resolves a `_child` reference when it is an inline `createFsm()` call or a `const` identifier bound to such a call in the same module. The plugin silently skips cross-module imports and `let`/`var` bindings. A skipped child goes unanalyzed, which avoids false positives from guessing.
 
 ## See also
 
-- [machina-inspect](/tools/machina-inspect/) — programmatic API for the same checks
-- [machina-test](/tools/machina-test/) — Jest/Vitest custom matchers for graph-level assertions in your test suite
-- [machina-explorer](/examples/machina-explorer/) — paste-and-analyze browser UI
+- [machina-inspect](/tools/machina-inspect/), the programmatic API for the same checks
+- [machina-test](/tools/machina-test/), Jest and Vitest matchers that make graph-level assertions in your test suite
+- [machina-explorer](/examples/machina-explorer/), a paste-and-analyze browser UI
