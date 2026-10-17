@@ -239,7 +239,7 @@ The rules below are specific to machina. A reader working from generic state-mac
 
 ## Versions and Migrating
 
-machina v8 is the current major version. v6 redesigned the API around plain config objects and handlers that receive `{ ctx }` instead of `this`. v7 extended hierarchical delegation to any depth and turned config typos into compile errors. v8 added [typed input payloads](https://machina-js.org/guide/typed-payloads/). Readers on v5 or earlier should read the [v5 to v6 guide](https://machina-js.org/migration/v5-to-v6/) and then the [v6 to v7 guide](https://machina-js.org/migration/v6-to-v7/).
+machina v8 is the current major version. v6 redesigned the API around plain config objects and handlers that receive `{ ctx }` instead of `this`. v7 extended hierarchical delegation to any depth and turned config typos into compile errors. v8 added [typed input payloads](https://machina-js.org/guide/typed-payloads/), and the [v7 to v8 guide](https://machina-js.org/migration/v7-to-v8/) covers its one type-level break. Readers on v5 or earlier should read the [v5 to v6 guide](https://machina-js.org/migration/v5-to-v6/) and then the [v6 to v7 guide](https://machina-js.org/migration/v6-to-v7/) first.
 
 <!-- /sync:versions -->
 
