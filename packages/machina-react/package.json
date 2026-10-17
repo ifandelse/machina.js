@@ -1,7 +1,6 @@
 {
     "name": "machina-react",
-    "version": "1.0.0",
-    "private": true,
+    "version": "0.0.0",
     "description": "React external-store hooks for machina FSM instances.",
     "author": "Jim Cowart (http://ifandelse.com)",
     "license": "MIT",
