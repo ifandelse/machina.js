@@ -1,17 +1,17 @@
 # machina-test
 
-Testing tools for [machina](https://machina-js.org) FSMs — graph topology matchers and property-based runtime testing.
+Testing tools for [machina](https://machina-js.org) FSMs: graph matchers for the wiring, and property-based testing at runtime with `walkAll`.
 
 ```ts
 import "machina-test";
 import { walkAll } from "machina-test";
 
-// Graph matchers — does the wiring look right?
+// Graph matchers: does the wiring look right?
 expect(fsm).toHaveNoUnreachableStates();
 expect(fsm).toAlwaysReach("delivered", { from: "placed" });
 expect(fsm).toNeverReach("shipped", { from: "cancelled" });
 
-// Runtime testing — does it actually work?
+// Runtime testing: does it work when it runs?
 walkAll(() => createMyFsm(), {
     invariant({ ctx }) {
         /* assert a rule that must always hold */
@@ -29,11 +29,11 @@ npm install --save-dev machina-test
 pnpm add -D machina-test
 ```
 
-`machina` >= 7.0.1 is a peer dependency. Either `jest` or `vitest` must be available as the host test runner.
+`machina` >= 8.0.0 is a peer dependency, and the host test runner must be `jest` >= 29 or `vitest` >= 1.
 
 ## Setup
 
-Import `machina-test` in your test files (or in a setup file that runs after the framework's globals are available). The import registers the matchers via `expect.extend()` as a side effect.
+Import `machina-test` in your test files, or in a setup file that runs after the framework's globals are available. The import registers the matchers via `expect.extend()` as a side effect.
 
 ```ts
 // in each test file
@@ -43,13 +43,13 @@ import "machina-test";
 import "machina-test";
 ```
 
-That's it. TypeScript users get autocomplete for all three matchers automatically.
+TypeScript users get autocomplete for all three matchers automatically.
 
 ## Matchers
 
 ### `toHaveNoUnreachableStates()`
 
-Asserts that every state in the FSM is reachable from `initialState`. Delegates to machina-inspect's `inspectGraph()`, which recurses into child FSM graphs.
+Asserts that each state in the FSM is reachable from `initialState`. The matcher delegates to machina-inspect's `inspectGraph()`, which recurses into child FSM graphs.
 
 ```ts
 expect(fsm).toHaveNoUnreachableStates();
@@ -57,17 +57,17 @@ expect(fsm).toHaveNoUnreachableStates();
 
 ### `toAlwaysReach(targetState, { from })`
 
-Asserts that a path exists from `from` to `targetState` in the FSM's top-level graph. BFS over all edges (both "definite" and "possible"). Top-level graph only — does not traverse into `_child` FSMs.
+Asserts that a path exists from `from` to `targetState` in the FSM's top-level graph. The search is a BFS over all edges, both `"definite"` and `"possible"`.
 
 ```ts
 expect(fsm).toAlwaysReach("delivered", { from: "placed" });
 ```
 
-"Always" refers to graph topology — the plumbing exists — not runtime certainty. Whether the path executes at runtime depends on which handlers fire.
+"Always" is a claim about the graph: the path exists in the wiring. Whether the path executes at runtime depends on which handlers fire.
 
 ### `toNeverReach(targetState, { from })`
 
-Asserts that no path exists from `from` to `targetState`. The logical inverse of `toAlwaysReach`.
+Asserts that `targetState` is unreachable from `from`. It is the logical inverse of `toAlwaysReach`.
 
 ```ts
 expect(fsm).toNeverReach("shipped", { from: "cancelled" });
@@ -84,33 +84,33 @@ expect(fsm).not.toNeverReach("delivered", { from: "placed" });
 
 ### Invalid state names
 
-Typos produce clean test failures (not thrown exceptions) with actionable messages:
+A typo in a state name produces a normal test failure, and the message lists the available states:
 
 ```
 State 'shiped' does not exist in FSM 'order-workflow'. Available states: placed, validating, processing, shipped, delivered, cancelled, refunded.
 ```
 
-## Testing hierarchical FSMs
+### Hierarchical FSMs
 
-`toAlwaysReach` and `toNeverReach` operate on the **top-level graph only**. They do not traverse into `_child` FSMs. This is intentional — it avoids ambiguity around composite state names and keeps assertions explicit about which level you're testing.
+`toAlwaysReach` and `toNeverReach` operate on the top-level graph only, and they do not traverse into `_child` FSMs. The limit is intentional: it avoids ambiguity around composite state names, and each assertion states which level it tests.
 
 To test a child FSM, pass it directly to `expect()`:
 
 ```ts
-// Test the parent — sees browsing, checkout, confirmation
+// Test the parent: browsing, checkout, confirmation
 expect(checkout).toAlwaysReach("confirmation", { from: "browsing" });
 
-// Test the child — sees entering-details, processing, authorized, declined
+// Test the child: entering-details, processing, authorized, declined
 const payment = createPaymentFsm();
 expect(payment).toAlwaysReach("authorized", { from: "entering-details" });
 expect(payment).toNeverReach("entering-details", { from: "authorized" });
 ```
 
-**The one exception**: `toHaveNoUnreachableStates()` _does_ recurse into children via `inspectGraph()`. An orphaned state in a child surfaces as a failure when called on the parent.
+`toHaveNoUnreachableStates()` is the exception: it recurses into children via `inspectGraph()`. An orphaned state in a child fails the assertion on the parent.
 
-## walkAll — Runtime Testing
+## Runtime Testing with `walkAll`
 
-The matchers check graph topology — does a path exist? `walkAll` checks runtime behavior — does the FSM actually work when you feed it random inputs?
+The matchers check graph topology: does a path exist? `walkAll` checks runtime behavior: does the FSM work when you feed it random inputs?
 
 ```ts
 import { walkAll, WalkFailureError } from "machina-test";
@@ -120,12 +120,12 @@ const result = walkAll(
     {
         walks: 200, // 200 independent walks
         maxSteps: 20, // up to 20 handle() calls per walk
-        seed: 42, // deterministic — same sequence every run
+        seed: 42, // deterministic: same sequence every run
         inputs: {
-            begin: () => Math.floor(Math.random() * 200),
+            begin: () => 100, // payload for handle("begin", 100)
         },
         invariant({ ctx }) {
-            // checked after every transition — throw to fail
+            // runs after each transition, throw to fail
             if ((ctx as any).balance < 0) {
                 throw new Error("balance went negative");
             }
@@ -134,7 +134,13 @@ const result = walkAll(
 );
 ```
 
-On failure, `WalkFailureError` carries the seed, step number, and full input sequence. Pass the seed back to replay the exact walk that failed:
+`inputs` maps an input name to a payload generator. When a walk fires `begin`, walkAll calls `inputs.begin()` and passes the return value to `handle()`. For an input without a generator, walkAll calls `handle()` with the input name alone.
+
+The seed drives walkAll's choice of inputs. It does not seed your payload generators, so a generator that calls `Math.random()` breaks replay. When you rely on replay, use deterministic generators or give them their own seeded source.
+
+On success, `walkAll` returns a `WalkResult` with the `seed` it used and `walksCompleted`, the number of walks that finished without an invariant violation.
+
+On failure, `WalkFailureError` contains the `seed`, `step`, `state`, and `inputSequence` fields. Pass the seed back to replay the exact walk that failed:
 
 ```ts
 try {
@@ -147,15 +153,15 @@ try {
 }
 ```
 
-If the factory returns an FSM built with an [input payload map](https://machina-js.org/guide/typed-payloads/), the config requires a `payloads` key instead of `inputs`: one tuple-returning generator per payload-carrying input, checked at compile time. A forgotten or misspelled generator is a compile error naming the input.
+If the factory returns an FSM built with an [input payload map](https://machina-js.org/guide/typed-payloads/), the config requires a `payloads` key in place of `inputs`. You supply one tuple-returning generator per payload-carrying input, and the compiler checks the set. A missing or misspelled generator is a compile error, with the input's name in the message.
 
-Both `Fsm` and `BehavioralFsm` are supported. See the [docs](https://machina-js.org/tools/machina-test/) for full configuration reference, payload generators (untyped and typed), input filtering, and BehavioralFsm client factories.
+Both `Fsm` and `BehavioralFsm` are supported. See the [docs](https://machina-js.org/tools/machina-test/) for the full configuration reference, payload generators (untyped and typed), input filtering, and BehavioralFsm client factories.
 
-## See also
+## See Also
 
-- [machina-inspect](https://www.npmjs.com/package/machina-inspect) — the graph analysis engine the matchers are built on
-- [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina) — catch structural issues at lint time in your editor
-- [testing-with-machina-test example](../../examples/testing-with-machina-test/) — full working example with matchers and walkAll
+- [machina-inspect](https://www.npmjs.com/package/machina-inspect), the graph analysis engine behind the matchers
+- [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina), the same structural checks at lint time in your editor
+- [testing-with-machina-test](https://github.com/ifandelse/machina.js/tree/master/examples/testing-with-machina-test), a working example with matchers and walkAll
 
 ## License
 

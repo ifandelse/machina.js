@@ -1,8 +1,8 @@
 # eslint-plugin-machina
 
-ESLint plugin for static analysis of [machina](https://machina-js.org) FSM configs. Catches structural issues at lint time — unreachable states, infinite `_onEnter` loops, missing handlers — without running the machine.
+ESLint plugin for static analysis of [machina](https://machina-js.org) FSM configs. eslint-plugin-machina reports structural bugs like unreachable states, infinite `_onEnter` loops, and missing handlers as ESLint diagnostics, without running the machine.
 
-Built on [machina-inspect](https://www.npmjs.com/package/machina-inspect). ESLint 9 flat config only.
+The plugin is built on [machina-inspect](https://www.npmjs.com/package/machina-inspect) and supports ESLint 9 flat config only. `eslint` >= 9 is a peer dependency.
 
 ## Install
 
@@ -76,7 +76,7 @@ export default [
 
 ### `machina/unreachable-state`
 
-Detects states with no inbound path from `initialState`. Unreachable states are dead code.
+The rule reports states that the machine cannot enter from `initialState`. Unreachable states are dead code.
 
 ```ts
 // Triggers warning on "broken"
@@ -94,10 +94,10 @@ createFsm({
 
 ### `machina/onenter-loop`
 
-Detects unconditional `_onEnter` transition cycles that will infinite-loop the runtime. Only flags cycles where **every** edge is unconditional — conditional bounces like `if (ctx.error) return "failed"` are intentional patterns, not bugs.
+The rule reports unconditional `_onEnter` transition cycles, which loop forever at runtime. It flags only cycles in which each edge is unconditional. A conditional bounce like `if (ctx.error) { return "failed"; }` is an intentional pattern, and the rule skips it.
 
 ```ts
-// Triggers error — unconditional cycle: a -> b -> a
+// Triggers error: unconditional cycle a -> b -> a
 createFsm({
     id: "bouncy",
     initialState: "a",
@@ -110,10 +110,10 @@ createFsm({
 
 ### `machina/missing-handler`
 
-Detects states that don't handle inputs handled by other states in the same FSM. Off by default — many FSMs have asymmetric handlers by design (terminal states, initialization states, etc.). States with a `*` catch-all handler are excluded.
+The rule reports states that don't handle inputs handled by other states in the same FSM. It is off by default, because many FSMs have asymmetric handlers by design (terminal states, initialization states). A state with a `*` catch-all handler is exempt.
 
 ```ts
-// Triggers suggestion — "idle" doesn't handle "stop" or "pause"
+// Triggers suggestion: "idle" doesn't handle "stop" or "pause"
 createFsm({
     id: "player",
     initialState: "idle",
@@ -127,22 +127,22 @@ createFsm({
 
 ## How it works
 
-The plugin listens for `createFsm()` and `createBehavioralFsm()` call expressions, builds a `StateGraph` from the AST using machina-inspect's graph IR, then runs the same structural checks machina-inspect provides. Findings are reported as ESLint diagnostics at the call site.
+The plugin listens for `createFsm()` and `createBehavioralFsm()` call expressions, builds a `StateGraph` from the AST using machina-inspect's graph IR, then runs the same structural checks machina-inspect provides. The plugin reports findings as ESLint diagnostics at the call site.
 
 ### `_child` resolution
 
-Child FSM references on `_child` are resolved when they're:
+The plugin resolves a `_child` reference when it is:
 
-- **Inline calls**: `_child: createFsm({ ... })` directly in the state config
-- **`const` references**: `_child: myChildFsm` where `myChildFsm` is a `const` declaration bound to a `createFsm()` / `createBehavioralFsm()` call in the same module
+- **An inline call**: `_child: createFsm({ ... })` directly in the state config
+- **A `const` reference**: `_child: myChildFsm` where `myChildFsm` is a `const` declaration bound to a `createFsm()` / `createBehavioralFsm()` call in the same module
 
-Cross-module imports and `let`/`var` bindings are silently skipped — no false positives, just no analysis for those cases.
+The plugin silently skips cross-module imports and `let`/`var` bindings. A skipped child goes unanalyzed, which avoids false positives from guessing.
 
-## See also
+## See Also
 
-- [machina-inspect](https://www.npmjs.com/package/machina-inspect) — programmatic API for the same structural checks
-- [machina-test](https://www.npmjs.com/package/machina-test) — Jest/Vitest custom matchers for graph-level assertions in your test suite
-- [machina-explorer](https://machina-js.org/examples/machina-explorer/) — browser-based paste-and-analyze UI
+- [machina-inspect](https://www.npmjs.com/package/machina-inspect), the programmatic API for the same structural checks
+- [machina-test](https://www.npmjs.com/package/machina-test), Jest and Vitest matchers that make graph-level assertions in your test suite
+- [machina-explorer](https://machina-js.org/examples/machina-explorer/), a browser-based paste-and-analyze UI
 
 ## License
 
