@@ -15,7 +15,7 @@ npm install machina machina-react
 pnpm add machina machina-react
 ```
 
-`machina` >= 7.0.1 and `react` >= 18 are peer dependencies.
+`machina` >= 8.0.0 and `react` >= 18 are peer dependencies. The floor is v8 because the hook types reuse the types behind core's [input payload maps](/guide/typed-payloads/).
 
 ## The hooks
 
@@ -46,6 +46,8 @@ const CheckoutStep = () => {
     );
 };
 ```
+
+Under an FSM with an [input payload map](/guide/typed-payloads/), the snapshot's `handle` enforces the declared payloads, with the same checking core's `handle` applies.
 
 Snapshot hooks default to `rerenderOn: "settled"`, a snapshot taken after an input and its transitions finish processing. Set `rerenderOn` to `"transitioned"` or `"handled"` to rerender on one event type, or `"all"` to notify immediately on both.
 
