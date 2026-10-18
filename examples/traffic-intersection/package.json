@@ -1,6 +1,6 @@
 {
     "name": "@machina-examples/traffic-intersection",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "private": true,
     "description": "Traffic Intersection — machina.js v6 hierarchical FSM example",
     "scripts": {

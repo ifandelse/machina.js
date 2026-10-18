@@ -1,5 +1,12 @@
 # @machina-examples/job-queue
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [75e5029]
+    - machina@8.0.0
+
 ## 0.0.4
 
 ### Patch Changes

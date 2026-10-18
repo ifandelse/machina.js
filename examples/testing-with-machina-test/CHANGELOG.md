@@ -1,5 +1,12 @@
 # @machina-examples/testing-with-machina-test
 
+## 0.0.6
+
+### Patch Changes
+
+- Updated dependencies [75e5029]
+    - machina@8.0.0
+
 ## 0.0.5
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @machina-examples/inspect-demo
 
+## 0.0.7
+
+### Patch Changes
+
+- Updated dependencies [8ab61de]
+- Updated dependencies [75e5029]
+    - machina-inspect@4.0.1
+    - machina@8.0.0
+
 ## 0.0.6
 
 ### Patch Changes

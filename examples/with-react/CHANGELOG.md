@@ -1,5 +1,14 @@
 # @machina-examples/with-react
 
+## 0.0.8
+
+### Patch Changes
+
+- Updated dependencies [8ab61de]
+- Updated dependencies [75e5029]
+    - machina-react@0.1.0
+    - machina@8.0.0
+
 ## 0.0.7
 
 ### Patch Changes
