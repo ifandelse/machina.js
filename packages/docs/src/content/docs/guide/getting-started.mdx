@@ -15,7 +15,7 @@ pnpm add machina
 
 ## Your first FSM
 
-Import `createFsm` and pass it a config object. That's the whole setup.
+Import `createFsm` and pass it a config object. Here's a simple traffic light FSM:
 
 ```ts
 import { createFsm } from "machina";
@@ -51,17 +51,17 @@ const light = createFsm({
 
 A few things to note:
 
-- **`id`** — a label for debugging and events. Not required to be unique, but it helps.
-- **`initialState`** — the state the FSM boots into. `_onEnter` fires on first entry.
-- **`context`** — a plain object scoped to this FSM instance. Mutate it freely; it's yours.
-- **`states`** — a map of state names to handler maps. Each key (other than lifecycle hooks like `_onEnter` and `_onExit`) is an input name.
+- **`id`**: a label for debugging and events. It doesn't need to be unique, but it helps.
+- **`initialState`**: the state the FSM boots into. `_onEnter` fires on every entry to a state (if present)
+- **`context`**: a plain object scoped to this FSM instance, yours to mutate.
+- **`states`**: a map of state names to handler maps. Each key (other than lifecycle hooks like `_onEnter` and `_onExit`) is an input name.
 
-**Handlers** are functions that receive `{ ctx, inputName, defer, emit }`. Returning a valid state name triggers a transition. Returning `undefined` (or nothing) keeps the FSM in its current state.
+**Handlers** are functions that receive `{ ctx, inputName, defer, emit }`. Returning a valid state name triggers a transition. Returning `undefined` (or nothing) leaves the FSM in its current state.
 
 <Aside type="tip">
-    TypeScript infers state names, input names, and handler signatures directly from your config. No
-    manual type annotations needed — and string shorthand transition targets are validated at
-    compile time, so a typo like `timeout: "yellw"` is a type error.
+    TypeScript infers the state names, the input names, and the handler signatures directly from
+    your config, and you don't write manual type annotations. The compiler validates the transition
+    targets in string shorthand. A typo like `timeout: "yellw"` is a type error.
 </Aside>
 
 ## Interacting with the FSM
@@ -70,12 +70,13 @@ A few things to note:
 // Dispatch an input to the current state
 light.handle("tick");
 light.handle("tick");
-light.handle("timeout"); // tickCount is 2 — stays green
+light.handle("timeout"); // tickCount is 2, stays green
 
 // Query current state
 light.currentState(); // "green"
 
 // Check if the current state can handle an input before committing
+// (canHandle is primarily used internally by machina in hierarchical FSM scenarios)
 if (light.canHandle("timeout")) {
     light.handle("timeout");
 }
@@ -90,16 +91,16 @@ sub.off(); // unsubscribe when done
 // Reset to initialState (fires _onExit / _onEnter)
 light.reset();
 
-// Tear it down — all subsequent calls become silent no-ops
+// Tear it down: all subsequent calls become silent no-ops
 light.dispose();
 ```
 
 | Method                       | What it does                                                               |
 | ---------------------------- | -------------------------------------------------------------------------- |
 | `handle(inputName, ...args)` | Dispatch an input to the current state                                     |
-| `canHandle(inputName)`       | True if the current state — or a mounted child FSM — can handle this input |
+| `canHandle(inputName)`       | True when the current state, or a mounted child FSM, can handle this input |
 | `currentState()`             | Returns the current state name as a string                                 |
-| `on(eventName, callback)`    | Subscribe to a lifecycle event — returns `{ off() }`                       |
+| `on(eventName, callback)`    | Subscribe to a lifecycle event. Returns `{ off() }`                        |
 | `emit(eventName, data?)`     | Emit a custom event to subscribers                                         |
 | `reset()`                    | Transition back to `initialState`                                          |
 | `dispose()`                  | Permanently shut down the FSM                                              |
@@ -121,12 +122,12 @@ yellow: {
 }
 ```
 
-Shorthand is validated by TypeScript — the target must be an actual key in your `states` config.
+TypeScript validates the shorthand: the target must be a key in your `states` config.
 
 ## Next steps
 
-- [Concepts](/guide/concepts/) — the mental model behind states, inputs, and transitions
-- [createFsm](/guide/fsm/) — full API reference including hierarchical states, deferred input, and events
-- [createBehavioralFsm](/guide/behavioral-fsm/) — define behavior once, apply it to many independent client objects
-- [Examples](/examples/overview/) — real-world patterns you can steal
-- [Tools](/tools/machina-inspect/) — static analysis and ESLint integration for catching structural bugs at dev time
+- [Concepts](/guide/concepts/), the mental model behind states, inputs, and transitions
+- [createFsm](/guide/fsm/), the full API reference including hierarchical states, deferred input, and events
+- [createBehavioralFsm](/guide/behavioral-fsm/), which defines behavior once and applies it to many independent client objects
+- [Examples](/examples/overview/), real-world patterns you can copy
+- [Tools](/tools/machina-inspect/), static analysis and ESLint integration for catching structural bugs at dev time

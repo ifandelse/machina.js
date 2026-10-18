@@ -1,82 +1,109 @@
 # machina
 
-Focused finite state machines for JavaScript and TypeScript. States in, states out.
+<!-- sync:intro -->
 
-## Full documentation
+machina is a small library for building finite state machines in JavaScript and TypeScript. States in, states out.
 
-https://machina-js.org
+[Documentation](https://machina-js.org) · [npm](https://www.npmjs.com/package/machina) · [GitHub](https://github.com/ifandelse/machina.js)
 
-## Install
+<!-- /sync:intro -->
 
-```
-npm install machina
-```
+<!-- sync:case -->
 
-## Quick start — `createFsm`
+## The Case for State Machines
 
-`createFsm` is the standard choice: one config, one FSM instance, one internal context object. Handler signatures receive a `{ ctx, inputName, defer, emit }` args object — no `this`, works with arrow functions.
+Of all the roads that lead to state bugs, the broadest ones are paved with well-intended booleans. You start with `isConnecting`, then add `hasFailed`, then `retryCount` and `hasExceededRetryCount`, and soon every callback checks some combination of these. Each new flag doubles the possible combinations (or worse). Some combinations are nonsense, like a connection that is both connecting and connected. The trickiest part of this is that the bugs tend to appear in the combinations no one ever considered, and it's much easier to spot the nonsense combinations explicitly represented in code than the actually-relevant ones that aren't.
 
-Handlers return a state name to transition, or nothing to stay put.
+A finite state machine (FSM) replaces these flags with one named state at a time. The same input can mean different things in each state, including nothing at all. Impossible combinations become unrepresentable. Behavior is grouped by state instead of scattered across callbacks, or wildly branching code, and the FSM's config itself documents how the machine behaves.
+
+You already think this way. You describe connection status or the stages of an order in states. A state machine makes the code match that description. The pattern predates JavaScript by decades and it appears everywhere, from network protocols, parsers, to game AI.
+
+If a plain boolean covers your case, use the boolean. However, if you need to tame a herd of booleans, or if changing the aggregate state of those flags needs to follow rules, or when what happens next depends on what is happening now, then you need an FSM. [The Case for State Machines](https://machina-js.org/guide/why-state-machines/) on the docs site makes the longer argument, with a before-and-after refactor.
+
+<!-- /sync:case -->
+
+<!-- sync:show-me -->
+
+## Show Me (the Money)
+
+You use a physical state machine every day: a door lock. It can be in a `locked` or `unlocked` state. Your "input" (trying to open the door) has a different outcome based on the state the door lock is in.
+
+Here's an FSM that represents a fancier, key code lock. It opens with the right code and sounds an alarm after three wrong attempts:
 
 ```ts
 import { createFsm } from "machina";
 
-const light = createFsm({
-    id: "traffic-light",
-    initialState: "green",
-    context: { tickCount: 0 },
+const lock = createFsm({
+    id: "door-lock",
+    initialState: "locked",
+    context: { attempts: 0 },
     states: {
-        green: {
-            _onEnter({ ctx }) {
-                ctx.tickCount = 0;
-            },
-            tick({ ctx }) {
-                ctx.tickCount++;
-            },
-            timeout({ ctx }) {
-                if (ctx.tickCount >= 5) return "yellow";
+        locked: {
+            submit({ ctx }, code: unknown) {
+                if (code === "1234") {
+                    ctx.attempts = 0;
+                    return "unlocked";
+                }
+                ctx.attempts++;
+                if (ctx.attempts >= 3) {
+                    return "alarming";
+                }
             },
         },
-        yellow: {
-            timeout: "red", // string shorthand — always transitions
+        unlocked: {
+            lock: "locked",
         },
-        red: {
-            timeout: "green",
+        alarming: {
+            reset({ ctx }) {
+                ctx.attempts = 0;
+                return "locked";
+            },
         },
     },
 });
 
-light.handle("tick");
-light.handle("tick");
-light.handle("timeout"); // stays green — tickCount is 2, not >= 5
+lock.handle("submit", "wrong"); // stays in "locked"
+lock.handle("submit", "1234"); // transitions to "unlocked"
+lock.handle("lock"); // back to "locked"
 
-light.currentState(); // "green"
-light.compositeState(); // "green" (dot-delimited path, useful with child FSMs)
-light.canHandle("timeout"); // true
-
-light.reset(); // back to initialState, fires _onEnter
-light.dispose(); // tears down; all subsequent calls are silent no-ops
+console.log(lock.currentState()); // "locked"
 ```
 
-### Public API — `Fsm`
+This FSM's states are the top-level properties under `states`: `locked`, `unlocked`, and `alarming`.
 
-| Method                       | Description                                                                                                                                                                    |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `handle(inputName, ...args)` | Dispatch an input to the current state's handler. Extra args are untyped by default; an [input payload map](https://machina-js.org/guide/typed-payloads/) types them per input |
-| `canHandle(inputName)`       | True if the current state (or its `_child` chain) can handle this input                                                                                                        |
-| `transition(toState)`        | Directly transition; fires `_onExit`, `_onEnter`, lifecycle events                                                                                                             |
-| `reset()`                    | Transition back to `initialState`                                                                                                                                              |
-| `currentState()`             | Returns the current state name                                                                                                                                                 |
-| `compositeState()`           | Dot-delimited path including active child FSM states                                                                                                                           |
-| `on(eventName, callback)`    | Subscribe to a lifecycle event (returns `{ off() }`)                                                                                                                           |
-| `emit(eventName, data?)`     | Emit a custom event                                                                                                                                                            |
-| `dispose(options?)`          | Permanently shut down; cascades to child FSMs by default                                                                                                                       |
+The handlers (which are the methods attached to the state properties) return a state name to transition to a new state, or return nothing to remain in the current state. String shorthand (`lock: "locked"`) is for handlers that always transition to the same state. The `submit` handler shows the other case, a transition that depends on context.
 
-## `createBehavioralFsm`
+The [examples directory](https://github.com/ifandelse/machina.js/tree/master/examples) has fuller examples of FSMs:
 
-`createBehavioralFsm` defines behavior once and applies it to any number of independent client objects. Per-client state lives in a `WeakMap` — no properties are stamped onto the client. The client object IS the context; handlers receive it as `ctx`.
+- [connectivity](https://github.com/ifandelse/machina.js/tree/master/examples/connectivity) for a realistic `createFsm`
+- [traffic-intersection](https://github.com/ifandelse/machina.js/tree/master/examples/traffic-intersection) for hierarchy
+- [dungeon-critters](https://github.com/ifandelse/machina.js/tree/master/examples/dungeon-critters) for one FSM managing many clients.
 
-The client type can't be inferred from the config, so it's provided via a curried call — `createBehavioralFsm<Connection>()` — that fixes the client type before the config (and its literal state/input names) is inferred from the second call.
+### Installation
+
+```sh
+npm install machina
+# or
+pnpm add machina
+```
+
+The package includes CJS and ESM builds and TypeScript type definitions.
+
+### The Mental Model
+
+- States are keys in the config, and inputs are keys inside each state. Handlers return the next state, or nothing.
+- Handlers receive `{ ctx, inputName, defer, emit }` as a plain argument. There is no `this` binding, so arrow functions work everywhere.
+- `ctx` is your data (the internal state you want to keep track of inside the FSM). For `createFsm` it is the FSM's own `context` object, and for `createBehavioralFsm` it is the client (more on this later).
+- Every method is synchronous. Start async work in `_onEnter`, then call `handle()` or `transition()` when the work completes.
+- Read the config from top to bottom and you know the complete behavior of the machine.
+
+### One, or Many
+
+The note above about the `ctx` argument mentioned the two FSM factories in machina:
+
+`createFsm` builds one machine with its own `context` object. Use it for one instance of a thing, like the lock above.
+
+`createBehavioralFsm` defines the _behavior_ once and applies it to any number of client objects. machina tracks each client's state in a `WeakMap` and doesn't write properties onto your objects. This can be incredibly useful, freeing you from having to manage n-number of FSM instances, and instead, just let your plain application objects use an FSM's behavior as if they were the only one using it.
 
 ```ts
 import { createBehavioralFsm } from "machina";
@@ -90,212 +117,97 @@ const connFsm = createBehavioralFsm<Connection>()({
     id: "connectivity",
     initialState: "disconnected",
     states: {
-        disconnected: {
-            connect: "connecting",
-        },
+        disconnected: { connect: "connecting" },
         connecting: {
             connected: "online",
             failed({ ctx }) {
                 ctx.retries++;
-                if (ctx.retries >= 3) return "error";
                 return "disconnected";
             },
         },
-        online: {
-            disconnect: "disconnected",
-        },
-        error: {
-            reset({ ctx }) {
-                ctx.retries = 0;
-                return "disconnected";
-            },
-        },
+        online: { disconnect: "disconnected" },
     },
 });
 
-const connA = { url: "wss://host-a.example.com", retries: 0 };
-const connB = { url: "wss://host-b.example.com", retries: 0 };
+const connA = { url: "wss://a.example.com", retries: 0 };
+const connB = { url: "wss://b.example.com", retries: 0 };
 
-connFsm.handle(connA, "connect");
-connFsm.handle(connB, "connect");
-connFsm.handle(connB, "failed");
-
-connFsm.currentState(connA); // "connecting"
-connFsm.currentState(connB); // "disconnected"
+connFsm.handle(connA, "connect"); // connA: "connecting"
+connFsm.handle(connB, "connect"); // connB: "connecting"
+connFsm.handle(connA, "connected"); // connA: "online"
+connFsm.handle(connB, "failed"); // connB: "disconnected", retries: 1
 ```
 
-`BehavioralFsm` has the same API as `Fsm`, except every method takes the client object as its first argument. It also adds `rehydrate(client, compositeState)` for restoring previously-serialized clients without triggering lifecycle hooks or events.
+**IMPORTANT**: The extra `()` in `createBehavioralFsm<Connection>()` fixes the client type before TypeScript infers the rest from the config. Methods that act on one client (`handle`, `canHandle`, `transition`, `reset`, `currentState`, `compositeState`, `dehydrate`, `rehydrate`) take that client as their first argument, and handlers receive the client as `ctx`, so put per-client data on the client. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client.
 
-### Rehydrating persisted clients
+### Features in the Order You'll Probably Need Them
 
-`rehydrate()` places a client at a known state with no lifecycle activity — no `_onEnter`, no events. It accepts the same dot-path format that `compositeState()` produces, enabling cold-resume workflows where clients are serialized to external storage and later restored.
+- When one machine grows too large, nest another machine inside a state with [`_child`](https://machina-js.org/guide/hierarchical/). The child receives each input first, and unhandled inputs bubble up to the parent.
+- When the machine receives an input it cannot act on yet, [`defer()`](https://machina-js.org/guide/defer/) queues that input for replay after the next transition.
+- When the rest of your app needs to react to the machine, subscribe to [lifecycle events](https://machina-js.org/guide/events/) such as `transitioned` and `nohandler`.
+- When you want the compiler to check every `handle()` call, declare [typed input payloads](https://machina-js.org/guide/typed-payloads/). Misspelled inputs and wrong payloads then become compile errors.
 
-```ts
-// Persist
-const snapshot = { client: connA, state: connFsm.compositeState(connA) };
+### Your FSM is a Data Structure
 
-// Restore (possibly a different process)
-const { client, state } = JSON.parse(stored);
-connFsm.rehydrate(client, state); // silent — no _onEnter, no events
-connFsm.handle(client, "retry"); // proceeds from restored state
-```
+An FSM config is plain data, so tools can analyze it without executing it.
 
-For hierarchical FSMs, pass the dot-delimited path: `fsm.rehydrate(client, "active.uploading.retrying")`. Throws on invalid states or structural mismatches.
+- [machina-inspect](https://www.npmjs.com/package/machina-inspect) parses a config into a graph and reports unreachable states, `_onEnter` loops, and missing handlers.
+- [machina-test](https://www.npmjs.com/package/machina-test) adds Jest and Vitest matchers, so your test suite can assert reachability and structure.
+- [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina) reports the same findings inline in your editor.
 
-## Hierarchical states
+<!-- /sync:show-me -->
 
-Attach a child FSM to any state via `_child`. Inputs are dispatched to the child first; unhandled inputs bubble up to the parent.
+<!-- sync:xstate -->
 
-```ts
-import { createFsm } from "machina";
+## machina vs XState
 
-const childFsm = createFsm({
-    id: "upload-phases",
-    initialState: "preparing",
-    context: {},
-    states: {
-        preparing: { ready: "uploading" },
-        uploading: { done: "verifying" },
-        verifying: { verified: "complete" },
-        complete: {},
-    },
-});
+I'm frequently asked about the differences between machina and XState.
 
-const uploader = createFsm({
-    id: "uploader",
-    initialState: "idle",
-    context: {},
-    states: {
-        idle: {
-            start: "active",
-        },
-        active: {
-            _child: childFsm, // delegates inputs here first
-            cancel: "idle", // "cancel" is not on childFsm, so it bubbles up here
-        },
-    },
-});
+machina was inspired by Erlang/OTP's gen_fsm module, and follows the same priorities: a small API, pragmatic, focused, minimal ceremony, and straightforward to reason about. [XState](https://xstate.js.org/) is a full statechart framework with actors, spawning, inspection tooling, and SCXML compatibility. It's a phenomenal library. If you need those features, use it. machina is for when you want a state machine (or a hierarchy of them) and nothing else.
 
-uploader.handle("start");
-uploader.compositeState(); // "active.preparing"
+<!-- /sync:xstate -->
 
-uploader.handle("ready");
-uploader.compositeState(); // "active.uploading"
+## API Reference
 
-uploader.handle("cancel");
-uploader.compositeState(); // "idle"
-```
+The [typedoc reference](https://machina-js.org/api/) documents the full public surface. The tables below cover the parts you use most often.
 
-The parent re-enters `initialState` of the child FSM whenever the parent transitions into the state that owns `_child`.
+### `Fsm` methods
 
-Delegation reaches any depth: `canHandle()` answers for the whole `_child` chain, so an input handled three levels down can be dispatched from the root. When both a descendant and an ancestor could handle an input, the descendant wins.
+| Method                       | Description                                                                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `handle(inputName, ...args)` | Dispatches an input to the current state's handler. Payload args are untyped unless the FSM declares an [input payload map](https://machina-js.org/guide/typed-payloads/) |
+| `canHandle(inputName)`       | Returns true when the current state or its `_child` chain handles the input                                                                                               |
+| `transition(toState)`        | Transitions without an input. `_onExit` and `_onEnter` run, and the transition events fire                                                                                |
+| `reset()`                    | Transitions back to `initialState`                                                                                                                                        |
+| `currentState()`             | Returns the current state name                                                                                                                                            |
+| `compositeState()`           | Returns the dot-delimited state path, including active child FSM states                                                                                                   |
+| `on(eventName, callback)`    | Subscribes to an event and returns a `Subscription` with an `off()` method                                                                                                |
+| `emit(eventName, data?)`     | Emits a custom event                                                                                                                                                      |
+| `dispose(options?)`          | Shuts the FSM down permanently, including child FSMs unless you pass `{ preserveChildren: true }`. After disposal, method calls are silent no-ops                         |
 
-An FSM can also declare inputs it fires at itself but never handles — expecting whatever mounts it to catch them via bubbling:
+### `BehavioralFsm` differences
 
-```ts
-const phase = createFsm({
-    id: "phase",
-    initialState: "running",
-    context: {},
-    bubbles: ["phaseComplete"], // "I fire this; whoever mounts me must deal with it"
-    states: {
-        running: {
-            _onEnter() {
-                // ...later: phase.handle("phaseComplete") — typed, no handler here
-            },
-        },
-    },
-});
-```
+The client-scoped methods (`handle`, `canHandle`, `transition`, `reset`, `currentState`, `compositeState`, `dehydrate`, `rehydrate`) take the client object as their first argument, and built-in event payloads include a `client` field. A custom event keeps whatever payload you pass to `emit()`, with nothing attached. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client.
 
-Declared bubbles join the FSM's typed input union, and they form a compile-time contract: a config that mounts `phase` via `_child` must handle `phaseComplete`, re-declare it in its own `bubbles`, or carry a `"*"` catch-all — otherwise it fails to compile, with the error naming what's missing. Standalone FSMs owe nothing; the contract only exists where FSMs get wired together. The engine never reads `bubbles` — it's purely type-level.
+For persistence, `dehydrate(client)` returns a `ClientSnapshot`, or `undefined` for a client the FSM hasn't handled yet. `rehydrate(client, snapshotOrPath)` places the client at a stored position while skipping the lifecycle hooks and events. The snapshot form restores the client's deferred inputs too. A bare `compositeState()` string restores only the state path. The [persisting clients guide](https://machina-js.org/guide/persisting-clients/) covers the full persist-and-restore pattern.
 
-## Deferred input
+### Events
 
-Call `defer()` inside a handler to queue the current input for replay after the next transition. Pass `{ until: "stateName" }` to replay only on entry to a specific state.
+Subscribe with `on()`. A `"*"` subscription receives each event, with the event name as its first argument.
 
-```ts
-const fsm = createFsm({
-    id: "loader",
-    initialState: "loading",
-    context: {},
-    states: {
-        loading: {
-            _onEnter() {
-                // simulate async load completing
-                setTimeout(() => fsm.handle("loaded"), 100);
-            },
-            // Can't process "save" while still loading — replay it later
-            save({ defer }) {
-                defer({ until: "ready" });
-            },
-            loaded: "ready",
-        },
-        ready: {
-            save() {
-                // deferred "save" replays here automatically after transitioning in
-                console.log("saving");
-            },
-        },
-    },
-});
+| Event           | Payload                  | Fires when                                 |
+| --------------- | ------------------------ | ------------------------------------------ |
+| `transitioning` | `{ fromState, toState }` | A transition is about to run               |
+| `transitioned`  | `{ fromState, toState }` | A transition completed                     |
+| `handling`      | `{ inputName }`          | An input is about to be dispatched         |
+| `handled`       | `{ inputName }`          | An input was handled                       |
+| `nohandler`     | `{ inputName, args }`    | The current state doesn't handle the input |
+| `invalidstate`  | `{ stateName }`          | A transition targeted an undeclared state  |
+| `deferred`      | `{ inputName }`          | An input was deferred                      |
 
-fsm.handle("save"); // deferred — not yet in "ready"
-// after "loaded" fires and transitions to "ready", "save" replays automatically
-```
+### TypeScript exports
 
-## Typed input payloads
-
-By default, extra arguments to `handle()` are untyped. An input payload map (input name → argument tuple) fixes both ends. Supply it through the curried factory form:
-
-```ts
-type TrafficLightInputs = {
-    timeout: [];
-    emergency: [event: { severity: number }];
-};
-
-const light = createFsm<TrafficLightInputs>()({/* same config as before */});
-
-light.handle("emergency", { severity: 5 }); // ok
-light.handle("emergency"); // compile error: payload missing
-```
-
-Handler payload parameters are inferred from the map, and the map is the complete input vocabulary: undeclared handler keys are compile errors. Type-only; the untyped forms are unchanged. See the [typed payloads guide](https://machina-js.org/guide/typed-payloads/).
-
-## Events
-
-Both `Fsm` and `BehavioralFsm` emit lifecycle events you can subscribe to with `on()`. Use `"*"` to catch everything.
-
-```ts
-const sub = light.on("transitioned", ({ fromState, toState }) => {
-    console.log(`${fromState} -> ${toState}`);
-});
-
-sub.off(); // unsubscribe
-
-// wildcard — receives every event
-light.on("*", (eventName, data) => {
-    console.log(eventName, data);
-});
-```
-
-### Built-in events
-
-| Event           | Payload                  | Fired when                              |
-| --------------- | ------------------------ | --------------------------------------- |
-| `transitioning` | `{ fromState, toState }` | A transition is about to occur          |
-| `transitioned`  | `{ fromState, toState }` | A transition completed                  |
-| `handling`      | `{ inputName }`          | An input is about to be dispatched      |
-| `handled`       | `{ inputName }`          | An input was successfully handled       |
-| `nohandler`     | `{ inputName, args }`    | No handler found in current state       |
-| `invalidstate`  | `{ stateName }`          | Transition targeted a nonexistent state |
-| `deferred`      | `{ inputName }`          | An input was deferred                   |
-
-`BehavioralFsm` events include a `client` field in every payload to identify which client the event pertains to.
-
-## TypeScript
-
-machina is written in TypeScript. State names, input names, and handler signatures are all inferred from the config object — no manual type parameters needed for `createFsm`.
+State names, input names, transition targets, and handler signatures are inferred from the config. The exported types below support signatures you write outside a config:
 
 ```ts
 import type {
@@ -304,35 +216,35 @@ import type {
     BehavioralFsmEventMap,
     HandlerArgs,
     HandlerFn,
+    InputMapFromUnion,
+    InputMapOfInstance,
     StateNamesOf,
     InputNamesOf,
     Subscription,
     DisposeOptions,
 } from "machina";
-
-// StateNamesOf and InputNamesOf extract literal unions from your states config:
-// type MyStates = StateNamesOf<typeof myConfig.states>; // "green" | "yellow" | "red"
-// type MyInputs = InputNamesOf<typeof myConfig.states>; // "tick" | "timeout"
 ```
 
-Transition targets in string shorthand are validated against actual state keys at compile time. A typo like `timeout: "yellw"` is a type error.
+## Contracts and Gotchas
 
-## Disposal
+The rules below are specific to machina. A reader working from generic state-machine knowledge will miss them.
 
-`dispose()` permanently shuts down an FSM. All subsequent method calls are silent no-ops. Child FSMs are disposed by default.
+- `_child` delegation is descendant-first: the deepest handler wins, and unhandled inputs bubble up to ancestors.
+- A config that mounts a child must handle the child's declared `bubbles`, redeclare them, or include a `"*"` handler. Otherwise the config fails to compile.
+- An input payload map is the complete list of the machine's inputs. Undeclared handler keys and wrong payloads are compile errors, and so are undeclared `bubbles` entries.
+- `dehydrate()` plus the snapshot form of `rehydrate()` preserves a client's deferred inputs. A bare `compositeState()` string restores only the state path.
+- Per-client state, such as timers or counters, belongs on the BehavioralFsm client (`ctx`). Storing it on the shared FSM instance is a bug for every client at once.
 
-```ts
-fsm.dispose(); // also disposes child FSMs
+<!-- sync:versions -->
 
-fsm.dispose({ preserveChildren: true }); // leave child FSMs running
-```
+## Versions and Migrating
 
-## Companion tools
+machina v8 is the current major version. v6 redesigned the API around plain config objects and handlers that receive `{ ctx }` instead of `this`. v7 extended hierarchical delegation to any depth and turned config typos into compile errors. v8 added [typed input payloads](https://machina-js.org/guide/typed-payloads/), and the [v7 to v8 guide](https://machina-js.org/migration/v7-to-v8/) covers its one type-level break. Readers on v5 or earlier should read the [v5 to v6 guide](https://machina-js.org/migration/v5-to-v6/) and then the [v6 to v7 guide](https://machina-js.org/migration/v6-to-v7/) first.
 
-- [machina-inspect](https://www.npmjs.com/package/machina-inspect) — static analysis for FSM configs: unreachable states, `_onEnter` loops, missing handlers.
-- [machina-test](https://www.npmjs.com/package/machina-test) — Jest/Vitest custom matchers for testing FSM graph topology. Assert reachability and catch dead states from your test suite.
-- [eslint-plugin-machina](https://www.npmjs.com/package/eslint-plugin-machina) — ESLint plugin wrapping machina-inspect for inline editor feedback.
+<!-- /sync:versions -->
 
 ## License
 
-MIT + GPL-2.0
+machina is MIT licensed and also available under GPL-2.0 (see [LICENSE](https://github.com/ifandelse/machina.js/blob/master/LICENSE)).
+
+&copy; Jim Cowart

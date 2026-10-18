@@ -1,0 +1,149 @@
+---
+title: The Case for State Machines
+description: What goes wrong with boolean-flag state, and what a finite state machine does about it.
+---
+
+A finite state machine (FSM) organizes stateful code around one question: what state is this thing in right now? This page argues for the pattern itself. If you already know the pattern and want the API, jump to [Getting Started](/guide/getting-started/).
+
+## The feature that grows a flag at a time
+
+Here is a connection manager that was written one requirement at a time:
+
+```ts
+class ConnectionManager {
+    isConnecting = false;
+    isConnected = false;
+    hasFailed = false;
+    retries = 0;
+
+    connect() {
+        if (this.isConnecting || this.isConnected) {
+            return;
+        }
+        this.isConnecting = true;
+        this.hasFailed = false;
+        // open the socket; onOpen() or onError() will be called back
+    }
+
+    onOpen() {
+        this.isConnecting = false;
+        this.isConnected = true;
+        this.retries = 0;
+    }
+
+    onError() {
+        if (this.isConnecting) {
+            this.isConnecting = false;
+            this.retries++;
+            if (this.retries >= 3) {
+                this.hasFailed = true;
+            }
+        } else if (this.isConnected) {
+            this.isConnected = false;
+            this.connect();
+        }
+    }
+
+    send(data: string) {
+        if (!this.isConnected || this.isConnecting || this.hasFailed) {
+            return;
+        }
+        // write to the socket
+    }
+}
+```
+
+Each of these lines made sense when it was added. The first version had only `isConnecting`. Error handling added `hasFailed`, and the retry limit added `retries`. Each flag was the smallest change that satisfied the next requirement, and each one made the methods around it harder to reason about.
+
+## The trouble with flags
+
+The class has eight possible flag combinations but only four of them describe a real connection: `disconnected`, `connecting`, `online`, and `failed`. The other four are nonsense, like `isConnecting && isConnected`, and the type system does not object to any of them. Bugs appear in the nonsense combinations because the code paths all assume a valid one.
+
+Complicating things, the guards (your defensive code) multiply too. `send()` checks three flags because the class does not store one value that identifies the current situation. The reconnect-after-drop logic involves `connect()` and `onError()` plus the flags they share, so you cannot read that behavior in one place. When a bug report says the manager stopped sending, the investigation begins with reconstructing which sequence of callbacks produced the current combination of flags. While the code smells existed before this moment, it should be unbearable once you're doing that kind of forensic reconstruction.
+
+## The pattern
+
+A finite state machine is in exactly one named state at a time. Inputs mean different things depending on the current state, and a state may ignore an input entirely. The state changes only through declared transitions.
+
+Code that once guarded against every combination of flags now handles only the inputs that _matter_ in the current state. A huge readability win happens because the invalid combinations stop being expressible.
+
+This idea is decades older than JavaScript. Regular expression engines and network protocol implementations are state machines, and TCP's connection lifecycle is specified as one. If you want to get a bit philosophical, you can argue that this idea predates modern computing by millenia (at least)!
+
+## The same feature as a state machine
+
+Here's our adapted connection manager as a machina FSM:
+
+```ts
+import { createFsm } from "machina";
+
+const connection = createFsm({
+    id: "connection",
+    initialState: "disconnected",
+    context: { retries: 0 },
+    states: {
+        disconnected: {
+            connect: "connecting",
+        },
+        connecting: {
+            _onEnter() {
+                // open the socket, then call connection.handle("opened")
+                // or connection.handle("errored") from the callbacks
+            },
+            opened: "online",
+            errored({ ctx }) {
+                ctx.retries++;
+                if (ctx.retries >= 3) {
+                    return "failed";
+                }
+                return "disconnected";
+            },
+        },
+        online: {
+            _onEnter({ ctx }) {
+                ctx.retries = 0;
+            },
+            send(_args, data: unknown) {
+                if (typeof data === "string") {
+                    // write data to the socket
+                }
+            },
+            errored: "connecting",
+        },
+        failed: {
+            reset({ ctx }) {
+                ctx.retries = 0;
+                return "disconnected";
+            },
+        },
+    },
+});
+
+connection.handle("connect");
+connection.handle("send", "hello"); // ignored: the machine is not in "online"
+```
+
+Compare those two versions. The flags became state names, and the machine stores exactly one of them at a time, so `isConnecting && isConnected` is no longer expressible. The guard at the top of `send()` is gone, because `send` is a handler only in the `online` state. In any other state, the machine ignores the input and emits a `nohandler` event you can log.
+
+The behavior also reads in one place now. The retry rule is one handler in one state, and the `connecting` block answers a question that previously required reading three methods. The next requirement, say a `suspended` state for metered networks, becomes a new key in `states` instead of a new boolean and another round of guard edits.
+
+Hopefully you can see, now, just how much readability an FSM brings to a tangled collection of flags and defensive code.
+
+## The day-to-day payoff
+
+- Instead of that forensic reconstruction of call order, debugging starts with `connection.currentState()`, which returns the state name.
+- A subscriber can record each transition that led to the current state. [Lifecycle events](/guide/events/) such as `transitioned` and `nohandler` give you logging and metrics without adding code to each handler.
+- Changes stay local. A new handler in `online` cannot change how `connecting` behaves.
+- The config is reviewable. A reader can check the states and transitions against the requirements without tracing the implementation.
+
+## The limits of the pattern
+
+A boolean is fine for a boolean, and a two-field form or an open-or-closed modal does not need a machine. Pure data transformation has no state at all.
+
+Use a state machine when the transitions have rules. The signs are an input that is valid in one state and meaningless in another, or a next step that depends on the current state. If you keep writing guards that check combinations of booleans, you are already maintaining a state machine informally. The type system alone won't prevent you from representing invalid, nonsensical combinations of flags.
+
+## Next steps
+
+- [Getting Started](/guide/getting-started/) installs machina and builds a first machine.
+- [Concepts](/guide/concepts/) defines the vocabulary of states, inputs, handlers, and transitions.
+- [createFsm](/guide/fsm/) and [createBehavioralFsm](/guide/behavioral-fsm/) cover the choice between one machine and one definition applied to many clients.
+- The [Connectivity Monitor example](/examples/connectivity/) is a fuller version of the machine on this page.

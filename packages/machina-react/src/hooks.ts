@@ -5,7 +5,6 @@ import type {
     ClientOf,
     ContextOf,
     FsmEventMap,
-    InputNamesOfInstance,
     StateNamesOfInstance,
 } from "machina";
 import { createBehavioralFsmSnapshotStore, createFsmSnapshotStore } from "./snapshots";
@@ -51,7 +50,7 @@ export const useFsm = <TFsm extends FsmLike>(
     const store = useMemo(() => createFsmSnapshotStore(fsm, options), [fsm, options?.rerenderOn]);
     const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
 
-    const handleRef = useRef((inputName: InputNamesOfInstance<TFsm>, ...args: unknown[]) => {
+    const handleRef = useRef((inputName: string, ...args: unknown[]) => {
         fsmRef.current.handle(inputName, ...args);
     });
     const canHandleRef = useRef((inputName: string) => {
@@ -61,7 +60,9 @@ export const useFsm = <TFsm extends FsmLike>(
     return useMemo(
         () => ({
             ...snapshot,
-            handle: handleRef.current,
+            // The forwarder passes arguments through verbatim. The public type
+            // narrows what callers may pass to the instance's declared payloads.
+            handle: handleRef.current as FsmHookResult<TFsm>["handle"],
             canHandle: canHandleRef.current,
         }),
         [snapshot]
@@ -84,7 +85,7 @@ export const useBehavioralFsm = <TFsm extends BehavioralFsmLike>(
     );
     const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
 
-    const handleRef = useRef((inputName: InputNamesOfInstance<TFsm>, ...args: unknown[]) => {
+    const handleRef = useRef((inputName: string, ...args: unknown[]) => {
         fsmRef.current.handle(clientRef.current, inputName, ...args);
     });
     const canHandleRef = useRef((inputName: string) => {
@@ -94,7 +95,9 @@ export const useBehavioralFsm = <TFsm extends BehavioralFsmLike>(
     return useMemo(
         () => ({
             ...snapshot,
-            handle: handleRef.current,
+            // The forwarder passes arguments through verbatim. The public type
+            // narrows what callers may pass to the instance's declared payloads.
+            handle: handleRef.current as BehavioralFsmHookResult<TFsm>["handle"],
             canHandle: canHandleRef.current,
         }),
         [snapshot]

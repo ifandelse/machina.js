@@ -5,29 +5,33 @@ description: Interactive FSM inspector and state diagram visualizer.
 
 import { LinkCard, Aside } from "@astrojs/starlight/components";
 
-machina-explorer is an experimental browser-based UI on top of [machina-inspect](/tools/machina-inspect/). Paste a config object, click **Analyze**, and the app runs structural checks and renders a mermaid state diagram — no build step, no backend.
+machina-explorer is an experimental browser-based UI on top of [machina-inspect](/tools/machina-inspect/). Paste a config object, click **Analyze**, and the app runs structural checks and renders a mermaid state diagram, all in the browser tab.
 
 <Aside type="note">
     machina-explorer is a visual, ad-hoc analysis tool. For automated checking on every save, use
-    [eslint-plugin-machina](/tools/eslint-plugin/) — it runs the same structural checks inline in
+    [eslint-plugin-machina](/tools/eslint-plugin/), which runs the same structural checks inline in
     your editor.
+</Aside>
+
+<Aside type="caution" title="Paste only code you trust">
+    The evaluator runs the pasted text as arbitrary JavaScript with the page's origin privileges.
 </Aside>
 
 <LinkCard title="Open machina-explorer" href="/demos/machina-explorer/" target="_blank" />
 
-## What it does
+## Features
 
-- **Paste and analyze**: Drop a raw FSM config object into the editor and click Analyze. The app evaluates it via `new Function()`, builds the state graph with `buildStateGraph()`, and runs all structural checks with `inspectGraph()`.
-- **Inspect findings**: Findings are grouped by type — unreachable states, `_onEnter` loops, missing handlers. A clean config shows a confirmation instead.
+- **Paste and analyze**: Drop a raw FSM config object into the editor and click Analyze. The app evaluates it via `new Function()` and builds the state graph with `buildStateGraph()`. `inspectGraph()` then runs the structural checks, and the diagram renders from the result.
+- **Inspect findings**: Findings are grouped by type (unreachable states, `_onEnter` loops, missing handlers). A clean config shows a confirmation instead.
 - **State diagram**: Generates a `stateDiagram-v2` mermaid diagram from the `StateGraph` IR. Possible transitions (conditional returns) are labeled with `(?)`. Child FSMs appear as nested subgraphs.
 - **Handler notes toggle**: Optionally overlay the list of handler keys (including `_onEnter` and `_onExit`) on each state node in the diagram.
-- **Export**: Copy the raw mermaid source to clipboard, or download the rendered diagram as a PNG.
+- **Export**: Copy the raw mermaid source to the clipboard, or download the rendered diagram as an SVG.
 
 ## Architecture
 
-Vanilla TypeScript, no framework. Two panels: CodeMirror 6 editor on the left, findings + diagram on the right.
+Vanilla TypeScript without a framework. A CodeMirror 6 editor fills the left panel, and the findings plus the diagram fill the right one.
 
-The core new piece is `mermaid-generator.ts` — a pure function that converts a `StateGraph` + config object into a mermaid `stateDiagram-v2` string. It has no DOM dependencies and could be extracted to a CLI or server-side tool.
+The new piece is `mermaid-generator.ts`, a pure function that converts a `StateGraph` plus config object into a mermaid `stateDiagram-v2` string. It doesn't touch the DOM, and a CLI or server-side tool could reuse it.
 
 ```
 editor.ts       → CodeMirror 6 wrapper
@@ -58,7 +62,7 @@ const mermaidSource = generateMermaid(graph, config, { handlerNotes: true });
 await renderDiagram(container, mermaidSource);
 ```
 
-The graph is built once and stored. The handler notes toggle only re-runs `generateMermaid()` and `renderDiagram()` — eval and inspect don't run again.
+The app builds the graph once and stores it. The handler-notes toggle re-runs `generateMermaid()` and `renderDiagram()`, and eval and inspect don't run again.
 
 ## Source
 

@@ -118,6 +118,7 @@ export default defineConfig({
                     promote: [
                         "index*",
                         "guide/introduction",
+                        "guide/why-state-machines",
                         "guide/getting-started",
                         "guide/concepts",
                         "guide/fsm",
@@ -135,6 +136,8 @@ export default defineConfig({
                         "examples/job-queue",
                         "examples/with-react",
                         "examples/machina-explorer",
+                        "examples/testing-with-machina-test",
+                        "examples/inspect-demo",
                         "tools/**",
                         "migration/**",
                     ],
@@ -166,6 +169,7 @@ export default defineConfig({
                     label: "Guide",
                     items: [
                         { slug: "guide/introduction" },
+                        { slug: "guide/why-state-machines" },
                         { slug: "guide/getting-started" },
                         { slug: "guide/concepts" },
                         { slug: "guide/fsm" },
@@ -189,6 +193,8 @@ export default defineConfig({
                         { slug: "examples/job-queue" },
                         { slug: "examples/with-react" },
                         { slug: "examples/machina-explorer" },
+                        { slug: "examples/testing-with-machina-test" },
+                        { slug: "examples/inspect-demo" },
                     ],
                 },
                 {
@@ -197,11 +203,16 @@ export default defineConfig({
                         { slug: "tools/machina-inspect" },
                         { slug: "tools/machina-test" },
                         { slug: "tools/eslint-plugin" },
+                        { slug: "tools/machina-react" },
                     ],
                 },
                 {
                     label: "Migration",
-                    items: [{ slug: "migration/v6-to-v7" }, { slug: "migration/v5-to-v6" }],
+                    items: [
+                        { slug: "migration/v7-to-v8" },
+                        { slug: "migration/v6-to-v7" },
+                        { slug: "migration/v5-to-v6" },
+                    ],
                 },
             ],
         }),

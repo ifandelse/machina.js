@@ -108,12 +108,14 @@
         "changeset": "changeset",
         "version-packages": "changeset version",
         "release": "turbo run build && changeset publish",
-        "checks": "turbo run lint && turbo run test && turbo run build",
+        "sync:readmes": "node scripts/sync-readmes.mjs --write",
+        "checks": "node scripts/sync-readmes.mjs --check && turbo run lint && turbo run test && turbo run build",
         "prepare": "husky"
     },
     "lint-staged": {
         "*.{ts,tsx,js,jsx,mjs,css,md,mdx,astro}": "prettier --write",
-        "*.json": "prettier --write"
+        "*.json": "prettier --write",
+        "README.md": "node scripts/sync-readmes.mjs --check"
     },
     "devDependencies": {
         "@apogeelabs/the-agency": "0.11.0",

@@ -1,0 +1,57 @@
+---
+title: machina-react
+description: React hooks that subscribe components to machina FSMs.
+---
+
+machina-react is a lightweight, experimental companion package. It provides React hooks that subscribe components to machina FSMs: a component reads the machine as a snapshot and rerenders when the machine changes.
+
+machina-react does not create or manage FSM instances. The instance belongs to your app, at module scope or in ordinary React context. You pass that instance to the hooks. The hooks are built on React's `useSyncExternalStore`, and snapshots stay consistent under concurrent rendering in React 18. The hooks are client-only. Rendering them on the server throws, because `useSyncExternalStore` requires a server snapshot that these hooks never supply.
+
+## Install
+
+```bash
+npm install machina machina-react
+# or
+pnpm add machina machina-react
+```
+
+`machina` >= 8.0.0 and `react` >= 18 are peer dependencies. The floor is v8 because the hook types reuse the types behind core's [input payload maps](/guide/typed-payloads/).
+
+## The hooks
+
+The exports split into snapshot hooks, which rerender your component, and event hooks, which run callbacks.
+
+| Export                                                      | What it does                                                                 |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `useFsm(fsm, options?)`                                     | Snapshot hook. Subscribes a component to an `Fsm` and rerenders it on change |
+| `useBehavioralFsm(fsm, client, options?)`                   | Snapshot hook. Subscribes to one client of a `BehavioralFsm`                 |
+| `useFsmSelector(fsm, selector, options?)`                   | Snapshot hook. Rerenders only when the selected slice changes                |
+| `useBehavioralFsmSelector(fsm, client, selector, options?)` | Snapshot hook. The selector variant for one client                           |
+| `useFsmEvent(fsm, eventName, callback)`                     | Event hook. Runs a callback on an FSM event without causing a rerender       |
+| `useBehavioralFsmEvent(fsm, client, eventName, callback)`   | Event hook. The same, filtered to one client                                 |
+| `shallowEqual`                                              | Equality helper for selectors that return object literals                    |
+
+## Usage
+
+```tsx
+import { useFsm } from "machina-react";
+
+const CheckoutStep = () => {
+    const { state, handle, canHandle } = useFsm(checkout);
+
+    return (
+        <button disabled={!canHandle("submit")} onClick={() => handle("submit")}>
+            {state}
+        </button>
+    );
+};
+```
+
+Under an FSM with an [input payload map](/guide/typed-payloads/), the snapshot's `handle` enforces the declared payloads, with the same checking core's `handle` applies.
+
+Snapshot hooks default to `rerenderOn: "settled"`, a snapshot taken after an input and its transitions finish processing. Set `rerenderOn` to `"transitioned"` or `"handled"` to rerender on one event type, or `"all"` to notify immediately on both.
+
+## Going deeper
+
+- The [machina-react README](https://www.npmjs.com/package/machina-react) documents each hook, the render triggers, selectors, and the v1 non-goals.
+- The [With React example](/examples/with-react/) is a working checkout app built on these hooks.

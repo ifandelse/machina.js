@@ -1,28 +1,46 @@
 # machina
 
-Focused finite state machines for JavaScript and TypeScript. States in, states out.
+<!-- sync:intro -->
 
-**v7 is current.** The v6 line redesigned the API: cleaner handler signatures, TypeScript-first, and a BehavioralFsm that tracks state per-client instead of stamping properties on your objects. v7 tightens the type checking (typos in previously-unchecked configs now surface as compile errors), makes hierarchical delegation reach any depth, and adds `bubbles`, typed declarations of the inputs an FSM sends up to whatever mounts it. v8 adds [typed input payloads](https://machina-js.org/guide/typed-payloads/): declare each input's argument tuple once, and handlers and `handle()` calls are checked against it. See the [v6 → v7 migration notes](https://machina-js.org/migration/v6-to-v7/).
+machina is a small library for building finite state machines in JavaScript and TypeScript. States in, states out.
 
-- [Documentation](https://machina-js.org)
-- [npm](https://www.npmjs.com/package/machina)
-- [GitHub](https://github.com/ifandelse/machina.js)
+[Documentation](https://machina-js.org) · [npm](https://www.npmjs.com/package/machina) · [GitHub](https://github.com/ifandelse/machina.js)
 
----
+<!-- /sync:intro -->
 
-## Install
+- [The Case for State Machines](#the-case-for-state-machines)
+- [Show Me (the Money)](#show-me-the-money)
+    - [Installation](#installation)
+    - [The Mental Model](#the-mental-model)
+    - [One, or Many](#one-or-many)
+    - [Features in the Order You'll Probably Need Them](#features-in-the-order-youll-probably-need-them)
+    - [Your FSM is a Data Structure](#your-fsm-is-a-data-structure)
+- [machina vs XState](#machina-vs-xstate)
+- [Versions and Migrating](#versions-and-migrating)
+- [Contributing](#contributing)
+- [License](#license)
 
-```sh
-npm install machina
-# or
-pnpm add machina
-```
+<!-- sync:case -->
 
----
+## The Case for State Machines
 
-## Quick Example
+Of all the roads that lead to state bugs, the broadest ones are paved with well-intended booleans. You start with `isConnecting`, then add `hasFailed`, then `retryCount` and `hasExceededRetryCount`, and soon every callback checks some combination of these. Each new flag doubles the possible combinations (or worse). Some combinations are nonsense, like a connection that is both connecting and connected. The trickiest part of this is that the bugs tend to appear in the combinations no one ever considered, and it's much easier to spot the nonsense combinations explicitly represented in code than the actually-relevant ones that aren't.
 
-A door lock that only unlocks with the right code:
+A finite state machine (FSM) replaces these flags with one named state at a time. The same input can mean different things in each state, including nothing at all. Impossible combinations become unrepresentable. Behavior is grouped by state instead of scattered across callbacks, or wildly branching code, and the FSM's config itself documents how the machine behaves.
+
+You already think this way. You describe connection status or the stages of an order in states. A state machine makes the code match that description. The pattern predates JavaScript by decades and it appears everywhere, from network protocols, parsers, to game AI.
+
+If a plain boolean covers your case, use the boolean. However, if you need to tame a herd of booleans, or if changing the aggregate state of those flags needs to follow rules, or when what happens next depends on what is happening now, then you need an FSM. [The Case for State Machines](https://machina-js.org/guide/why-state-machines/) on the docs site makes the longer argument, with a before-and-after refactor.
+
+<!-- /sync:case -->
+
+<!-- sync:show-me -->
+
+## Show Me (the Money)
+
+You use a physical state machine every day: a door lock. It can be in a `locked` or `unlocked` state. Your "input" (trying to open the door) has a different outcome based on the state the door lock is in.
+
+Here's an FSM that represents a fancier, key code lock. It opens with the right code and sounds an alarm after three wrong attempts:
 
 ```ts
 import { createFsm } from "machina";
@@ -34,10 +52,11 @@ const lock = createFsm({
     states: {
         locked: {
             submit({ ctx }, code: unknown) {
-                ctx.attempts++;
                 if (code === "1234") {
+                    ctx.attempts = 0;
                     return "unlocked";
                 }
+                ctx.attempts++;
                 if (ctx.attempts >= 3) {
                     return "alarming";
                 }
@@ -62,42 +81,41 @@ lock.handle("lock"); // back to "locked"
 console.log(lock.currentState()); // "locked"
 ```
 
-Handlers return a state name to transition, or nothing to stay put. String shorthand (`lock: "locked"`) handles the simple cases.
+This FSM's states are the top-level properties under `states`: `locked`, `unlocked`, and `alarming`.
 
----
+The handlers (which are the methods attached to the state properties) return a state name to transition to a new state, or return nothing to remain in the current state. String shorthand (`lock: "locked"`) is for handlers that always transition to the same state. The `submit` handler shows the other case, a transition that depends on context.
 
-## Two APIs
+The [examples directory](./examples/) has fuller examples of FSMs:
 
-### `createFsm` — single-client
+- [connectivity](./examples/connectivity/) for a realistic `createFsm`
+- [traffic-intersection](./examples/traffic-intersection/) for hierarchy
+- [dungeon-critters](./examples/dungeon-critters/) for one FSM managing many clients.
 
-The FSM owns its own context. Use this when you have one instance of a thing.
+### Installation
 
-```ts
-const fsm = createFsm({
-    id: "my-fsm",
-    initialState: "idle",
-    context: { count: 0 },
-    states: {
-        idle: {
-            start: "running",
-        },
-        running: {
-            stop: "idle",
-            tick({ ctx }) {
-                ctx.count++;
-            },
-        },
-    },
-});
-
-fsm.handle("start");
-fsm.handle("tick");
-console.log(fsm.currentState()); // "running"
+```sh
+npm install machina
+# or
+pnpm add machina
 ```
 
-### `createBehavioralFsm` — multi-client
+The package includes CJS and ESM builds and TypeScript type definitions.
 
-The FSM defines behavior; state is tracked per-client object in a `WeakMap`. One FSM definition, any number of independent clients.
+### The Mental Model
+
+- States are keys in the config, and inputs are keys inside each state. Handlers return the next state, or nothing.
+- Handlers receive `{ ctx, inputName, defer, emit }` as a plain argument. There is no `this` binding, so arrow functions work everywhere.
+- `ctx` is your data (the internal state you want to keep track of inside the FSM). For `createFsm` it is the FSM's own `context` object, and for `createBehavioralFsm` it is the client (more on this later).
+- Every method is synchronous. Start async work in `_onEnter`, then call `handle()` or `transition()` when the work completes.
+- Read the config from top to bottom and you know the complete behavior of the machine.
+
+### One, or Many
+
+The note above about the `ctx` argument mentioned the two FSM factories in machina:
+
+`createFsm` builds one machine with its own `context` object. Use it for one instance of a thing, like the lock above.
+
+`createBehavioralFsm` defines the _behavior_ once and applies it to any number of client objects. machina tracks each client's state in a `WeakMap` and doesn't write properties onto your objects. This can be incredibly useful, freeing you from having to manage n-number of FSM instances, and instead, just let your plain application objects use an FSM's behavior as if they were the only one using it.
 
 ```ts
 import { createBehavioralFsm } from "machina";
@@ -132,90 +150,55 @@ connFsm.handle(connA, "connected"); // connA: "online"
 connFsm.handle(connB, "failed"); // connB: "disconnected", retries: 1
 ```
 
----
+**IMPORTANT**: The extra `()` in `createBehavioralFsm<Connection>()` fixes the client type before TypeScript infers the rest from the config. Methods that act on one client (`handle`, `canHandle`, `transition`, `reset`, `currentState`, `compositeState`, `dehydrate`, `rehydrate`) take that client as their first argument, and handlers receive the client as `ctx`, so put per-client data on the client. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client.
 
-## Features
+### Features in the Order You'll Probably Need Them
 
-**Hierarchical states** — nest child FSMs inside parent states via `_child`. Inputs delegate to the child first and bubble up on `nohandler`.
+- When one machine grows too large, nest another machine inside a state with [`_child`](https://machina-js.org/guide/hierarchical/). The child receives each input first, and unhandled inputs bubble up to the parent.
+- When the machine receives an input it cannot act on yet, [`defer()`](https://machina-js.org/guide/defer/) queues that input for replay after the next transition.
+- When the rest of your app needs to react to the machine, subscribe to [lifecycle events](https://machina-js.org/guide/events/) such as `transitioned` and `nohandler`.
+- When you want the compiler to check every `handle()` call, declare [typed input payloads](https://machina-js.org/guide/typed-payloads/). Misspelled inputs and wrong payloads then become compile errors.
 
-**Deferred input** — call `defer()` inside a handler to re-queue the input for replay after the next transition. Optionally target a specific state with `defer({ until: "someStateName" })`.
+### Your FSM is a Data Structure
 
-**Lifecycle hooks** — `_onEnter` and `_onExit` on any state. Returning a state name from `_onEnter` causes an immediate bounce transition.
+An FSM config is plain data, so tools can analyze it without executing it.
 
-**Event emission** — subscribe to built-in lifecycle events (`transitioning`, `transitioned`, `handling`, `handled`, `nohandler`, `deferred`) or emit your own from handlers via the `emit` handler arg.
+- [machina-inspect](./packages/machina-inspect/) parses a config into a graph and reports unreachable states, `_onEnter` loops, and missing handlers.
+- [machina-test](./packages/machina-test/) adds Jest and Vitest matchers, so your test suite can assert reachability and structure.
+- [eslint-plugin-machina](./packages/eslint-plugin-machina/) reports the same findings inline in your editor.
 
-**TypeScript-first** — state names, input names, and transition targets are all inferred from your config. Typos in string shorthand are compile errors.
+<!-- /sync:show-me -->
 
-**Typed input payloads**: declare an input payload map (`createFsm<TInputs>()({...})`) and handler payload parameters are inferred from it, `handle()` enforces payloads at the call site, and undeclared handler keys become compile errors. Opt-in and type-only: the untyped forms are unchanged. See the [typed payloads guide](https://machina-js.org/guide/typed-payloads/).
+<!-- sync:xstate -->
 
-**Disposal** — `dispose()` is permanent, irreversible, and cascades to child FSMs by default. All post-dispose calls are silent no-ops.
+## machina vs XState
 
----
+I'm frequently asked about the differences between machina and XState.
 
-## Companion Tools
+machina was inspired by Erlang/OTP's gen_fsm module, and follows the same priorities: a small API, pragmatic, focused, minimal ceremony, and straightforward to reason about. [XState](https://xstate.js.org/) is a full statechart framework with actors, spawning, inspection tooling, and SCXML compatibility. It's a phenomenal library. If you need those features, use it. machina is for when you want a state machine (or a hierarchy of them) and nothing else.
 
-**[machina-inspect](./packages/machina-inspect/)** — Static analysis for FSM configs. Parses configs into a directed graph IR and runs structural checks (unreachable states, `_onEnter` loops, missing handlers). Use it programmatically or as the engine behind the tools below.
+<!-- /sync:xstate -->
 
-**[machina-test](./packages/machina-test/)** — Jest/Vitest custom matchers for testing FSM graph topology. Assert reachability, catch dead states, and verify structural invariants from your test suite. Zero ceremony beyond `import "machina-test"`.
+<!-- sync:versions -->
 
-**[eslint-plugin-machina](./packages/eslint-plugin-machina/)** — ESLint plugin that surfaces machina-inspect findings inline in your editor. Three rules, one import to set up.
+## Versions and Migrating
 
-**[machina-explorer](./examples/machina-explorer/)** — Browser-based paste-and-analyze tool. Paste an FSM config, run checks, and render a mermaid state diagram. No install required.
+machina v8 is the current major version. v6 redesigned the API around plain config objects and handlers that receive `{ ctx }` instead of `this`. v7 extended hierarchical delegation to any depth and turned config typos into compile errors. v8 added [typed input payloads](https://machina-js.org/guide/typed-payloads/), and the [v7 to v8 guide](https://machina-js.org/migration/v7-to-v8/) covers its one type-level break. Readers on v5 or earlier should read the [v5 to v6 guide](https://machina-js.org/migration/v5-to-v6/) and then the [v6 to v7 guide](https://machina-js.org/migration/v6-to-v7/) first.
 
----
+<!-- /sync:versions -->
 
-## How does machina differ from other state machine libraries?
+## Contributing
 
-Machina was originally inspired by the `gen_fsm` behavior module for Erlang/OTP. While TypeScript/JavaScript are a very different landscape than Erlang, machina seeks to preserve some of the same qualities: pragmatic, focused, minimal ceremony, and straightforward to reason about.
-
-Other options exist — most notably [XState](https://xstate.js.org/). XState is a comprehensive statechart framework with actors, spawning, inspection tools, and SCXML compatibility. It's a phenomenal library — if you need those features, use it. Machina is for when you want a state machine (or a hierarchy of them) and nothing else.
-
----
-
-## Monorepo Structure
-
-```
-machina.js/
-  packages/
-    machina/              # core library (npm: "machina")
-    machina-inspect/      # static analysis for FSM configs
-    machina-test/         # Jest/Vitest custom matchers for FSM testing
-    eslint-plugin-machina/ # ESLint plugin wrapping machina-inspect
-    docs/                 # Astro Starlight documentation site
-  examples/
-    connectivity/         # network connectivity monitor (createFsm)
-    traffic-intersection/ # hierarchical FSM with child states
-    dungeon-critters/     # createBehavioralFsm example
-    shopping-cart/        # defer() showcase
-    job-queue/            # BehavioralFsm rehydrate() persist/restore pattern
-    with-react/           # React integration example
-    machina-explorer/     # interactive FSM inspector + diagram visualizer
-    testing-with-machina-test/ # machina-test matcher usage examples
-```
-
----
-
-## Development
-
-Requires Node >= 22.22 and pnpm 10.29.3.
+machina is a pnpm and Turborepo monorepo. The core library is [packages/machina](./packages/machina/), each companion tool has its own package, and runnable examples are in [examples/](./examples/).
 
 ```sh
 git clone https://github.com/ifandelse/machina.js.git
 cd machina.js
 pnpm install
-pnpm turbo build
-pnpm turbo test
+pnpm run checks   # lint + test + build, the same gate CI runs
 ```
 
-To work on a specific package:
-
-```sh
-cd packages/machina
-pnpm dev    # tsdown in watch mode
-pnpm test   # jest
-```
-
----
+[DEVELOP.md](./DEVELOP.md) has the full development guide, including the required Node and pnpm versions. machina is MIT licensed and also available under GPL-2.0 (see [LICENSE](./LICENSE)).
 
 ## License
 

@@ -5,48 +5,34 @@ description: What machina is, what it's for, and how it differs from other state
 
 ## What is machina?
 
-machina is a focused finite state machine library for JavaScript and TypeScript. You define states, the inputs each state responds to, and the handlers that decide what happens — including whether to transition. That's the whole model. The tagline is "States in, states out" and it means it.
+machina is a focused library for building finite state machines in JavaScript and TypeScript. You define states and the inputs each state responds to, then write handlers for those inputs. A handler returns a state name to transition, or returns nothing to stay put.
 
-The library provides two factory functions. `createFsm` produces a single-client FSM that owns its own context object — use it when you have one instance of a thing. `createBehavioralFsm` produces a multi-client FSM where state is tracked per-client in a `WeakMap` — one FSM definition, any number of independent clients, no properties stamped on your objects. Both produce FSMs with the same core API.
+The library provides two factory functions: `createFsm` and `createBehavioralFsm`. `createFsm` produces a single-client FSM with its own context (data) object. Use it when you have one instance of a thing. `createBehavioralFsm` produces a multi-client FSM that tracks state per client in a `WeakMap`. One FSM definition serves any number of independent clients, and machina doesn't write properties onto your objects. Both produce FSMs with the same core API.
 
-Handlers are plain functions (or string shorthand for simple transitions) that receive a `{ ctx, inputName, defer, emit }` args object. Return a state name to transition; return nothing to stay put. Lifecycle hooks (`_onEnter`, `_onExit`) run on entry and exit of each state. Child FSMs can be attached to parent states via `_child` for hierarchical behavior, with unhandled inputs bubbling up. When a handler can't deal with an input yet, `defer()` re-queues it for replay after the next transition.
+Handlers are plain functions (or string shorthand for simple transitions) that receive a `{ ctx, inputName, defer, emit }` args object. Lifecycle hooks (`_onEnter`, `_onExit`) run on entry and exit of each state. Child FSMs attach to parent states via `_child` for hierarchical behavior, with unhandled inputs bubbling up. When a handler can't deal with an input yet, `defer()` re-queues it for replay after the next transition.
 
 ## Design philosophy
 
-machina was originally inspired by the `gen_fsm` behavior module from Erlang/OTP. The JavaScript landscape is obviously different territory, but the qualities worth preserving are the same: pragmatic, focused on FSM patterns, minimal ceremony, and straightforward to reason about.
+machina was originally inspired by the `gen_fsm` behavior module from Erlang/OTP. JavaScript runtimes differ from Erlang in almost every mechanical detail, but the same goals apply: pragmatic, focused on FSM patterns, minimal ceremony, and straightforward to reason about.
 
-v6 is TypeScript-first. State names, input names, and transition targets are all inferred from the config object — no manual type parameters needed for `createFsm`. String shorthand targets (`timeout: "red"`) are validated against actual state keys at compile time, so a typo is a type error rather than a runtime surprise.
+machina is TypeScript-first. State names, input names, transition targets, and handler signatures are all inferred from the config object, and `createFsm` doesn't need manual type parameters. String shorthand targets (`timeout: "red"`) are validated against actual state keys at compile time, so a typo is a type error. An opt-in [input payload map](/guide/typed-payloads/) extends the checking to payloads: declare each input's argument tuple once, and the compiler checks handlers and every `handle()` call against it.
 
 ## How machina differs from other libraries
 
-The most prominent alternative is [XState](https://xstate.js.org/). XState is a comprehensive statechart framework with actors, spawning, inspection tools, and SCXML compatibility. It's a phenomenal library — if you need those features, use it.
+The most prominent alternative is [XState](https://xstate.js.org/). XState is a full statechart framework with actors, spawning, inspection tools, and SCXML compatibility. It's a phenomenal library, and if you need those features, use it.
 
-machina is for when you want a state machine (or a hierarchy of them) and nothing else. No actors, no invocations, no spawning. Just states, inputs, transitions, and the occasional child FSM. If your state management requirements are a finite machine and XState feels like bringing a bulldozer to plant a garden, machina is probably the right call.
-
-## What's new in v7
-
-- **Validation with no blind spots**: empty states (`{}`) and states containing only lifecycle hooks used to silently disable type checking for the whole config. Every config shape is now fully validated — latent typos surface as compile errors on upgrade. See the [migration notes](/migration/v6-to-v7/).
-- **`defer({ until })` is typed**: the `until` target only accepts declared state names, with a "Did you mean" suggestion on typos.
-- **Parents accept child inputs**: `handle()` on a parent type-checks with a child's — or grandchild's — inputs, no casts, and delegation now reaches any depth at runtime.
-- **`bubbles` declarations**: an FSM names the inputs it fires at itself but never handles; whatever mounts it via `_child` must provably cover them or the config fails to compile.
-- **Readable compiler errors**: rejected `handle()`/`transition()` calls show the flat list of valid names instead of an unresolved type alias.
-
-## What's new in v6
-
-- **TypeScript-first**: state names, input names, and transition targets are inferred from config — typos in string shorthand are compile errors.
-- **Clean handler signatures**: `({ ctx, inputName, defer, emit })` args object — no `this`, works with arrow functions throughout.
-- **`createBehavioralFsm`**: tracks state per-client in a `WeakMap` — no properties stamped on client objects, one FSM definition serves any number of independent clients.
-- **`dispose()`**: permanent teardown that cascades to child FSMs by default. All post-dispose calls are silent no-ops. Pass `{ preserveChildren: true }` to leave child FSMs running.
-- **String shorthand**: `timeout: "red"` handles simple always-transition cases without a function.
+machina is for when you want a state machine (or a hierarchy of them) and nothing else: states, inputs, transitions, and the occasional child FSM. It's intentionally built without opinions on how you manage adjacent concerns, so you can fit it neatly into the slot where you need FSMs to help tame complexity.
 
 ## Companion tools
 
-machina ships with two companion packages for catching structural issues in your FSM configs:
+The companion packages cover static analysis, testing, linting, and React:
 
-- **[machina-inspect](/tools/machina-inspect/)** — static analysis that parses your config into a graph IR and runs structural checks (unreachable states, `_onEnter` loops, missing handlers). Use it programmatically or as the engine behind the tools below.
-- **[eslint-plugin-machina](/tools/eslint-plugin/)** — surfaces machina-inspect findings inline in your editor via ESLint. Three rules, one import to set up.
-- **[machina-explorer](/examples/machina-explorer/)** — a browser-based paste-and-analyze tool that runs checks and renders a mermaid state diagram. No install required — [try it live](/demos/machina-explorer/).
+- **[machina-inspect](/tools/machina-inspect/)**: static analysis that parses your config into a graph IR and runs structural checks (unreachable states, `_onEnter` loops, missing handlers). Use it programmatically, or as the engine behind machina-test and the ESLint plugin.
+- **[machina-test](/tools/machina-test/)**: Jest and Vitest matchers for graph assertions, plus property-based runtime testing with `walkAll`.
+- **[eslint-plugin-machina](/tools/eslint-plugin/)**: the machina-inspect checks inline in your editor via ESLint.
+- **[machina-react](/tools/machina-react/)**: React hooks that subscribe components to machina FSMs. It is lightweight and experimental.
+- **[machina-explorer](/examples/machina-explorer/)**: a browser-based paste-and-analyze tool that runs the checks and renders a mermaid state diagram. It runs entirely in the browser, and you can [try it live](/demos/machina-explorer/).
 
 ## Next steps
 
-Ready to build? Head to [Getting Started](/guide/getting-started/).
+Ready to build? Head to [Getting Started](/guide/getting-started/). If you are coming from v7, the [v7 to v8 guide](/migration/v7-to-v8/) covers v8's one type-level break. If you are coming from v5 or earlier, read the [v5 to v6 guide](/migration/v5-to-v6/) and the [v6 to v7 guide](/migration/v6-to-v7/) before it.

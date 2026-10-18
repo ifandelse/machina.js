@@ -1,0 +1,20 @@
+---
+title: Migrating from v7 to v8
+description: v8 adds typed input payloads. The runtime is unchanged, and one type-level break affects instantiation expressions with explicit type arguments.
+---
+
+v8 adds [typed input payloads](/guide/typed-payloads/). A curried factory form (`createFsm<TInputs>()({...})` and `createBehavioralFsm<TClient, TInputs>()({...})`) fixes an input payload map before config inference starts. Handler payload parameters are inferred from the map, and `handle()` enforces payloads at the call site. The feature is opt-in and type-only: untyped configs compile unchanged, and runtime behavior is identical.
+
+## The one type-level break
+
+The curried factories gained a type parameter. An instantiation expression that supplies explicit type arguments, such as `typeof createBehavioralFsm<Client, X>`, now binds its second argument to the input map, where it previously bound the states object. The old binding fails to compile. Direct calls compile unchanged.
+
+Spell such annotations with the class and extraction types:
+
+```ts
+type MyFsm = BehavioralFsm<Client, StateNamesOf<typeof states>, InputNamesOf<typeof states>>;
+```
+
+## machina-test v4
+
+machina-test takes its own major release alongside machina v8. Its machina peer dependency narrows to `>= 8.0.0`, and `walkAll`'s first type parameter is now the FSM type. The client type infers from the config, and a v3 `walkAll<Client>(factory, config)` call respells as `walkAll(factory, config)`. When the factory returns a typed FSM, the config requires a `payloads` key with one tuple-returning generator per payload-carrying input. See [machina-test](/tools/machina-test/).

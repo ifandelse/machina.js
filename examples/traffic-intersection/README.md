@@ -1,16 +1,18 @@
-# Traffic Intersection — machina.js v6 Example
+# Traffic Intersection
 
-A canvas-rendered traffic intersection that demonstrates hierarchical FSMs in machina v6. The point isn't the animation — it's the state machine architecture underneath.
+A canvas-rendered traffic intersection that demonstrates hierarchical FSMs in machina. The animation exists to make the state machines visible.
 
 ## What This Demonstrates
 
-Five machina v6 features working together in a realistic scenario:
+The example combines these machina features:
 
-1. **`_child` delegation** — parent states forward inputs to an active child FSM automatically
-2. **Input bubbling** — `phaseComplete` has no handler in the child's `red` state, so it bubbles up to the parent. The child declares `bubbles: ["phaseComplete"]`, which makes the self-dispatch type-check and obligates any config that mounts the child to handle it
-3. **`compositeState()`** — returns `"northSouthPhase.green"` as a single readable string, combining parent and child state
-4. **Child auto-reset** — when the parent re-enters a phase state, machina calls `reset()` on the child automatically, returning it to `green`
-5. **`defer()`** — a pedestrian button press during non-interruptible green is queued and replayed automatically when `interruptibleGreen` is entered
+1. **`_child` delegation**: parent states forward inputs to an active child FSM automatically.
+2. **Input bubbling**: the child fires `phaseComplete` at itself without handling it, and the input bubbles up to the parent. The child declares `bubbles: ["phaseComplete"]`, which types the self-dispatch and obliges any config that mounts the child to handle it.
+3. **`compositeState()`**: returns `"northSouthPhase.green"`, the parent and child state combined into one readable string.
+4. **Child auto-reset**: when the parent re-enters a phase state, machina calls `reset()` on the child automatically and returns it to `green`.
+5. **`defer()`**: a pedestrian button press during the locked green is queued and replayed automatically when the FSM enters `interruptibleGreen`.
+
+The [hierarchical guide](https://machina-js.org/guide/hierarchical/) and the [defer guide](https://machina-js.org/guide/defer/) cover these APIs in depth.
 
 ## State Hierarchy
 
@@ -31,11 +33,11 @@ PhaseController (child FSM — one factory, two instances)
   red                      — emits phaseComplete, bubbles to parent
 ```
 
-The two child instances (`nsPhaseCtrl` and `ewPhaseCtrl`) are created by the same factory but have independent context objects and timers. They never share state.
+`nsPhaseCtrl` and `ewPhaseCtrl` come from the same factory, and each instance has its own context object and timers. They never share state.
 
 ## Signal State Mapping
 
-`compositeState()` drives everything the renderer shows. The lookup table in `config.ts` maps every composite state string to visual signal states for all four directions:
+`compositeState()` drives everything the renderer shows. The lookup table in [src/config.ts](./src/config.ts) maps each composite state string to visual signal states for all four directions:
 
 | Composite State                      | N/S Vehicle | N/S Ped    | E/W Vehicle | E/W Ped    |
 | ------------------------------------ | ----------- | ---------- | ----------- | ---------- |
@@ -53,7 +55,7 @@ The two child instances (`nsPhaseCtrl` and `ewPhaseCtrl`) are created by the sam
 
 ## Phase Timing
 
-Defined in `src/config.ts`:
+The durations come from [src/config.ts](./src/config.ts):
 
 | Phase               | Duration |
 | ------------------- | -------- |
@@ -64,9 +66,9 @@ Defined in `src/config.ts`:
 
 ## The Pedestrian Button
 
-Pressing it during non-interruptible green defers the request. `defer({ until: "interruptibleGreen" })` tells machina to queue the input and replay it automatically when that state is entered. The button press "works" — it just takes effect at the earliest safe moment.
+Pressing it during the locked green defers the request. `defer({ until: "interruptibleGreen" })` queues the input and replays it automatically when the FSM enters that state. The button press still registers, and it takes effect at the earliest safe moment.
 
-During `interruptibleGreen` (whether from a live press or a deferred replay), the phase transitions immediately to yellow. During yellow, clearance, or ready, the input is unhandled and fires a `nohandler` event.
+During `interruptibleGreen`, whether from a live press or a deferred replay, the phase transitions immediately to yellow. During yellow, clearance, or ready, the input is unhandled and fires a `nohandler` event.
 
 ## Running
 
@@ -88,14 +90,14 @@ pnpm --filter @machina-examples/traffic-intersection dev
 pnpm test
 ```
 
-Tests use Jest fake timers to drive the FSM through its full cycle without waiting. Coverage includes: normal progression, pedestrian defer/replay, child auto-reset across cycles, and disposal behavior.
+The tests use Jest fake timers and complete full signal cycles without real waiting. They cover the normal progression and the pedestrian defer and replay, plus child auto-reset across cycles and disposal.
 
 ## File Guide
 
-| File              | What it does                                                   |
-| ----------------- | -------------------------------------------------------------- |
-| `src/fsm.ts`      | The FSM — parent intersection + child phase controller factory |
-| `src/config.ts`   | Timing constants, signal state types, composite state lookup   |
-| `src/renderer.ts` | Canvas 2D rendering — vehicles, pedestrians, signal housings   |
-| `src/ui.ts`       | State panel, event log, button wiring                          |
-| `src/main.ts`     | Wiring — connects FSM events to renderer and UI                |
+| File                                 | What it does                                                            |
+| ------------------------------------ | ----------------------------------------------------------------------- |
+| [src/fsm.ts](./src/fsm.ts)           | The parent intersection FSM and the factory for child phase controllers |
+| [src/config.ts](./src/config.ts)     | Timing constants, signal state types, and the composite-state lookup    |
+| [src/renderer.ts](./src/renderer.ts) | Canvas 2D rendering of vehicles, pedestrians, and signal housings       |
+| [src/ui.ts](./src/ui.ts)             | The state panel, event log, and button wiring                           |
+| [src/main.ts](./src/main.ts)         | Connects FSM events to the renderer and the UI                          |

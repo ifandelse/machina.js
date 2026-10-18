@@ -1,89 +1,68 @@
 ---
 title: React Integration
-description: Using createFsm with React for a checkout flow UI.
+description: A multi-step checkout flow built with machina and the machina-react hooks.
 ---
 
 import { LinkCard } from "@astrojs/starlight/components";
 
-This example demonstrates integrating machina with React using `useSyncExternalStore` for a multi-step checkout flow. The FSM lives entirely outside the React component tree — zero React imports in `fsm.ts` — and components subscribe to state changes through React's built-in subscription API. No wrapper library required.
+This example builds a multi-step checkout flow with machina and React 19. The FSM in `fsm.ts` imports only machina, and the [machina-react](https://www.npmjs.com/package/machina-react) hooks do the subscription work. machina-react is built on React's `useSyncExternalStore`, and snapshots stay consistent under concurrent rendering.
 
 <LinkCard title="Run the React Example" href="/demos/with-react/" target="_blank" />
 
 ## What It Demonstrates
 
-- `createFsm` used outside the React component tree — `fsm.ts` has no React imports
-- `useSyncExternalStore` for subscribing to FSM state transitions
-- Clean separation: the FSM owns state logic, React owns rendering
-- No wrapper libraries — machina's `on()`/`off()` API maps directly to the subscribe/unsubscribe contract that `useSyncExternalStore` expects
-- `canHandle()` for driving button disabled state rather than catching silent no-ops
-- Passing form data through `handle("next", formData)` — components own ephemeral form state and submit it at transition time
-- `_onEnter` lifecycle hooks for async side effects (payment simulation, flag management)
+machina concepts:
 
-## The Hook
+- `createFsm` with a typed context object that the FSM and the React layer share by reference
+- `_onEnter` lifecycle hooks for side effects, like the async payment simulation and flag clearing
+- Payload arguments through `handle("next", formData)`, where components own ephemeral form state and submit it on transition
+- `canHandle()` for computing each button's disabled state
 
-The full React integration layer is about 40 lines. The key pieces:
+machina-react integration:
 
-```typescript
-// useSyncExternalStore bridges the FSM's event-based API to React's render cycle.
-//
-// subscribe — listens for "transitioned" events and calls React's invalidation signal.
-//   Returns the cleanup function so React can unsubscribe on unmount.
-//
-// getSnapshot — returns the current state name as a string primitive.
-//   Object.is("foo", "foo") === true, so no spurious re-renders.
+- `CheckoutProvider` stores the FSM in ordinary React context, the provider pattern from the machina-react README
+- The provider creates the FSM once in a ref, which avoids the StrictMode double-invoke problem around disposal
+- `useCheckout()` wraps `useFsm(fsm)` and returns `{ state, context, handle, canHandle }` to components
+- `useCheckoutSelector()` wraps `useFsmSelector` for components that need a derived slice
 
-const subscribe = useCallback((onStoreChange: () => void) => {
-    const sub = fsmRef.current!.on("transitioned", () => {
-        onStoreChange();
-    });
-    return () => {
-        sub.off();
-    };
-}, []);
+## The Integration Layer
 
-const state = useSyncExternalStore(
-    subscribe,
-    () => fsmRef.current!.currentState() as CheckoutState,
-    () => "start" as CheckoutState
-);
+The full React wiring is 49 lines in `src/hooks/useCheckout.tsx`. Trimmed to the exported pieces:
+
+```tsx
+export const CheckoutProvider = ({ children }: Readonly<CheckoutProviderProps>) => {
+    const fsmRef = useRef<CheckoutFsm | null>(null);
+
+    if (!fsmRef.current) {
+        fsmRef.current = createCheckoutFsm().fsm;
+    }
+
+    return (
+        <CheckoutFsmContext.Provider value={fsmRef.current}>{children}</CheckoutFsmContext.Provider>
+    );
+};
+
+export const useCheckout = () => {
+    return useFsm(useCheckoutFsm());
+};
+
+export const useCheckoutSelector = <TSelected,>(
+    selector: (snapshot: CheckoutSnapshot) => TSelected,
+    options?: UseFsmSelectorOptions<TSelected>
+) => {
+    return useFsmSelector(useCheckoutFsm(), selector, options);
+};
 ```
 
-The context object is shared by reference — `createCheckoutFsm()` returns both `{ fsm, context }`, and the hook holds the same object the FSM mutates internally. Re-renders are triggered by state transitions, at which point the context is already up to date. Don't clone or spread it.
-
-```typescript
-// createCheckoutFsm() returns the FSM and the context object it was given.
-// Holding a ref to both means FSM mutations are visible immediately after
-// any transition fires the useSyncExternalStore snapshot read.
-if (!fsmRef.current) {
-    const { fsm, context } = createCheckoutFsm();
-    fsmRef.current = fsm;
-    contextRef.current = context;
-}
-```
-
-The API object is memoized on `state`, so consumers only re-render on FSM transitions — not on every parent render:
-
-```typescript
-const api = useMemo<CheckoutApi>(
-    () => ({
-        state,
-        context: contextRef.current!,
-        handle: (input: string, ...args: unknown[]) => {
-            fsmRef.current?.handle(input, ...args);
-        },
-        canHandle: (input: string) => {
-            return fsmRef.current?.canHandle(input) ?? false;
-        },
-    }),
-    [state]
-);
-```
+Components call `useCheckout()` and read `state` and `context` from the snapshot. `useFsm` subscribes through `useSyncExternalStore` and rerenders the component when the FSM settles after an input.
 
 ## Design Notes
 
-**Why no `useEffect` cleanup for the FSM.** React 18 StrictMode simulates unmount/remount for effects but does not re-run the component body. Disposing the FSM in a cleanup effect would leave `useSyncExternalStore` trying to re-subscribe to a dead FSM before the lazy ref init could recreate it. The FSM holds no external resources — when the Provider truly unmounts, the refs are GC'd.
+**Context is shared by reference.** `createCheckoutFsm()` returns `{ fsm, context }`, and the FSM mutates that one object on each `handle()` call. The machina-react snapshot exposes the same live reference, and components read current values whenever a settled snapshot triggers a render.
 
-**Why the context is mutated in place, not replaced.** The hook holds a ref to the original context object. If `confirmation.startOver` replaced context with a fresh object, all components would keep reading from the old reference. Mutating the fields in place is the simpler contract.
+**The provider skips `useEffect` cleanup for the FSM.** React StrictMode simulates unmount and remount for effects without re-running the component body. A cleanup that disposed the FSM would leave the remounted tree subscribed to a disposed instance before the ref could recreate it. Disposal is unnecessary here: the FSM's state is in-memory only, and garbage collection reclaims it when the provider unmounts.
+
+**`startOver` resets context fields in place.** The hook layer and the components read one shared object. Replacing it with a fresh object would break the shared reference, and components would still read the old one. Resetting the fields in place preserves the reference.
 
 ## Source
 

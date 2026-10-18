@@ -25,8 +25,9 @@ const plugin = {
     configs: {} as Record<string, Linter.Config>,
 };
 
-// recommended: onenter-loop are errors (structural bugs);
-// missing-handler and unreachable-state are warnings (design gaps, often intentional).
+// recommended: onenter-loop is an error (a structural bug). unreachable-state is a
+// warning (a design gap, often intentional). missing-handler is off, since asymmetric
+// handlers are common by design.
 plugin.configs["recommended"] = {
     plugins: { machina: plugin },
     rules: {

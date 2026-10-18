@@ -6,5 +6,8 @@
     "linked": [],
     "access": "public",
     "baseBranch": "master",
-    "updateInternalDependencies": "minor"
+    "updateInternalDependencies": "minor",
+    "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+        "onlyUpdatePeerDependentsWhenOutOfRange": true
+    }
 }

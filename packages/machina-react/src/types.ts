@@ -3,6 +3,9 @@ import type {
     ClientOf,
     ContextOf,
     FsmEventMap,
+    InputCall,
+    InputMapLike,
+    InputMapOfInstance,
     InputNamesOfInstance,
     StateNamesOfInstance,
 } from "machina";
@@ -58,11 +61,29 @@ export interface BehavioralFsmLike {
     on(eventName: string, callback: (payload: unknown) => void): { off(): void };
 }
 
+/**
+ * The full argument list for a hook result's `handle`: core's `InputCall`,
+ * derived from the instance, so a typed FSM's payload enforcement survives
+ * the hook boundary (machina #195). The split conditional exists because
+ * `InputCall` bounds its map parameter with `InputMapLike`, and a deferred
+ * `InputMapOfInstance<TFsm>` cannot prove that bound while `TFsm` is still an
+ * unresolved type parameter. Inferring the map first and re-checking the
+ * bound defers the proof to each call site, where `TFsm` is concrete. An
+ * untyped FSM resolves to the wide map, which keeps its calls as loose as
+ * core's own `handle`.
+ */
+type HandleCall<TFsm> =
+    InputMapOfInstance<TFsm> extends infer TInputs
+        ? TInputs extends InputMapLike<TInputs>
+            ? InputCall<InputNamesOfInstance<TFsm> & string, TInputs>
+            : [inputName: InputNamesOfInstance<TFsm>, ...args: unknown[]]
+        : never;
+
 export type FsmHookResult<TFsm extends FsmLike> = FsmSnapshot<
     StateNamesOfInstance<TFsm>,
     ContextOf<TFsm>
 > & {
-    handle(inputName: InputNamesOfInstance<TFsm>, ...args: unknown[]): void;
+    handle(...call: HandleCall<TFsm>): void;
     canHandle(inputName: string): boolean;
 };
 
@@ -70,7 +91,7 @@ export type BehavioralFsmHookResult<TFsm extends BehavioralFsmLike> = Behavioral
     StateNamesOfInstance<TFsm>,
     ClientOf<TFsm>
 > & {
-    handle(inputName: InputNamesOfInstance<TFsm>, ...args: unknown[]): void;
+    handle(...call: HandleCall<TFsm>): void;
     canHandle(inputName: string): boolean;
 };
 

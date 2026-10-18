@@ -1,0 +1,36 @@
+---
+title: inspect-demo
+description: A terminal tour of machina-inspect against intentionally buggy FSM configs.
+---
+
+A terminal demo of [machina-inspect](/tools/machina-inspect/). `demo.ts` runs `inspect()` against FSM configs with intentional structural bugs and prints the findings for each one. It is the quickest way to see what each finding type looks like in practice.
+
+## Running
+
+```sh
+# From the monorepo root
+pnpm --filter @machina-examples/inspect-demo demo
+
+# From the example directory
+pnpm demo
+```
+
+## What it prints
+
+The demo walks through its scenarios in numbered sections:
+
+1. A clean traffic-light config, with an empty findings array
+2. An unreachable state, where `broken` has an outbound edge and lacks an inbound one
+3. An unconditional `_onEnter` loop between two states
+4. A conditional `_onEnter` bounce, which the loop check skips on purpose
+5. Function handlers plus an unreachable state
+6. A live `Fsm` instance passed to `inspect()`
+7. A live `BehavioralFsm` instance
+8. The graph IR from `buildStateGraph()`
+9. A child FSM with an unreachable state
+
+Sections 3 and 4 pair up to show how the loop check decides. An unconditional cycle is a bug, and a conditional bounce is an intentional pattern the check skips.
+
+## Source
+
+[examples/inspect-demo/](https://github.com/ifandelse/machina.js/tree/master/examples/inspect-demo)

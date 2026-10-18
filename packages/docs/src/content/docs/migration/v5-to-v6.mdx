@@ -1,6 +1,6 @@
 ---
 title: Migrating from v4 to v6
-description: v4.0.2 was the last public release. v6 is a ground-up TypeScript rewrite — same mental model, substantially different API. This page covers everything you need to update.
+description: v4.0.2 was the last public release. v6 is a ground-up TypeScript rewrite with the same mental model and a substantially different API. This page covers the full update.
 ---
 
 v4.0.2 was the last public release of machina. v5 was never released. v6 is a ground-up TypeScript rewrite: the mental model of states, inputs, handlers, and transitions is unchanged, but almost every API surface has moved. This page is the translation guide.
@@ -38,7 +38,7 @@ function createMyFsm(options: MyOptions) {
 }
 ```
 
-`.extend()` is gone. v4 used prototype-based inheritance to share and override FSM behavior across instances. v6 replaces that pattern with plain factory functions — call `createFsm` inside a function, close over whatever you need, and return the instance. Less magic, easier to type, easier to follow.
+`.extend()` is gone. v4 used prototype-based inheritance to share and override FSM behavior across instances. v6 replaces that pattern with plain factory functions. Call `createFsm` inside a function that closes over whatever you need, and return the instance. The result is easier to type and easier to follow.
 
 ---
 
@@ -67,7 +67,7 @@ createFsm({ id: "traffic-light", ... });
 
 **`initialize()` is removed**
 
-v4's `initialize()` was a lifecycle hook that ran after construction. It was typically used to set up timers, subscribe to external events, or wire callbacks. In v6, do that work outside the `createFsm` call:
+v4's `initialize()` was a lifecycle hook that ran after construction. It typically set up timers or subscriptions to external events. In v6, do that work outside the `createFsm` call:
 
 ```js
 // v4
@@ -89,7 +89,7 @@ startTimer(fsm);
 
 **`context` is new on `createFsm`**
 
-v6 has no `this` in handlers (see next section), so mutable state needs a home. That's `context`. Pass a plain object; machina hands it to every handler as `ctx`. Omit it for FSMs that don't need state.
+v6 has no `this` in handlers (see next section), so mutable state needs a home. That home is `context`. Pass a plain object, and machina hands it to every handler as `ctx`. FSMs without internal state can omit it.
 
 ```ts
 createFsm({
@@ -112,7 +112,7 @@ createFsm({
 
 This is the biggest change in v6.
 
-**v4 bound handlers to `this` (the FSM instance).** Reading state, calling `transition()`, calling `deferUntilTransition()` — all of it went through `this`. Arrow functions were broken because they captured the outer `this` instead.
+**v4 bound handlers to `this` (the FSM instance).** Everything, from reading state to calling `transition()` or `deferUntilTransition()`, went through `this`. Arrow functions were broken because they captured the outer `this`.
 
 **v6 handlers receive a plain `HandlerArgs` object as the first argument.** Arrow functions work fine. `this` is never involved.
 
@@ -171,7 +171,7 @@ Additional arguments passed to `handle("inputName", arg1, arg2)` are spread afte
 
 **v4: call `this.transition()` imperatively from inside handlers.**
 
-**v6: return a state name from a handler.** Returning a string triggers the transition; returning nothing (or `undefined`) keeps the FSM in its current state.
+**v6: return a state name from a handler.** Returning a string triggers the transition, and returning nothing (or `undefined`) leaves the FSM in its current state.
 
 ```js
 // v4
@@ -190,7 +190,7 @@ timeout() {
 timeout: "red",
 ```
 
-`transition()` still exists as a **public method** for transitioning from _outside_ a handler — a timer callback, an event listener, anything external to the FSM. Inside handlers, return is the pattern.
+`transition()` still exists as a public method for transitioning from outside a handler (a timer callback, an event listener, anything external to the FSM). Inside handlers, return is the pattern.
 
 ```ts
 // External code forcing a transition — valid use of transition()
@@ -224,27 +224,27 @@ waiting({ defer }) {
 },
 ```
 
-`deferAndTransition()` is gone — it was shorthand for defer-then-transition. Just do both explicitly.
+`deferAndTransition()` is gone. It was shorthand for defer-then-transition, so do both explicitly.
 
 ---
 
 ## Methods
 
-| v4 method                      | v6 equivalent                   | Notes                                                     |
-| ------------------------------ | ------------------------------- | --------------------------------------------------------- |
-| `fsm.handle(input, ...args)`   | `fsm.handle(input, ...args)`    | Unchanged.                                                |
-| `fsm.state`                    | `fsm.currentState()`            | Property → method.                                        |
-| `this.transition(state)`       | return state name from handler  | Or `fsm.transition(state)` from outside a handler.        |
-| `this.deferUntilTransition(s)` | `defer({ until: "s" })` in args | Via the handler args object.                              |
-| `this.deferUntilTransition()`  | `defer()` in args               | No argument = next transition.                            |
-| `this.deferAndTransition(s)`   | `defer(…); return "s"`          | Removed — do both explicitly.                             |
-| `fsm.processQueue()`           | removed                         | Queue processing is automatic.                            |
-| `fsm.clearQueue()`             | removed                         | Queue processing is automatic.                            |
-| `fsm.off(event, cb)`           | `sub.off()`                     | `on()` returns `{ off() }` — use the subscription.        |
-| _(none)_                       | `fsm.canHandle(input)`          | New. True if current state has a handler for this input.  |
-| _(none)_                       | `fsm.reset()`                   | New. Transitions back to `initialState`.                  |
-| _(none)_                       | `fsm.dispose()`                 | New. Permanently shuts down; subsequent calls are no-ops. |
-| _(none)_                       | `fsm.compositeState()`          | New. Dot-delimited path through active child FSM states.  |
+| v4 method                      | v6 equivalent                   | Notes                                                    |
+| ------------------------------ | ------------------------------- | -------------------------------------------------------- |
+| `fsm.handle(input, ...args)`   | `fsm.handle(input, ...args)`    | Unchanged.                                               |
+| `fsm.state`                    | `fsm.currentState()`            | Property → method.                                       |
+| `this.transition(state)`       | return state name from handler  | Or `fsm.transition(state)` from outside a handler.       |
+| `this.deferUntilTransition(s)` | `defer({ until: "s" })` in args | Via the handler args object.                             |
+| `this.deferUntilTransition()`  | `defer()` in args               | No argument = next transition.                           |
+| `this.deferAndTransition(s)`   | `defer(…); return "s"`          | Removed (do both explicitly).                            |
+| `fsm.processQueue()`           | removed                         | Queue processing is automatic.                           |
+| `fsm.clearQueue()`             | removed                         | Queue processing is automatic.                           |
+| `fsm.off(event, cb)`           | `sub.off()`                     | `on()` returns `{ off() }`, so use the subscription.     |
+| _(none)_                       | `fsm.canHandle(input)`          | New. True if current state has a handler for this input. |
+| _(none)_                       | `fsm.reset()`                   | New. Transitions back to `initialState`.                 |
+| _(none)_                       | `fsm.dispose()`                 | New. Permanently shuts down, and later calls are no-ops. |
+| _(none)_                       | `fsm.compositeState()`          | New. Dot-delimited path through active child FSM states. |
 
 **Unsubscribing from events**
 
@@ -271,16 +271,16 @@ sub.off();
 
 Most event names are the same, but two changed:
 
-- **`transition` → `transitioning`** — v4 emitted `"transition"` before the state change. v6 renamed it to `"transitioning"` so the before/after pair reads clearly: `transitioning` then `transitioned`.
-- **`newfsm` — removed.** v4 emitted this when a new FSM was created. v6 doesn't.
+- **`transition` → `transitioning`**: v4 emitted `"transition"` before the state change, and v6 renamed it so the before/after pair reads clearly: `transitioning` then `transitioned`.
+- **`newfsm` is removed.** v4 emitted it when a new FSM was created, and v6 doesn't.
 
 The rest are unchanged: `transitioned`, `handling`, `handled`, `nohandler`, `invalidstate`, `deferred`.
 
 What else changed:
 
 - **Payloads no longer include `namespace`.** Use `id` if you need to identify the source FSM from outside.
-- **`BehavioralFsm` payloads include a `client` field** on every event so you can tell which client fired it.
-- **Wildcard `"*"` listener** receives `(eventName, data)` as two separate arguments, not a single wrapped object.
+- **`BehavioralFsm` built-in event payloads include a `client` field** so you can tell which client fired it.
+- **Wildcard `"*"` listener** receives `(eventName, data)` as two arguments. v4 passed one wrapped object.
 
 ```js
 // v4 — wildcard
@@ -317,7 +317,7 @@ states: {
 
 ## BehavioralFsm
 
-The concept is the same: one FSM definition, many independent clients.
+One FSM definition still serves many independent clients.
 
 ```js
 // v4
@@ -346,7 +346,7 @@ bfsm.currentState(client); // "connecting"
 Key differences:
 
 - **No `context` property in the config.** The client IS the context. Handler `ctx` is the client object.
-- **v4 stamped `__machina__` onto client objects** to track state. v6 uses an internal `WeakMap` — client objects stay clean. You don't need to delete or ignore `__machina__` entries.
+- **v4 stamped `__machina__` onto client objects** to track state. v6 uses an internal `WeakMap`, and client objects stay clean. You don't need to delete or ignore `__machina__` entries.
 - **State lookup**: read `bfsm.currentState(client)` instead of `client.__machina__[namespace].state`.
 - `currentState(client)` returns `undefined` for a client the FSM has never seen. The first call to `handle()`, `transition()`, or `reset()` initializes the client.
 
@@ -354,13 +354,13 @@ Key differences:
 
 ## Hierarchical states
 
-`_child` works the same way: assign an FSM instance to a state's `_child` property, and inputs are delegated to the child first, bubbling to the parent if unhandled.
+`_child` works the same way. Assign an FSM instance to a state's `_child` property. machina delegates inputs to the child first, and unhandled inputs bubble to the parent.
 
 What changed:
 
-- **v4 accepted `_child: { factory: fn }` and `_child: ConstructorFn`** — factory patterns for creating the child FSM. v6 only accepts a direct FSM instance. Create the child with `createFsm` before building the parent.
+- **v4 accepted `_child: { factory: fn }` and `_child: ConstructorFn`**, factory patterns for creating the child FSM. v6 accepts only a direct FSM instance. Create the child with `createFsm` before building the parent.
 - **`compositeState()`** works the same.
-- **Child auto-reset on parent re-entry** works the same — entering a parent state always resets the child to its `initialState`.
+- **Child auto-reset on parent re-entry** works the same: entering a parent state resets the child to its `initialState`.
 - **`dispose()` cascades to children** by default. Pass `{ preserveChildren: true }` to skip it.
 
 ```js
@@ -390,14 +390,14 @@ const parentFsm = createFsm({
 
 ## Removed features
 
-- **`machina.utils`** — removed. No replacement.
-- **`.extend()`** — use factory functions.
-- **`initialize()`** — do external setup after calling `createFsm`.
-- **`useSafeEmit`** — removed. Emission is always safe.
-- **`processQueue()` / `clearQueue()`** — removed. Deferred queue processing is automatic.
-- **`deferAndTransition()`** — removed. Call `defer()` then return a state name.
-- **Plugin / mixin system** — removed. No replacement.
-- **`__machina__` client stamping** — replaced by internal `WeakMap`. Client objects are not modified.
+- **`machina.utils`**: removed without a replacement.
+- **`.extend()`**: use factory functions.
+- **`initialize()`**: do external setup after calling `createFsm`.
+- **`useSafeEmit`**: removed, since emission is always safe.
+- **`processQueue()` / `clearQueue()`**: removed, because deferred queue processing is automatic.
+- **`deferAndTransition()`**: removed. Call `defer()` and then return a state name.
+- **Plugin / mixin system**: removed without a replacement.
+- **`__machina__` client stamping**: replaced by an internal `WeakMap`, and machina doesn't modify client objects.
 
 ---
 

@@ -5,16 +5,16 @@ description: BehavioralFsm example with multiple critter instances sharing one F
 
 import { LinkCard } from "@astrojs/starlight/components";
 
-Dungeon Critters spawns up to 80 animated critters on a canvas dungeon floor, each independently driven by a single shared FSM definition. It demonstrates `createBehavioralFsm` — define behavior once, pass a client object per call, and the FSM tracks state for every client separately via an internal `WeakMap`.
+Dungeon Critters spawns up to 80 animated critters on a canvas dungeon floor, each independently driven by one shared FSM definition. It demonstrates `createBehavioralFsm`. You define the behavior once and pass a client object per call, while the FSM tracks each client's state separately in an internal `WeakMap`.
 
 <LinkCard title="Run the Dungeon Critters" href="/demos/dungeon-critters/" target="_blank" />
 
 ## What It Demonstrates
 
-- **`createBehavioralFsm` for shared behavior** — one FSM instance drives all 35–80 critters. No per-critter FSM instantiation.
-- **Per-client state via `WeakMap`** — the FSM stores nothing on the critter object itself. State is an internal implementation detail, not a property you can accidentally overwrite.
-- **The client object IS the context** — every handler receives the critter as `ctx`. Handlers read `ctx.x`, `ctx.y`, write `ctx.vx`, `ctx.vy`, record timestamps. The client is both the key and the working surface.
-- **Multiple clients in different states simultaneously** — `fsm.handle(critterA, "tick")` and `fsm.handle(critterB, "tick")` resolve independently. `fsm.currentState(critterA)` may return `"chase"` while `fsm.currentState(critterB)` returns `"idle"`.
+- **`createBehavioralFsm` for shared behavior**: one FSM instance controls every critter (35 at startup, 80 max) without per-critter instantiation.
+- **Per-client state via `WeakMap`**: the FSM doesn't write state onto the critter object itself. State stays inside the FSM's `WeakMap`, where a stray assignment can't overwrite it.
+- **The client object is the context**: each handler receives the critter as `ctx`. Handlers read `ctx.x` and `ctx.y`, write `ctx.vx` and `ctx.vy`, and record timestamps. The client is both the lookup key and the data the handlers mutate.
+- **Multiple clients in different states simultaneously**: `fsm.handle(critterA, "tick")` and `fsm.handle(critterB, "tick")` resolve independently. `fsm.currentState(critterA)` may return `"chase"` while `fsm.currentState(critterB)` returns `"idle"`.
 
 ## States
 
@@ -36,13 +36,13 @@ Dungeon Critters spawns up to 80 animated critters on a canvas dungeon floor, ea
 | -------- | ---------- | ------------------------------------------------------------------------------------- |
 | `idle`   | dim grey   | Stationary; occasional random fidget; drifts back toward home territory if it strayed |
 | `patrol` | green      | Moves toward a random waypoint within its home territory circle                       |
-| `alert`  | amber      | Stops and faces the player; blinking `!` indicator; auto-disengages after 2.5s        |
+| `alert`  | amber      | Stops and faces the player with a blinking `!` indicator. Auto-disengages after 2.5s  |
 | `chase`  | red        | Pursues the cursor at full speed; critter inflates visually                           |
 | `flee`   | near-white | Runs away from the click point for 2s then returns to idle                            |
 
 ## Key Pattern
 
-One FSM definition, created once, drives every critter. An [input payload map](/guide/typed-payloads/) declares what each input carries, so handlers receive typed payloads with no annotations or casts:
+One FSM definition, created once, drives every critter. An [input payload map](/guide/typed-payloads/) declares each input's payload tuple, so handlers receive typed payloads without annotations or casts:
 
 ```ts
 import { createBehavioralFsm } from "machina";
@@ -107,7 +107,7 @@ export function createCritterBehavior() {
 }
 ```
 
-The game loop dispatches inputs across all critters each frame:
+The game loop dispatches an input to each critter every frame:
 
 ```ts
 const fsm = createCritterBehavior();
@@ -121,18 +121,18 @@ for (const critter of critters) {
 const state = fsm.currentState(critter); // "idle" | "patrol" | "alert" | "chase" | "flee"
 ```
 
-**No timers in the FSM.** With 50+ critters, independent `setTimeout` chains would be chaos. Instead, `_onEnter` stamps `Date.now()` on the client, and `tick` handlers compare elapsed time. One `requestAnimationFrame` loop drives everything.
+**Timers stay out of the FSM.** With 50 or more critters, independent `setTimeout` chains would be unmanageable. `_onEnter` stamps `Date.now()` on the client instead, and `tick` handlers compare elapsed time. One `requestAnimationFrame` loop drives everything.
 
-**FSM sets velocity; the game loop integrates position.** Handlers write `ctx.vx` / `ctx.vy` (behavioral intent). The game loop applies `x += vx` and clamps to canvas bounds. FSM handlers stay focused on what the critter _wants_, not pixel math.
+**The FSM sets velocity, and the game loop integrates position.** Handlers write `ctx.vx` and `ctx.vy` to express behavioral intent. The game loop applies `x += vx` and clamps to canvas bounds. The handlers stay out of the pixel math.
 
 ## Interacting With the Demo
 
 - **Move the cursor** over critters to trigger detection and chase
-- **Click** to blast critters within 80px — only chasing critters flee
+- **Click** to blast critters within 80px. A chasing critter flees, and the others ignore the blast
 - **Click directly on a critter** to select it and open the inspector panel
-- **Sensing range slider** — adjust detection radius live for all critters
-- **Show sensing radius** — toggle detection circle visualization
-- **Spawn** — add 10 more critters (up to 80 max)
+- **Sensing range slider**: adjust the detection radius live for all critters
+- **Show sensing radius**: toggle the detection circle visualization
+- **Spawn**: add 10 more critters, up to the cap of 80
 
 ## Source
 

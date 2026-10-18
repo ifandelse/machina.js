@@ -5,7 +5,7 @@ description: Hierarchical FSM example modeling a traffic light intersection.
 
 import { LinkCard } from "@astrojs/starlight/components";
 
-A canvas-rendered traffic intersection demonstrating hierarchical FSMs in machina v6. The parent FSM manages the intersection's phase sequencing; two child FSMs independently control the signal progression for each active phase.
+A canvas-rendered traffic intersection demonstrating hierarchical FSMs in machina. The parent FSM manages the intersection's phase sequencing, and two child FSMs independently control the signal progression for each active phase.
 
 <LinkCard
     title="Run the Traffic Intersection"
@@ -15,13 +15,13 @@ A canvas-rendered traffic intersection demonstrating hierarchical FSMs in machin
 
 ## What it demonstrates
 
-Five machina v6 features working together in a realistic scenario:
+The features below work together in a realistic scenario:
 
-1. **`_child` delegation** — parent states forward inputs to an active child FSM automatically; the parent never manually routes them
-2. **Input bubbling** — `phaseComplete` has no handler in the child's `red` state, so it bubbles up to the parent
-3. **`compositeState()`** — returns `"northSouthPhase.green"` as a single readable string, combining parent and child state
-4. **Child auto-reset** — when the parent re-enters a phase state, machina calls `reset()` on the child automatically, returning it to `green`
-5. **`defer()`** — a pedestrian button press during non-interruptible green is queued and replayed automatically when `interruptibleGreen` is entered
+1. **`_child` delegation**: parent states forward inputs to an active child FSM automatically, without hand-written routing
+2. **Input bubbling**: the child's `red` state doesn't handle `phaseComplete`, and the unhandled input bubbles up to the parent
+3. **`compositeState()`**: returns `"northSouthPhase.green"` as a readable string that combines parent and child state
+4. **Child auto-reset**: on each parent re-entry into a phase state, machina calls `reset()` on the child and the child starts over at `green`
+5. **`defer()`**: a pedestrian button press during non-interruptible green is queued and replayed automatically when `interruptibleGreen` is entered
 
 ## State hierarchy
 
@@ -42,7 +42,7 @@ PhaseController (child FSM — one factory, two instances)
   red                      — emits phaseComplete, bubbles to parent
 ```
 
-The two child instances (`nsPhaseCtrl` and `ewPhaseCtrl`) are created by the same factory but have independent context objects and timers. They never share state.
+The child instances (`nsPhaseCtrl` and `ewPhaseCtrl`) are created by the same factory but have independent context objects and timers. They never share state.
 
 ## Signal state mapping
 
@@ -64,9 +64,9 @@ The two child instances (`nsPhaseCtrl` and `ewPhaseCtrl`) are created by the sam
 
 ## The pedestrian button
 
-Pressing the button during the non-interruptible `green` state calls `defer({ until: "interruptibleGreen" })`. Machina queues the input and replays it automatically when `interruptibleGreen` is entered — the press "works", it just takes effect at the earliest safe moment.
+Pressing the button during the non-interruptible `green` state calls `defer({ until: "interruptibleGreen" })`. Machina queues the input and replays it automatically when `interruptibleGreen` is entered. The press registers, and it takes effect at the earliest safe moment.
 
-Whether the `pedestrianRequest` input arrives as a live press or a deferred replay, it lands in `interruptibleGreen` and immediately transitions to `yellow`, shortening the phase. Pressing the button during `yellow`, clearance, or `ready` is unhandled and fires a `nohandler` event.
+Whether the `pedestrianRequest` input comes from a live press or a deferred replay, `interruptibleGreen` handles it and immediately transitions to `yellow`, which shortens the phase. Pressing the button during `yellow`, clearance, or `ready` is unhandled and fires a `nohandler` event.
 
 ## Source
 
