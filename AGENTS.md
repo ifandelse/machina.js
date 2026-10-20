@@ -58,7 +58,7 @@ Two factory functions, one mental model:
 
 **Handlers** receive `{ ctx, inputName, defer, emit }` as a destructured first argument (no `this` binding). Return a state name string to transition; return nothing to stay put. String shorthand (`timeout: "yellow"`) handles the always-transition case.
 
-**Lifecycle hooks**: `_onEnter(args)` fires on state entry (can return a state name to "bounce"). `_onExit(args)` fires on state exit. Both receive the same args object as regular handlers.
+**Lifecycle hooks**: `_onEnter(args)` fires on state entry (can return a state name to "bounce"). `_onExit(args)` fires on state exit. Both receive the same args object as regular handlers. `onDispose(args)` is a config-level hook beside `states`: `dispose()` runs it once per live client with `{ ctx, emit }` only, before it clears listeners and disposes children. `dispose()` does not run `_onExit`.
 
 **Child FSMs**: `_child: fsmInstance` on a state delegates inputs to the child first — `canHandle()` answers for the entire `_child` chain, so delegation reaches any depth and the deepest handler wins over ancestors. Unhandled inputs bubble up. `compositeState()` returns the dot-delimited path (e.g. `"active.uploading.retrying"`). Children auto-reset when the parent re-enters their state.
 

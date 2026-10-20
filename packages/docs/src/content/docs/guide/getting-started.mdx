@@ -55,6 +55,7 @@ A few things to note:
 - **`initialState`**: the state the FSM boots into. `_onEnter` fires on every entry to a state (if present)
 - **`context`**: a plain object scoped to this FSM instance, yours to mutate.
 - **`states`**: a map of state names to handler maps. Each key (other than lifecycle hooks like `_onEnter` and `_onExit`) is an input name.
+- **`onDispose`** (optional): a teardown hook beside `states`. `dispose()` calls it once with `{ ctx, emit }` so the FSM can release anything it acquired.
 
 **Handlers** are functions that receive `{ ctx, inputName, defer, emit }`. Returning a valid state name triggers a transition. Returning `undefined` (or nothing) leaves the FSM in its current state.
 
@@ -103,7 +104,7 @@ light.dispose();
 | `on(eventName, callback)`    | Subscribe to a lifecycle event. Returns `{ off() }`                        |
 | `emit(eventName, data?)`     | Emit a custom event to subscribers                                         |
 | `reset()`                    | Transition back to `initialState`                                          |
-| `dispose()`                  | Permanently shut down the FSM                                              |
+| `dispose()`                  | Permanently shut down the FSM. Runs `onDispose` first, when declared       |
 
 ## String shorthand
 

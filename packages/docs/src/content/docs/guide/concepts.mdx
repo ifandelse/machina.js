@@ -180,6 +180,8 @@ yellow: {
 }
 ```
 
+**`onDispose`**: a config-level hook, declared at the top level beside `states`. `dispose()` calls it once per live client before it clears listeners and disposes child FSMs. It receives `ctx` and `emit` only. See [Disposal](#disposal).
+
 ---
 
 ## Deferred Inputs
@@ -215,3 +217,35 @@ light.dispose({ preserveChildren: true });
 ```
 
 Once disposed, an FSM cannot be restarted. Create a new one.
+
+### Releasing resources
+
+Resource lifetime decides where cleanup goes. A retry timer that lasts as long as one state belongs in that state's `_onExit`. A webcam stream or a socket that lasts as long as the FSM belongs in the config-level `onDispose` hook:
+
+```ts
+const camera = createFsm({
+    id: "camera",
+    initialState: "init",
+    context: { stream: null as MediaStream | null, closed: false },
+    onDispose({ ctx }) {
+        ctx.closed = true;
+        ctx.stream?.getTracks().forEach(track => track.stop());
+        ctx.stream = null;
+    },
+    states: {/* ... */},
+});
+```
+
+`dispose()` calls the hook once per live client, after it sets the disposed flag and before it clears listeners or disposes children. Inside the hook, `handle()`, `transition()`, and `reset()` are silent no-ops, and `emit()` still reaches subscribers. The hook receives `ctx` and `emit` only, because `defer()` has no meaning during teardown and `inputName` would always be empty.
+
+The hook is synchronous. A request that is still in flight when `dispose()` runs cannot be cancelled from the hook. Set a flag on `ctx`, as `closed` above, and have the late result check it before it stores anything.
+
+The hook must tolerate a resource that was already released. A terminal state's `_onEnter` can release the same resource before `dispose()` runs, and the hook still runs for that client.
+
+`dispose()` does not run `_onExit` on the current state. When a state-scoped resource must also release on teardown, transition to a terminal state first and then call `dispose()`.
+
+A throwing hook does not stop teardown. `dispose()` runs every remaining hook and finishes its own cleanup. It then throws one `AggregateError` that lists every failure.
+
+### Disposal inside a callback
+
+An `_onExit` handler, an `_onEnter` handler, or a `transitioning` listener can call `dispose()`. That callback runs to completion. The engine then skips the rest of the transition, including the next hook, the child reset, the deferred replay, and any bounce.

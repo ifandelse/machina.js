@@ -45,20 +45,20 @@ State names, input names, and transition-target validation all work identically,
 
 The client-scoped methods take the client object as their first argument, and the rest of the API mirrors `Fsm`. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client.
 
-| Method                                            | Description                                                                        |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `handle(client, inputName, ...args)`              | Dispatch an input to the client's current state handler                            |
-| `canHandle(client, inputName)`                    | True when the client's current state (or its `_child` chain) handles this input    |
-| `transition(client, toState)`                     | Directly transition the client; fires `_onExit`, `_onEnter`, events                |
-| `reset(client)`                                   | Transition the client back to `initialState`                                       |
-| `currentState(client)`                            | Returns the client's current state, or `undefined` if never initialized            |
-| `compositeState(client)`                          | Dot-delimited path including active child FSM states                               |
-| `dehydrate(client)`                               | Snapshot everything tracked for a client: state, deferrals, children               |
-| `rehydrate(client, compositeState)` (string form) | Place a client at the given (string) state with lifecycle hooks and events skipped |
-| `rehydrate(client, snapshot)` (snapshot form)     | Restore a `dehydrate()` snapshot: state and deferred queues, hooks skipped         |
-| `on(eventName, callback)`                         | Subscribe to a lifecycle event. Returns a `{ off() }` subscription                 |
-| `emit(eventName, data?)`                          | Emit a custom event to subscribers                                                 |
-| `dispose()`                                       | Permanently shut down the entire FSM; cascades to child FSMs by default            |
+| Method                                            | Description                                                                                                         |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `handle(client, inputName, ...args)`              | Dispatch an input to the client's current state handler                                                             |
+| `canHandle(client, inputName)`                    | True when the client's current state (or its `_child` chain) handles this input                                     |
+| `transition(client, toState)`                     | Directly transition the client; fires `_onExit`, `_onEnter`, events                                                 |
+| `reset(client)`                                   | Transition the client back to `initialState`                                                                        |
+| `currentState(client)`                            | Returns the client's current state, or `undefined` if never initialized                                             |
+| `compositeState(client)`                          | Dot-delimited path including active child FSM states                                                                |
+| `dehydrate(client)`                               | Snapshot everything tracked for a client: state, deferrals, children                                                |
+| `rehydrate(client, compositeState)` (string form) | Place a client at the given (string) state with lifecycle hooks and events skipped                                  |
+| `rehydrate(client, snapshot)` (snapshot form)     | Restore a `dehydrate()` snapshot: state and deferred queues, hooks skipped                                          |
+| `on(eventName, callback)`                         | Subscribe to a lifecycle event. Returns a `{ off() }` subscription                                                  |
+| `emit(eventName, data?)`                          | Emit a custom event to subscribers                                                                                  |
+| `dispose()`                                       | Permanently shut down the entire FSM. Runs `onDispose` once per live client, then cascades to child FSMs by default |
 
 <Aside type="note">
     `currentState(client)` returns `undefined` for a client the FSM has never seen, and it does not
@@ -226,6 +226,23 @@ connFsm.reset(connA);
 // Tear down the whole FSM when done
 connFsm.dispose();
 ```
+
+## Per-client teardown
+
+`dispose()` shuts down the whole FSM, which for a long-lived `BehavioralFsm` usually means process shutdown. It runs the config-level `onDispose` hook once for each client the FSM has initialized or rehydrated and that is still reachable, with that client as `ctx`. Clients the garbage collector already reclaimed get skipped, because the FSM tracks them through `WeakRef`s, and the order between the remaining clients is unspecified.
+
+One client going away is a different event, and it is a state. Give the graph a terminal state whose `_onEnter` releases that client's resources, and transition the client there when its connection closes:
+
+```ts
+closed: {
+    _onEnter({ ctx }) {
+        ctx.socket?.close();
+        ctx.socket = null;
+    },
+},
+```
+
+The `onDispose` hook still runs for that client at shutdown, so it must tolerate a resource that a terminal state already released. See [Disposal](/guide/concepts/#disposal) in the concepts guide.
 
 ## TypeScript
 

@@ -5698,3 +5698,216 @@ describe("BehavioralFsm — input payload map (#195)", () => {
         });
     });
 });
+
+// =============================================================================
+// onDispose (#194)
+// =============================================================================
+
+type Connection = { url: string; socket: string | null; released: string[]; lastState?: string };
+
+function makeConnection(url: string): Connection {
+    return { url, socket: null, released: [] };
+}
+
+function makeConnectivityFsm(onDispose?: (args: any) => void) {
+    return createBehavioralFsm<Connection>()({
+        id: "connectivity",
+        initialState: "offline",
+        onDispose,
+        states: {
+            offline: {
+                _onEnter({ ctx }) {
+                    ctx.socket = `SOCKET_${ctx.url}`;
+                },
+                connect: "online",
+            },
+            online: {
+                drop: "offline",
+            },
+        },
+    });
+}
+
+describe("BehavioralFsm — onDispose (#194)", () => {
+    let fsm: ReturnType<typeof makeConnectivityFsm>, hook: jest.Mock;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    describe("when dispose() runs with several initialized clients", () => {
+        let hal: Connection, dave: Connection, stranger: Connection;
+
+        beforeEach(() => {
+            hook = jest.fn(({ ctx }: any) => {
+                ctx.released.push(ctx.socket);
+                ctx.socket = null;
+            });
+            fsm = makeConnectivityFsm(hook);
+            hal = makeConnection("wss://hal.9000");
+            dave = makeConnection("wss://dave.bowman");
+            stranger = makeConnection("wss://never.seen");
+            fsm.handle(hal, "connect");
+            fsm.handle(dave, "connect");
+            fsm.dispose();
+        });
+
+        it("should call the hook once per initialized client", () => {
+            expect(hook).toHaveBeenCalledTimes(2);
+            expect(hal).toEqual({
+                url: "wss://hal.9000",
+                socket: null,
+                released: ["SOCKET_wss://hal.9000"],
+            });
+            expect(dave).toEqual({
+                url: "wss://dave.bowman",
+                socket: null,
+                released: ["SOCKET_wss://dave.bowman"],
+            });
+        });
+
+        it("should not call the hook for a client the FSM never initialized", () => {
+            expect(stranger).toEqual({ url: "wss://never.seen", socket: null, released: [] });
+        });
+    });
+
+    describe("when a client was rehydrated instead of handled", () => {
+        let client: Connection;
+
+        beforeEach(() => {
+            hook = jest.fn(({ ctx }: any) => {
+                ctx.released.push("REHYDRATED");
+            });
+            fsm = makeConnectivityFsm(hook);
+            client = makeConnection("wss://frank.poole");
+            fsm.rehydrate(client, "online");
+            fsm.dispose();
+        });
+
+        it("should call the hook for that client", () => {
+            expect(client.released).toEqual(["REHYDRATED"]);
+        });
+    });
+
+    describe("when the hook reads currentState(client)", () => {
+        let client: Connection;
+
+        beforeEach(() => {
+            hook = jest.fn(({ ctx }: any) => {
+                ctx.lastState = fsm.currentState(ctx);
+            });
+            fsm = makeConnectivityFsm(hook);
+            client = makeConnection("wss://hal.9000");
+            fsm.handle(client, "connect");
+            fsm.dispose();
+        });
+
+        it("should return the client's last state", () => {
+            expect(client.lastState).toBe("online");
+        });
+    });
+
+    describe("when the hook throws for one of three clients", () => {
+        let error: any, hal: Connection, dave: Connection, frank: Connection, child: any;
+
+        beforeEach(() => {
+            error = undefined;
+            hook = jest.fn(({ ctx }: any) => {
+                if (ctx.url === "wss://dave.bowman") {
+                    throw new Error("E_SOGGY_STROMBOLI");
+                }
+                ctx.released.push(ctx.socket);
+            });
+            child = createFsm({
+                id: "child",
+                initialState: "off" as const,
+                states: {
+                    off: { poweron: "on" as const },
+                    on: {},
+                },
+            });
+            fsm = createBehavioralFsm<Connection>()({
+                id: "connectivity",
+                initialState: "offline",
+                onDispose: hook,
+                states: {
+                    offline: {
+                        _onEnter({ ctx }) {
+                            ctx.socket = `SOCKET_${ctx.url}`;
+                        },
+                        connect: "online",
+                    },
+                    online: {
+                        _child: child,
+                        drop: "offline",
+                    },
+                },
+            });
+            hal = makeConnection("wss://hal.9000");
+            dave = makeConnection("wss://dave.bowman");
+            frank = makeConnection("wss://frank.poole");
+            fsm.handle(hal, "connect");
+            fsm.handle(dave, "connect");
+            fsm.handle(frank, "connect");
+            fsm.on("transitioned", jest.fn());
+            try {
+                fsm.dispose();
+            } catch (e) {
+                error = e;
+            }
+            child.handle("poweron");
+        });
+
+        it("should still run the hooks for the other clients", () => {
+            expect(hook).toHaveBeenCalledTimes(3);
+            expect([hal.released, frank.released]).toEqual([
+                ["SOCKET_wss://hal.9000"],
+                ["SOCKET_wss://frank.poole"],
+            ]);
+        });
+
+        it("should rethrow the failure as an AggregateError", () => {
+            expect(error).toBeInstanceOf(AggregateError);
+            expect(error.errors.map((e: Error) => e.message)).toEqual(["E_SOGGY_STROMBOLI"]);
+        });
+
+        it("should still dispose the child", () => {
+            expect(child.currentState()).toBe("off");
+        });
+
+        it("should still clear listeners", () => {
+            // The public emit() is already guarded by the disposed flag, so the
+            // listener map is the only place the clear is observable.
+            expect((fsm as any).emitter.listeners.size).toBe(0);
+        });
+    });
+
+    describe("when the hook calls dispose() on its own FSM", () => {
+        let releasedCb: jest.Mock, hal: Connection, dave: Connection;
+
+        beforeEach(() => {
+            releasedCb = jest.fn();
+            hook = jest.fn(({ ctx, emit }: any) => {
+                fsm.dispose();
+                emit("released", { url: ctx.url });
+            });
+            fsm = makeConnectivityFsm(hook);
+            hal = makeConnection("wss://hal.9000");
+            dave = makeConnection("wss://dave.bowman");
+            fsm.handle(hal, "connect");
+            fsm.handle(dave, "connect");
+            (fsm as any).on("released", releasedCb);
+            fsm.dispose();
+        });
+
+        it("should run the hook once per client despite the reentrant call", () => {
+            expect(hook).toHaveBeenCalledTimes(2);
+        });
+
+        it("should still deliver emit() from every client's hook", () => {
+            expect(releasedCb).toHaveBeenCalledTimes(2);
+            expect(releasedCb).toHaveBeenNthCalledWith(1, { url: "wss://hal.9000" });
+            expect(releasedCb).toHaveBeenNthCalledWith(2, { url: "wss://dave.bowman" });
+        });
+    });
+});

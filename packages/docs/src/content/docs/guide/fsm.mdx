@@ -20,12 +20,13 @@ createFsm({
 });
 ```
 
-| Property       | Type     | Description                                                                                    |
-| -------------- | -------- | ---------------------------------------------------------------------------------------------- |
-| `id`           | `string` | Identifier for this FSM. Appears in lifecycle event payloads.                                  |
-| `initialState` | `string` | The state the FSM boots into. Must match a key in `states`.                                    |
-| `context`      | `object` | Mutable data scoped to this FSM. Passed to every handler as `ctx`. Omit for context-free FSMs. |
-| `states`       | `object` | Map of state names to handler definitions. Keys become the state name union.                   |
+| Property       | Type       | Description                                                                                        |
+| -------------- | ---------- | -------------------------------------------------------------------------------------------------- |
+| `id`           | `string`   | Identifier for this FSM. Appears in lifecycle event payloads.                                      |
+| `initialState` | `string`   | The state the FSM boots into. Must match a key in `states`.                                        |
+| `context`      | `object`   | Mutable data scoped to this FSM. Passed to every handler as `ctx`. Omit for context-free FSMs.     |
+| `onDispose`    | `function` | Optional teardown hook. `dispose()` calls it once with `{ ctx, emit }`. See [`dispose`](#dispose). |
+| `states`       | `object`   | Map of state names to handler definitions. Keys become the state name union.                       |
 
 ### State handler keys
 
@@ -191,6 +192,51 @@ fsm.dispose({ preserveChildren: true }); // leave child FSMs running
 ```
 
 After `dispose()`, every method call is a silent no-op. `on()` returns a no-op `Subscription`. This is intentional: you don't need to null-guard callsites just because something may have been torn down.
+
+When the config declares an `onDispose` hook, `dispose()` calls it once with `{ ctx, emit }` before it clears listeners and disposes children. Put the release of any resource that lasts as long as the FSM there. A resource that lasts as long as one state belongs in that state's `_onExit`, which `dispose()` does not run.
+
+```ts
+const camera = createFsm({
+    id: "camera",
+    initialState: "init",
+    context: {
+        stream: null as MediaStream | null,
+        // getUserMedia() can resolve after dispose(). The hook cannot cancel
+        // it, so the late result checks this flag and stops its own tracks.
+        closed: false,
+    },
+    onDispose({ ctx }) {
+        ctx.closed = true;
+        if (ctx.stream) {
+            ctx.stream.getTracks().forEach(track => track.stop());
+            ctx.stream = null;
+        }
+    },
+    states: {
+        init: {
+            _onEnter({ ctx }) {
+                navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                    if (ctx.closed) {
+                        stream.getTracks().forEach(track => track.stop());
+                        return;
+                    }
+                    ctx.stream = stream;
+                    camera.handle("ready");
+                });
+            },
+            ready: "streaming",
+        },
+        streaming: {
+            stop: "idle",
+        },
+        idle: {
+            start: "init",
+        },
+    },
+});
+```
+
+A throwing hook does not stop teardown. `dispose()` finishes its cleanup and then throws one `AggregateError` whose `errors` array lists every failure, including failures from child FSMs. The [Disposal](/guide/concepts/#disposal) section of the concepts guide has the full contract.
 
 ## TypeScript
 

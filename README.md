@@ -150,7 +150,7 @@ connFsm.handle(connA, "connected"); // connA: "online"
 connFsm.handle(connB, "failed"); // connB: "disconnected", retries: 1
 ```
 
-**IMPORTANT**: The extra `()` in `createBehavioralFsm<Connection>()` fixes the client type before TypeScript infers the rest from the config. Methods that act on one client (`handle`, `canHandle`, `transition`, `reset`, `currentState`, `compositeState`, `dehydrate`, `rehydrate`) take that client as their first argument, and handlers receive the client as `ctx`, so put per-client data on the client. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client.
+**IMPORTANT**: The extra `()` in `createBehavioralFsm<Connection>()` fixes the client type before TypeScript infers the rest from the config. Methods that act on one client (`handle`, `canHandle`, `transition`, `reset`, `currentState`, `compositeState`, `dehydrate`, `rehydrate`) take that client as their first argument, and handlers receive the client as `ctx`, so put per-client data on the client. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client. The config-level `onDispose` hook runs once per client when you call `dispose()`, with that client as `ctx`.
 
 ### Features in the Order You'll Probably Need Them
 

@@ -2592,3 +2592,106 @@ describe("#195 — input payload maps", () => {
         });
     });
 });
+
+describe("onDispose hook typing (#194)", () => {
+    describe("when a config declares onDispose", () => {
+        const camera = createFsm({
+            id: "camera",
+            initialState: "init",
+            context: { stream: null as string | null },
+            onDispose({ ctx, emit }) {
+                ctx.stream = null;
+                emit("released");
+            },
+            states: {
+                init: { ready: "streaming" },
+                streaming: {},
+            },
+        });
+
+        // The context type still comes from `context` alone.
+        type _ContextFromContextOnly = Expect<
+            Equal<ContextOf<typeof camera>, { stream: string | null }>
+        >;
+
+        // An annotated hook parameter must not become an inference site for TCtx
+        // (NoInfer on the hook's ctx), even when it names an extra optional field.
+        const annotated = createFsm({
+            id: "camera",
+            initialState: "init",
+            context: { stream: null as string | null },
+            onDispose({ ctx }: { ctx: { stream: string | null; extra?: boolean } }) {
+                ctx.stream = null;
+            },
+            states: { init: {} },
+        });
+        type _AnnotatedHookDoesNotWidenContext = Expect<
+            Equal<ContextOf<typeof annotated>, { stream: string | null }>
+        >;
+
+        const _rejectsDefer = () =>
+            createFsm({
+                id: "camera",
+                initialState: "init",
+                context: { stream: null as string | null },
+                // @ts-expect-error -- defer has no meaning during teardown; the hook receives ctx and emit only
+                onDispose({ defer }) {
+                    defer();
+                },
+                states: { init: {} },
+            });
+
+        const _rejectsInputName = () =>
+            createFsm({
+                id: "camera",
+                initialState: "init",
+                context: { stream: null as string | null },
+                // @ts-expect-error -- inputName would always be empty during teardown; the hook receives ctx and emit only
+                onDispose({ inputName }) {
+                    return inputName;
+                },
+                states: { init: {} },
+            });
+
+        // Curried forms accept the hook the same way.
+        const typedCamera = createFsm<{ ready: [] }>()({
+            id: "camera",
+            initialState: "init",
+            context: { stream: null as string | null },
+            onDispose({ ctx }) {
+                ctx.stream = null;
+            },
+            states: {
+                init: { ready: "streaming" },
+                streaming: {},
+            },
+        });
+        type _CurriedFsmKeepsContext = Expect<
+            Equal<ContextOf<typeof typedCamera>, { stream: string | null }>
+        >;
+
+        type Connection = { url: string; socket: string | null };
+        const connectivity = createBehavioralFsm<Connection>()({
+            id: "connectivity",
+            initialState: "offline",
+            onDispose({ ctx }) {
+                ctx.socket = null;
+            },
+            states: {
+                offline: { connect: "online" },
+                online: {},
+            },
+        });
+        type _BehavioralKeepsClient = Expect<Equal<ClientOf<typeof connectivity>, Connection>>;
+
+        let result: string;
+
+        beforeEach(() => {
+            result = camera.currentState();
+        });
+
+        it("should preserve the runtime FSM behavior used for type extraction", () => {
+            expect(result).toBe("init");
+        });
+    });
+});

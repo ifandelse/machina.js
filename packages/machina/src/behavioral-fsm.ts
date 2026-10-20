@@ -83,6 +83,9 @@ export class BehavioralFsm<
     // Subscriptions to child FSM wildcard events, keyed by state name.
     // Set up once during construction, torn down in dispose().
     private readonly childSubscriptions: Array<{ off(): void }> = [];
+    // Config-level teardown hook (#194). Called once per live client from
+    // dispose(); see FsmConfig.onDispose for the contract.
+    private readonly onDispose?: (args: Pick<HandlerArgs<TClient>, "ctx" | "emit">) => void;
     private disposed = false;
     private transitionDepth = 0;
 
@@ -90,6 +93,7 @@ export class BehavioralFsm<
         this.id = config.id;
         this.initialState = config.initialState as TStateNames;
         this.states = config.states as Record<string, Record<string, unknown>>;
+        this.onDispose = config.onDispose;
         this.wrapChildLinks();
         this.setupChildSubscriptions();
     }
@@ -213,7 +217,11 @@ export class BehavioralFsm<
      * names emit `invalidstate` instead of throwing. Throws if the transition
      * depth exceeds `MAX_TRANSITION_DEPTH` (likely an `_onEnter` → transition loop).
      *
-     * No-ops when disposed.
+     * No-ops when disposed. When `_onExit`, a `transitioning` listener, or
+     * `_onEnter` calls `dispose()` mid-transition, that callback runs to
+     * completion and the transition stops as soon as it returns: no state
+     * write (for `_onExit`), no `_onEnter` (for the first two), no child
+     * reset, no deferred replay, no bounce.
      */
     transition(client: TClient, toState: TStateNames): void {
         if (this.disposed) {
@@ -260,16 +268,40 @@ export class BehavioralFsm<
                 // _onExit return value is intentionally ignored — you're already leaving
             }
 
+            // _onExit may have called dispose(). That callback ran to
+            // completion; nothing of the transition runs after it. Without
+            // this check the target _onEnter would acquire a fresh resource
+            // right after onDispose released the old one (#194).
+            if (this.disposed) {
+                return;
+            }
+
             meta.state = toState;
 
             const payload = { fromState, toState, client };
             this.emitter.emit("transitioning", payload);
+
+            // A `transitioning` listener may have called dispose(). Same rule
+            // as above: the listener finishes, the transition does not.
+            if (this.disposed) {
+                return;
+            }
 
             // _onEnter for new state — return value is a bounce target
             let bounceTarget: TStateNames | void = undefined;
             if (newStateObj?._onEnter && typeof newStateObj._onEnter === "function") {
                 const enterArgs = this.buildHandlerArgs(client, "", meta);
                 bounceTarget = (newStateObj._onEnter as HandlerFn<TClient, TStateNames>)(enterArgs);
+            }
+
+            // _onEnter may have called dispose() as well. Stop before the
+            // child reset: with preserveChildren a surviving child would
+            // otherwise be reset (running its own _onEnter) under a dead
+            // parent. The replay and bounce paths below are guarded by the
+            // disposed checks in dispatch() and transition(), but the reset
+            // is not.
+            if (this.disposed) {
+                return;
             }
 
             this.emitter.emit("transitioned", payload);
@@ -679,12 +711,49 @@ export class BehavioralFsm<
 
     /**
      * Permanently shut down this FSM. Irreversible — all subsequent method
-     * calls become silent no-ops. Tears down child subscriptions, clears all
-     * listeners, and cascades disposal to child FSMs (unless `preserveChildren`
-     * is set). The same child appearing in multiple states is disposed once.
+     * calls become silent no-ops. Runs the config's `onDispose` hook once per
+     * live client, tears down child subscriptions, cascades disposal to child
+     * FSMs (unless `preserveChildren` is set), and clears all listeners. The
+     * same child appearing in multiple states is disposed once.
+     *
+     * A second call is a no-op: the hook never runs twice for one client.
+     *
+     * Errors thrown by `onDispose` hooks or by child disposals do not stop
+     * teardown. They are collected and rethrown together as one
+     * `AggregateError` after the emitter clears.
      */
     dispose(options?: DisposeOptions): void {
+        if (this.disposed) {
+            return;
+        }
+        // The flag goes first so that handle()/transition()/reset() calls from
+        // inside an onDispose hook are the documented silent no-ops. emit()
+        // from inside the hook still works: the args' emit closure writes to
+        // the emitter directly, and the emitter clears last.
         this.disposed = true;
+
+        // One failing client must not leave the remaining clients unreleased,
+        // or leave listeners and children alive. Each hook call and each
+        // child disposal is caught individually; the failures are rethrown
+        // together once teardown is complete.
+        const errors: unknown[] = [];
+
+        if (this.onDispose) {
+            for (const ref of this.knownClients) {
+                const client = ref.deref();
+                if (!client) {
+                    // GC'd — clean up the dead ref, same idiom as the relay walks.
+                    this.knownClients.delete(ref);
+                    continue;
+                }
+                try {
+                    this.onDispose(this.buildHandlerArgs(client, "", this.clients.get(client)));
+                } catch (error) {
+                    errors.push(error);
+                }
+            }
+        }
+
         // Tear down all child wildcard subscriptions before clearing our emitter.
         for (const sub of this.childSubscriptions) {
             sub.off();
@@ -702,12 +771,23 @@ export class BehavioralFsm<
                 const childLink = this.states[stateName]?._child as ChildLink | undefined;
                 if (childLink && !seen.has(childLink.instance)) {
                     seen.add(childLink.instance);
-                    childLink.dispose();
+                    try {
+                        childLink.dispose();
+                    } catch (error) {
+                        errors.push(error);
+                    }
                 }
             }
         }
         this.emitter.clear();
         // WeakMap entries are GC'd naturally — can't iterate, don't need to
+
+        if (errors.length > 0) {
+            throw new AggregateError(
+                errors,
+                `dispose() of FSM "${this.id}" collected ${errors.length} error(s) from onDispose hooks or child FSMs`
+            );
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -963,7 +1043,9 @@ export class BehavioralFsm<
     private buildHandlerArgs(
         client: TClient,
         inputName: string,
-        meta: ClientMeta<TStateNames>
+        // Absent only on the onDispose path, where the client registry is read
+        // directly and defer() has no meaning anyway.
+        meta: ClientMeta<TStateNames> | undefined
     ): HandlerArgs<TClient, TStateNames> {
         return {
             ctx: client,
@@ -971,7 +1053,7 @@ export class BehavioralFsm<
             defer: (opts?: { until: TStateNames }) => {
                 // Only meaningful inside a handle() context where currentActionArgs
                 // is set. No-ops during lifecycle hooks (matches v5 behavior).
-                if (!meta.currentActionArgs) {
+                if (!meta?.currentActionArgs) {
                     return;
                 }
                 const deferred: DeferredInput = {

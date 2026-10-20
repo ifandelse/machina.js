@@ -305,6 +305,10 @@ export type InputMapFromUnion<TEvent extends { type: string }> = {
 //   - Destructure only what you need: tick({ ctx }) { ... }
 //   - Easy to mock in tests: just construct the object
 //
+// Lifecycle hooks (_onEnter, _onExit) receive the same object with an empty
+// inputName. The config-level onDispose hook receives only its `ctx` and
+// `emit` members (see FsmConfig.onDispose for why).
+//
 // Handlers RETURN a state name to trigger a transition (or void/undefined
 // to stay in the current state). This replaces the imperative transition()
 // call and mirrors gen_fsm's {next_state, StateName, NewStateData} pattern.
@@ -853,6 +857,57 @@ export interface FsmConfig<
      * an FSM can be mounted via `_child` anywhere with no obligations.
      */
     bubbles?: readonly TBubbles[];
+
+    /**
+     * Teardown hook. `dispose()` calls it once per live client before it
+     * clears listeners and before it disposes child FSMs. An `Fsm` has one
+     * client, its context, so the hook runs once. A `BehavioralFsm` runs it
+     * once for every client it has initialized or rehydrated that is still
+     * reachable. A client the garbage collector already reclaimed gets no
+     * call: the FSM tracks clients through `WeakRef`s by design, and a
+     * resource stored on a collected client is unreachable anyway.
+     *
+     * The args object carries `ctx` and `emit` only. `defer()` has no meaning
+     * during teardown, and `inputName` would always be empty, so the type
+     * omits both. `emit()` still reaches subscribers because the hook runs
+     * before the emitter clears. `handle()`, `transition()`, and `reset()`
+     * are already no-ops by the time the hook runs.
+     *
+     * The hook must tolerate a resource that was already released elsewhere.
+     * A terminal state's `_onEnter` can release the same resource before
+     * `dispose()` runs, and the hook still fires for that client.
+     *
+     * The hook is synchronous, like every other FSM method. A request that
+     * is still in flight when `dispose()` runs cannot be cancelled here: set
+     * a flag on `ctx` and have the late result check it.
+     *
+     * Resource lifetime decides where cleanup goes. A resource that lives as
+     * long as one state belongs in that state's `_onExit`. A resource that
+     * lives as long as the FSM instance, or as long as a client, belongs
+     * here. `dispose()` does not run `_onExit`; transition to a terminal
+     * state first when a state-scoped resource must also release on
+     * teardown.
+     *
+     * A throwing hook does not stop teardown. `dispose()` runs every
+     * remaining hook, clears listeners, disposes children, and then throws
+     * one `AggregateError` that holds every failure.
+     *
+     * @example
+     * ```ts
+     * const camera = createFsm({
+     *   id: "camera",
+     *   initialState: "init",
+     *   context: { stream: null as MediaStream | null, closed: false },
+     *   onDispose({ ctx }) {
+     *     ctx.closed = true;
+     *     ctx.stream?.getTracks().forEach((track) => track.stop());
+     *     ctx.stream = null;
+     *   },
+     *   states: { ... },
+     * });
+     * ```
+     */
+    onDispose?: (args: Pick<HandlerArgs<NoInfer<TCtx>>, "ctx" | "emit">) => void;
 
     /**
      * State definitions. Keys become the state name union.
