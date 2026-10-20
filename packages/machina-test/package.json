@@ -71,7 +71,7 @@
         "eslint": "^9.39.5",
         "jest": "^30.5.2",
         "machina": "workspace:*",
-        "ts-jest": "^29.4.14",
+        "ts-jest": "^29.4.15",
         "tsdown": "^0.20.3",
         "typescript": "^5.9.3"
     }

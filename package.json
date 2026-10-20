@@ -134,7 +134,7 @@
         "lint-staged": "^16.4.0",
         "prettier": "^3.9.9",
         "prettier-plugin-astro": "^0.14.1",
-        "ts-jest": "^29.4.14",
+        "ts-jest": "^29.4.15",
         "ts-node": "^10.9.2",
         "tsdown": "^0.20.3",
         "turbo": "^2.11.7",

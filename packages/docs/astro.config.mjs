@@ -84,9 +84,7 @@ export default defineConfig({
                 // Generates llms.txt, llms-full.txt, and llms-small.txt at
                 // build time (#193). The hand-maintained copies in public/
                 // drifted two releases behind before PR #192 caught them up;
-                // derived files cannot drift. Pinned to the 0.7.x line: 0.8+
-                // requires Astro 6/7, and this site runs Astro 5. Bump the
-                // plugin when the Astro migration lands.
+                // derived files cannot drift.
                 starlightLlmsTxt({
                     // One paragraph after the description, for LLM readers.
                     // Version-neutral on purpose: version facts live in the
