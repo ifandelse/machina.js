@@ -242,7 +242,7 @@ closed: {
 },
 ```
 
-The `onDispose` hook still runs for that client at shutdown, so it must tolerate a resource that a terminal state already released. See [Disposal](/guide/concepts/#disposal) in the concepts guide.
+The `onDispose` hook still runs for that client at shutdown, so it must tolerate a resource that a terminal state already released. It must also tolerate a resource that was never acquired: `rehydrate()` skips `_onEnter`, so a client restored into `connecting` has no socket unless your own code opened one after the restore. See [Disposal](/guide/concepts/#disposal) in the concepts guide.
 
 ## TypeScript
 
