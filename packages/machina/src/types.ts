@@ -879,7 +879,12 @@ export interface FsmConfig<
      *
      * The hook is synchronous, like every other FSM method. A request that
      * is still in flight when `dispose()` runs cannot be cancelled here: set
-     * a flag on `ctx` and have the late result check it.
+     * a flag on `ctx` and have the late result check it. A release that
+     * returns a promise outlives `dispose()`, and `dispose()` returns before
+     * it settles. Collect such promises outside the FSM and await them after
+     * `dispose()`. A rejection inside the hook is an unhandled rejection
+     * unless the hook attaches its own `catch`; `AggregateError` collects
+     * synchronous throws only.
      *
      * Resource lifetime decides where cleanup goes. A resource that lives as
      * long as one state belongs in that state's `_onExit`. A resource that
