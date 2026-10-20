@@ -214,13 +214,24 @@ export class Fsm<
 
     /**
      * Permanently shut down this FSM. Irreversible — all subsequent method
-     * calls become silent no-ops. Clears all listeners and cascades disposal
-     * to child FSMs (unless `preserveChildren` is set).
+     * calls become silent no-ops. Runs the config's `onDispose` hook with the
+     * context, clears all listeners, and cascades disposal to child FSMs
+     * (unless `preserveChildren` is set). A second call is a no-op.
+     *
+     * A throwing `onDispose` hook (or child disposal) does not stop teardown:
+     * the delegate rethrows the failures as one `AggregateError` after its
+     * own cleanup, and this wrapper's listeners clear regardless.
      */
     dispose(options?: DisposeOptions): void {
+        if (this.disposed) {
+            return;
+        }
         this.disposed = true;
-        this.bfsm.dispose(options);
-        this.emitter.clear();
+        try {
+            this.bfsm.dispose(options);
+        } finally {
+            this.emitter.clear();
+        }
     }
 }
 
@@ -234,6 +245,9 @@ export class Fsm<
  *   input names.
  *
  * State names, input names, and all handler signatures derive from `TStates`.
+ *
+ * A config-level `onDispose` hook (#194) runs from `dispose()` with the
+ * context; see `FsmConfig.onDispose` for the contract.
  *
  * To type each input's payload as well (#195), call the curried form with an
  * input payload map: `createFsm<TInputs>()({...})`. The zero-argument call

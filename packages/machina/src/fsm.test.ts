@@ -1559,3 +1559,489 @@ describe("Fsm — input payload map (#195)", () => {
         });
     });
 });
+
+// =============================================================================
+// onDispose (#194)
+// =============================================================================
+
+type CameraCtx = { stream: string | null; released: string[]; seen: string[] };
+
+function makeCameraConfig(onDispose?: (args: any) => void) {
+    return {
+        id: "camera",
+        initialState: "init" as const,
+        context: { stream: null, released: [], seen: [] } as CameraCtx,
+        onDispose,
+        states: {
+            init: {
+                _onEnter({ ctx }: any) {
+                    ctx.stream = "STREAM_8675309";
+                },
+                ready: "streaming" as const,
+            },
+            streaming: {
+                stop: "idle" as const,
+            },
+            idle: {
+                start: "init" as const,
+            },
+        },
+    };
+}
+
+function makeHookedChild(id: string, onDispose: (args: any) => void) {
+    return createFsm({
+        id,
+        initialState: "off" as const,
+        onDispose,
+        states: {
+            off: { poweron: "on" as const },
+            on: { poweroff: "off" as const },
+        },
+    });
+}
+
+describe("Fsm — onDispose (#194)", () => {
+    let fsm: any, hook: jest.Mock;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    describe("when dispose() runs with an onDispose hook", () => {
+        let releasedCb: jest.Mock;
+
+        beforeEach(() => {
+            releasedCb = jest.fn();
+            hook = jest.fn(({ ctx, emit }: any) => {
+                ctx.released.push(ctx.stream);
+                ctx.stream = null;
+                emit("camera:released", { stream: "STREAM_8675309" });
+            });
+            fsm = createFsm(makeCameraConfig(hook));
+            fsm.on("camera:released", releasedCb);
+            fsm.dispose();
+        });
+
+        it("should call the hook once with the context", () => {
+            expect(hook).toHaveBeenCalledTimes(1);
+            expect(fsm.context).toEqual({ stream: null, released: ["STREAM_8675309"], seen: [] });
+        });
+
+        it("should deliver emit() from inside the hook to subscribers registered before dispose()", () => {
+            expect(releasedCb).toHaveBeenCalledTimes(1);
+            expect(releasedCb).toHaveBeenCalledWith({ stream: "STREAM_8675309" });
+        });
+    });
+
+    describe("when dispose() is called a second time", () => {
+        beforeEach(() => {
+            hook = jest.fn();
+            fsm = createFsm(makeCameraConfig(hook));
+            fsm.dispose();
+            fsm.dispose();
+        });
+
+        it("should run the hook only once", () => {
+            expect(hook).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe("when the hook calls handle() and transition()", () => {
+        beforeEach(() => {
+            hook = jest.fn(() => {
+                fsm.handle("ready");
+                fsm.transition("idle");
+            });
+            fsm = createFsm(makeCameraConfig(hook));
+            fsm.dispose();
+        });
+
+        it("should leave the state unchanged", () => {
+            expect(fsm.currentState()).toBe("init");
+        });
+    });
+
+    describe("when the config has no onDispose", () => {
+        let error: unknown;
+
+        beforeEach(() => {
+            error = undefined;
+            fsm = createFsm(makeCameraConfig());
+            try {
+                fsm.dispose();
+            } catch (e) {
+                error = e;
+            }
+            fsm.handle("ready");
+        });
+
+        it("should dispose without throwing", () => {
+            expect(error).toBeUndefined();
+        });
+
+        it("should make handle a no-op as before", () => {
+            expect(fsm.currentState()).toBe("init");
+        });
+    });
+
+    describe("when the hook throws", () => {
+        let error: any;
+
+        beforeEach(() => {
+            error = undefined;
+            hook = jest.fn(() => {
+                throw new Error("E_COLD_CALZONE");
+            });
+            fsm = createFsm(makeCameraConfig(hook));
+            fsm.on("transitioned", jest.fn());
+            try {
+                fsm.dispose();
+            } catch (e) {
+                error = e;
+            }
+            fsm.handle("ready");
+        });
+
+        it("should rethrow the hook error inside an AggregateError", () => {
+            expect(error).toBeInstanceOf(AggregateError);
+            expect(error.errors.map((e: Error) => e.message)).toEqual(["E_COLD_CALZONE"]);
+        });
+
+        it("should still clear the wrapper's listeners", () => {
+            // The public emit() is already guarded by the disposed flag, so the
+            // listener map is the only place the finally block is observable.
+            expect(fsm.emitter.listeners.size).toBe(0);
+        });
+
+        it("should still make later calls no-ops", () => {
+            expect(fsm.currentState()).toBe("init");
+        });
+    });
+
+    describe("when dispose() is called from inside a handler", () => {
+        let deferredCb: jest.Mock;
+
+        beforeEach(() => {
+            deferredCb = jest.fn();
+            hook = jest.fn(({ ctx }: any) => {
+                ctx.seen.push("hook");
+            });
+            fsm = createFsm({
+                ...makeCameraConfig(hook),
+                states: {
+                    init: {
+                        shutdown({ ctx }: any) {
+                            ctx.seen.push("handler");
+                            fsm.dispose();
+                        },
+                    },
+                },
+            });
+            fsm.on("deferred", deferredCb);
+            fsm.handle("shutdown");
+        });
+
+        it("should run the hook once, after the handler body", () => {
+            expect(hook).toHaveBeenCalledTimes(1);
+            expect(fsm.context.seen).toEqual(["handler", "hook"]);
+        });
+
+        it("should not emit deferred", () => {
+            expect(deferredCb).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("when the parent and its child both declare onDispose", () => {
+        let order: string[], parent: any;
+
+        beforeEach(() => {
+            order = [];
+            const child = makeHookedChild("child", () => {
+                order.push("child");
+            });
+            parent = createFsm({
+                id: "parent",
+                initialState: "active" as const,
+                onDispose: () => {
+                    order.push("parent");
+                },
+                states: {
+                    active: { _child: child },
+                    idle: {},
+                },
+            });
+            parent.dispose();
+        });
+
+        it("should run the parent hook before the child hook", () => {
+            expect(order).toEqual(["parent", "child"]);
+        });
+    });
+
+    describe("when the parent is disposed with preserveChildren: true", () => {
+        let order: string[], parent: any;
+
+        beforeEach(() => {
+            order = [];
+            const child = makeHookedChild("child", () => {
+                order.push("child");
+            });
+            parent = createFsm({
+                id: "parent",
+                initialState: "active" as const,
+                onDispose: () => {
+                    order.push("parent");
+                },
+                states: {
+                    active: { _child: child },
+                    idle: {},
+                },
+            });
+            parent.dispose({ preserveChildren: true });
+        });
+
+        it("should skip the child hook", () => {
+            expect(order).toEqual(["parent"]);
+        });
+    });
+
+    describe("when the first of three children throws during disposal", () => {
+        let error: any, disposedChildren: string[], children: any[], parent: any;
+
+        beforeEach(() => {
+            error = undefined;
+            disposedChildren = [];
+            const makeChild = (id: string, throwing: boolean) =>
+                makeHookedChild(id, () => {
+                    if (throwing) {
+                        throw new Error(`E_SOGGY_${id}`);
+                    }
+                    disposedChildren.push(id);
+                });
+            children = [makeChild("c1", true), makeChild("c2", false), makeChild("c3", false)];
+            parent = createFsm({
+                id: "parent",
+                initialState: "a" as const,
+                states: {
+                    a: { _child: children[0] },
+                    b: { _child: children[1] },
+                    c: { _child: children[2] },
+                },
+            });
+            try {
+                parent.dispose();
+            } catch (e) {
+                error = e;
+            }
+            children.forEach(child => child.handle("poweron"));
+        });
+
+        it("should still dispose the later children", () => {
+            expect(disposedChildren).toEqual(["c2", "c3"]);
+        });
+
+        it("should wrap the child's own AggregateError in the parent's", () => {
+            expect(error).toBeInstanceOf(AggregateError);
+            expect(error.errors).toHaveLength(1);
+            expect(error.errors[0]).toBeInstanceOf(AggregateError);
+            expect(error.errors[0].errors.map((e: Error) => e.message)).toEqual(["E_SOGGY_c1"]);
+        });
+
+        it("should leave every child inert", () => {
+            expect(children.map(child => child.currentState())).toEqual(["off", "off", "off"]);
+        });
+    });
+
+    describe("when _onExit calls dispose() during a transition", () => {
+        let enterCb: jest.Mock;
+
+        beforeEach(() => {
+            enterCb = jest.fn();
+            hook = jest.fn();
+            fsm = createFsm({
+                id: "exit-dispose",
+                initialState: "green" as const,
+                onDispose: hook,
+                states: {
+                    green: {
+                        _onExit() {
+                            fsm.dispose();
+                        },
+                        timeout: "yellow" as const,
+                    },
+                    yellow: { _onEnter: enterCb },
+                },
+            });
+            fsm.handle("timeout");
+        });
+
+        it("should run the hook", () => {
+            expect(hook).toHaveBeenCalledTimes(1);
+        });
+
+        it("should not run the target state's _onEnter", () => {
+            expect(enterCb).not.toHaveBeenCalled();
+        });
+
+        it("should report the state the FSM was leaving", () => {
+            expect(fsm.currentState()).toBe("green");
+        });
+    });
+
+    describe("when a transitioning listener calls dispose({ preserveChildren: true })", () => {
+        let child: any, enterCb: jest.Mock;
+
+        beforeEach(() => {
+            enterCb = jest.fn();
+            child = makeChildFsm();
+            child.handle("poweron");
+            fsm = createFsm({
+                id: "listener-dispose",
+                initialState: "green" as const,
+                states: {
+                    green: { timeout: "yellow" as const },
+                    yellow: { _onEnter: enterCb, _child: child },
+                },
+            });
+            fsm.on("transitioning", () => {
+                fsm.dispose({ preserveChildren: true });
+            });
+            fsm.handle("timeout");
+        });
+
+        it("should not run the target state's _onEnter", () => {
+            expect(enterCb).not.toHaveBeenCalled();
+        });
+
+        it("should not reset the preserved child", () => {
+            expect(child.currentState()).toBe("on");
+        });
+
+        describe("when the preserved child then receives an input", () => {
+            beforeEach(() => {
+                child.handle("poweroff");
+            });
+
+            it("should still handle it", () => {
+                expect(child.currentState()).toBe("off");
+            });
+        });
+    });
+
+    describe("when _onEnter calls dispose({ preserveChildren: true }) and returns a bounce target", () => {
+        let child: any, replayed: jest.Mock, bouncedEnter: jest.Mock;
+
+        beforeEach(() => {
+            replayed = jest.fn();
+            bouncedEnter = jest.fn();
+            child = makeChildFsm();
+            child.handle("poweron");
+            fsm = createFsm({
+                id: "enter-dispose",
+                initialState: "green" as const,
+                states: {
+                    green: {
+                        tick({ defer }: any) {
+                            defer({ until: "yellow" });
+                        },
+                        timeout: "yellow" as const,
+                    },
+                    yellow: {
+                        _onEnter() {
+                            fsm.dispose({ preserveChildren: true });
+                            return "red" as const;
+                        },
+                        _child: child,
+                        tick: replayed,
+                    },
+                    red: { _onEnter: bouncedEnter },
+                },
+            });
+            fsm.handle("tick"); // deferred until yellow
+            fsm.handle("timeout"); // enters yellow, whose _onEnter disposes
+        });
+
+        it("should not reset the preserved child", () => {
+            expect(child.currentState()).toBe("on");
+        });
+
+        it("should not replay the deferred input", () => {
+            expect(replayed).not.toHaveBeenCalled();
+        });
+
+        it("should not bounce", () => {
+            expect(bouncedEnter).not.toHaveBeenCalled();
+            expect(fsm.currentState()).toBe("yellow");
+        });
+    });
+});
+
+describe("Fsm — onDispose, listener re-checks (#194 review)", () => {
+    describe("when a transitioned listener calls dispose({ preserveChildren: true })", () => {
+        let child: any, childEnter: jest.Mock, fsm: any;
+
+        beforeEach(() => {
+            childEnter = jest.fn();
+            child = createFsm({
+                id: "child",
+                initialState: "off" as const,
+                states: {
+                    off: { _onEnter: childEnter, poweron: "on" as const },
+                    on: { poweroff: "off" as const },
+                },
+            });
+            child.handle("poweron");
+            childEnter.mockClear();
+            fsm = createFsm({
+                id: "transitioned-dispose",
+                initialState: "green" as const,
+                states: {
+                    green: { timeout: "yellow" as const },
+                    yellow: { _child: child },
+                },
+            });
+            fsm.on("transitioned", () => {
+                fsm.dispose({ preserveChildren: true });
+            });
+            fsm.handle("timeout");
+        });
+
+        it("should not reset the preserved child", () => {
+            expect(child.currentState()).toBe("on");
+        });
+
+        it("should not run the child's _onEnter again", () => {
+            expect(childEnter).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("when a handling listener calls dispose()", () => {
+        let handler: jest.Mock, hook: jest.Mock, fsm: any;
+
+        beforeEach(() => {
+            handler = jest.fn();
+            hook = jest.fn();
+            fsm = createFsm({
+                id: "handling-dispose",
+                initialState: "green" as const,
+                onDispose: hook,
+                states: {
+                    green: { tick: handler },
+                },
+            });
+            fsm.on("handling", () => {
+                fsm.dispose();
+            });
+            fsm.handle("tick");
+        });
+
+        it("should run the hook", () => {
+            expect(hook).toHaveBeenCalledTimes(1);
+        });
+
+        it("should not run the announced handler", () => {
+            expect(handler).not.toHaveBeenCalled();
+        });
+    });
+});

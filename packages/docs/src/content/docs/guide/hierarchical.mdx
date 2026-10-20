@@ -206,7 +206,7 @@ Re-entering a parent state always starts the child fresh. To restore a client at
 
 ## Disposal
 
-`dispose()` on the parent cascades to child FSMs by default. If the same child FSM appears in multiple states, it is only disposed once.
+`dispose()` on the parent cascades to child FSMs by default. If the same child FSM appears in multiple states, it is only disposed once. The parent's `onDispose` hook runs before the cascade, and each child's own hook runs inside that child's `dispose()`. A child that throws during the cascade is collected into the parent's `AggregateError` along with any hook failures, and the remaining children still dispose.
 
 ```ts
 uploader.dispose();

@@ -138,7 +138,7 @@ connFsm.handle(connA, "connected"); // connA: "online"
 connFsm.handle(connB, "failed"); // connB: "disconnected", retries: 1
 ```
 
-**IMPORTANT**: The extra `()` in `createBehavioralFsm<Connection>()` fixes the client type before TypeScript infers the rest from the config. Methods that act on one client (`handle`, `canHandle`, `transition`, `reset`, `currentState`, `compositeState`, `dehydrate`, `rehydrate`) take that client as their first argument, and handlers receive the client as `ctx`, so put per-client data on the client. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client.
+**IMPORTANT**: The extra `()` in `createBehavioralFsm<Connection>()` fixes the client type before TypeScript infers the rest from the config. Methods that act on one client (`handle`, `canHandle`, `transition`, `reset`, `currentState`, `compositeState`, `dehydrate`, `rehydrate`) take that client as their first argument, and handlers receive the client as `ctx`, so put per-client data on the client. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client. The config-level `onDispose` hook runs once per client when you call `dispose()`, with that client as `ctx`.
 
 ### Features in the Order You'll Probably Need Them
 
@@ -173,21 +173,21 @@ The [typedoc reference](https://machina-js.org/api/) documents the full public s
 
 ### `Fsm` methods
 
-| Method                       | Description                                                                                                                                                               |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `handle(inputName, ...args)` | Dispatches an input to the current state's handler. Payload args are untyped unless the FSM declares an [input payload map](https://machina-js.org/guide/typed-payloads/) |
-| `canHandle(inputName)`       | Returns true when the current state or its `_child` chain handles the input                                                                                               |
-| `transition(toState)`        | Transitions without an input. `_onExit` and `_onEnter` run, and the transition events fire                                                                                |
-| `reset()`                    | Transitions back to `initialState`                                                                                                                                        |
-| `currentState()`             | Returns the current state name                                                                                                                                            |
-| `compositeState()`           | Returns the dot-delimited state path, including active child FSM states                                                                                                   |
-| `on(eventName, callback)`    | Subscribes to an event and returns a `Subscription` with an `off()` method                                                                                                |
-| `emit(eventName, data?)`     | Emits a custom event                                                                                                                                                      |
-| `dispose(options?)`          | Shuts the FSM down permanently, including child FSMs unless you pass `{ preserveChildren: true }`. After disposal, method calls are silent no-ops                         |
+| Method                       | Description                                                                                                                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `handle(inputName, ...args)` | Dispatches an input to the current state's handler. Payload args are untyped unless the FSM declares an [input payload map](https://machina-js.org/guide/typed-payloads/)                       |
+| `canHandle(inputName)`       | Returns true when the current state or its `_child` chain handles the input                                                                                                                     |
+| `transition(toState)`        | Transitions without an input. `_onExit` and `_onEnter` run, and the transition events fire                                                                                                      |
+| `reset()`                    | Transitions back to `initialState`                                                                                                                                                              |
+| `currentState()`             | Returns the current state name                                                                                                                                                                  |
+| `compositeState()`           | Returns the dot-delimited state path, including active child FSM states                                                                                                                         |
+| `on(eventName, callback)`    | Subscribes to an event and returns a `Subscription` with an `off()` method                                                                                                                      |
+| `emit(eventName, data?)`     | Emits a custom event                                                                                                                                                                            |
+| `dispose(options?)`          | Shuts the FSM down permanently. Runs the config's `onDispose` hook first, then disposes child FSMs unless you pass `{ preserveChildren: true }`. After disposal, method calls are silent no-ops |
 
 ### `BehavioralFsm` differences
 
-The client-scoped methods (`handle`, `canHandle`, `transition`, `reset`, `currentState`, `compositeState`, `dehydrate`, `rehydrate`) take the client object as their first argument, and built-in event payloads include a `client` field. A custom event keeps whatever payload you pass to `emit()`, with nothing attached. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client.
+The client-scoped methods (`handle`, `canHandle`, `transition`, `reset`, `currentState`, `compositeState`, `dehydrate`, `rehydrate`) take the client object as their first argument, and built-in event payloads include a `client` field. A custom event keeps whatever payload you pass to `emit()`, with nothing attached. The instance-wide methods (`on`, `emit`, `dispose`) don't take a client. The config-level `onDispose` hook runs once per client when you call `dispose()`, with that client as `ctx`.
 
 For persistence, `dehydrate(client)` returns a `ClientSnapshot`, or `undefined` for a client the FSM hasn't handled yet. `rehydrate(client, snapshotOrPath)` places the client at a stored position while skipping the lifecycle hooks and events. The snapshot form restores the client's deferred inputs too. A bare `compositeState()` string restores only the state path. The [persisting clients guide](https://machina-js.org/guide/persisting-clients/) covers the full persist-and-restore pattern.
 
