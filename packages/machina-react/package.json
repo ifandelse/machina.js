@@ -60,7 +60,7 @@
         "machina": "workspace:*",
         "react": "^19.3.0",
         "react-dom": "^19.3.0",
-        "ts-jest": "^29.4.14",
+        "ts-jest": "^29.4.15",
         "tsdown": "^0.20.3",
         "typescript": "^5.9.3"
     }

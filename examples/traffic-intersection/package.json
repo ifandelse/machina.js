@@ -18,7 +18,7 @@
         "eslint": "^9.39.5",
         "eslint-plugin-machina": "workspace:*",
         "jest": "^30.5.2",
-        "ts-jest": "^29.4.14",
+        "ts-jest": "^29.4.15",
         "typescript": "^5.9.3",
         "vite": "^6.4.3"
     }
