@@ -1,5 +1,12 @@
 # @machina-examples/dungeon-critters
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies [04c296f]
+    - machina@8.1.0
+
 ## 0.0.8
 
 ### Patch Changes
