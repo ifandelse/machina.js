@@ -131,6 +131,12 @@ export class BehavioralFsm<
         }
 
         const meta = this.getOrCreateClientMeta(client);
+        // Lazy initialization ran the initial _onEnter, which may have called
+        // dispose(). The input that triggered initialization must not reach a
+        // handler on a disposed FSM.
+        if (this.disposed) {
+            return;
+        }
         meta.currentActionArgs = args;
 
         // Delegation: if the current state has a _child and the child can
@@ -217,11 +223,13 @@ export class BehavioralFsm<
      * names emit `invalidstate` instead of throwing. Throws if the transition
      * depth exceeds `MAX_TRANSITION_DEPTH` (likely an `_onEnter` → transition loop).
      *
-     * No-ops when disposed. When `_onExit`, a `transitioning` listener, or
-     * `_onEnter` calls `dispose()` mid-transition, that callback runs to
-     * completion and the transition stops as soon as it returns: no state
-     * write (for `_onExit`), no `_onEnter` (for the first two), no child
-     * reset, no deferred replay, no bounce.
+     * No-ops when disposed. When `_onExit`, a `transitioning` listener,
+     * `_onEnter`, or a `transitioned` listener calls `dispose()`
+     * mid-transition, that callback runs to completion and the transition
+     * stops as soon as it returns: no state write (for `_onExit`), no
+     * `_onEnter` (for the first two), no child reset, no deferred replay,
+     * no bounce. `dispatch()` applies the same rule to the initial `_onEnter`
+     * during lazy client initialization and to `handling` listeners.
      */
     transition(client: TClient, toState: TStateNames): void {
         if (this.disposed) {
@@ -294,17 +302,18 @@ export class BehavioralFsm<
                 bounceTarget = (newStateObj._onEnter as HandlerFn<TClient, TStateNames>)(enterArgs);
             }
 
-            // _onEnter may have called dispose() as well. Stop before the
-            // child reset: with preserveChildren a surviving child would
-            // otherwise be reset (running its own _onEnter) under a dead
-            // parent. The replay and bounce paths below are guarded by the
-            // disposed checks in dispatch() and transition(), but the reset
-            // is not.
+            this.emitter.emit("transitioned", payload);
+
+            // _onEnter or a `transitioned` listener may have called dispose().
+            // Stop before the child reset: with preserveChildren a surviving
+            // child would otherwise be reset (running its own _onEnter) under
+            // a dead parent. The replay and bounce paths below are guarded by
+            // the disposed checks in dispatch() and transition(), but the
+            // reset is not. The emit above is harmless on a disposed FSM
+            // because dispose() already cleared the emitter.
             if (this.disposed) {
                 return;
             }
-
-            this.emitter.emit("transitioned", payload);
 
             // Reset child FSM after entering the new state. This ensures the child
             // always starts from its initialState when the parent enters. Happens
@@ -991,6 +1000,13 @@ export class BehavioralFsm<
 
         try {
             this.emitter.emit("handling", { inputName: inputName as string, client });
+
+            // A `handling` listener may have called dispose(). The handler it
+            // announced must not run on a disposed FSM. The finally below
+            // still clears currentActionArgs.
+            if (this.disposed) {
+                return;
+            }
 
             const handlerArgs = this.buildHandlerArgs(client, inputName as string, meta);
             let targetState: TStateNames | void = undefined;

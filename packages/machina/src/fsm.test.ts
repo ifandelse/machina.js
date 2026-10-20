@@ -1976,3 +1976,72 @@ describe("Fsm — onDispose (#194)", () => {
         });
     });
 });
+
+describe("Fsm — onDispose, listener re-checks (#194 review)", () => {
+    describe("when a transitioned listener calls dispose({ preserveChildren: true })", () => {
+        let child: any, childEnter: jest.Mock, fsm: any;
+
+        beforeEach(() => {
+            childEnter = jest.fn();
+            child = createFsm({
+                id: "child",
+                initialState: "off" as const,
+                states: {
+                    off: { _onEnter: childEnter, poweron: "on" as const },
+                    on: { poweroff: "off" as const },
+                },
+            });
+            child.handle("poweron");
+            childEnter.mockClear();
+            fsm = createFsm({
+                id: "transitioned-dispose",
+                initialState: "green" as const,
+                states: {
+                    green: { timeout: "yellow" as const },
+                    yellow: { _child: child },
+                },
+            });
+            fsm.on("transitioned", () => {
+                fsm.dispose({ preserveChildren: true });
+            });
+            fsm.handle("timeout");
+        });
+
+        it("should not reset the preserved child", () => {
+            expect(child.currentState()).toBe("on");
+        });
+
+        it("should not run the child's _onEnter again", () => {
+            expect(childEnter).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("when a handling listener calls dispose()", () => {
+        let handler: jest.Mock, hook: jest.Mock, fsm: any;
+
+        beforeEach(() => {
+            handler = jest.fn();
+            hook = jest.fn();
+            fsm = createFsm({
+                id: "handling-dispose",
+                initialState: "green" as const,
+                onDispose: hook,
+                states: {
+                    green: { tick: handler },
+                },
+            });
+            fsm.on("handling", () => {
+                fsm.dispose();
+            });
+            fsm.handle("tick");
+        });
+
+        it("should run the hook", () => {
+            expect(hook).toHaveBeenCalledTimes(1);
+        });
+
+        it("should not run the announced handler", () => {
+            expect(handler).not.toHaveBeenCalled();
+        });
+    });
+});

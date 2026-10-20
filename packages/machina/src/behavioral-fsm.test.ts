@@ -5911,3 +5911,38 @@ describe("BehavioralFsm — onDispose (#194)", () => {
         });
     });
 });
+
+describe("BehavioralFsm — onDispose during lazy initialization (#194 review)", () => {
+    describe("when the initial _onEnter calls dispose() inside the handle() that initializes the client", () => {
+        let fsm: any, handler: jest.Mock, hook: jest.Mock, client: { url: string };
+
+        beforeEach(() => {
+            handler = jest.fn();
+            hook = jest.fn();
+            fsm = createBehavioralFsm<{ url: string }>()({
+                id: "lazy-init-dispose",
+                initialState: "offline",
+                onDispose: hook,
+                states: {
+                    offline: {
+                        _onEnter() {
+                            fsm.dispose();
+                        },
+                        connect: handler,
+                    },
+                },
+            });
+            client = { url: "wss://hal.9000" };
+            fsm.handle(client, "connect");
+        });
+
+        it("should run the hook once for the client being initialized", () => {
+            expect(hook).toHaveBeenCalledTimes(1);
+            expect(hook).toHaveBeenCalledWith(expect.objectContaining({ ctx: client }));
+        });
+
+        it("should not run the input handler", () => {
+            expect(handler).not.toHaveBeenCalled();
+        });
+    });
+});
