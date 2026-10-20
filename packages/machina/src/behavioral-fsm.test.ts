@@ -5946,3 +5946,55 @@ describe("BehavioralFsm — onDispose during lazy initialization (#194 review)",
         });
     });
 });
+
+describe("BehavioralFsm — onDispose during lazy initialization through transition() (#194 review)", () => {
+    describe("when the initial _onEnter calls dispose() inside the transition() that initializes the client", () => {
+        let fsm: any,
+            exitSpy: jest.Mock,
+            targetEnter: jest.Mock,
+            hook: jest.Mock,
+            client: { url: string };
+
+        beforeEach(() => {
+            exitSpy = jest.fn();
+            targetEnter = jest.fn();
+            hook = jest.fn();
+            fsm = createBehavioralFsm<{ url: string }>()({
+                id: "lazy-init-transition-dispose",
+                initialState: "offline",
+                onDispose: hook,
+                states: {
+                    offline: {
+                        _onEnter() {
+                            fsm.dispose();
+                        },
+                        _onExit: exitSpy,
+                        connect: "online",
+                    },
+                    online: {
+                        _onEnter: targetEnter,
+                    },
+                },
+            });
+            client = { url: "wss://dave.bowman" };
+            fsm.transition(client, "online");
+        });
+
+        it("should run the hook once for the client being initialized", () => {
+            expect(hook).toHaveBeenCalledTimes(1);
+            expect(hook).toHaveBeenCalledWith(expect.objectContaining({ ctx: client }));
+        });
+
+        it("should not run the initial state's _onExit", () => {
+            expect(exitSpy).not.toHaveBeenCalled();
+        });
+
+        it("should not run the target state's _onEnter", () => {
+            expect(targetEnter).not.toHaveBeenCalled();
+        });
+
+        it("should leave the client in the initial state", () => {
+            expect(fsm.currentState(client)).toBe("offline");
+        });
+    });
+});

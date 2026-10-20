@@ -228,8 +228,9 @@ export class BehavioralFsm<
      * mid-transition, that callback runs to completion and the transition
      * stops as soon as it returns: no state write (for `_onExit`), no
      * `_onEnter` (for the first two), no child reset, no deferred replay,
-     * no bounce. `dispatch()` applies the same rule to the initial `_onEnter`
-     * during lazy client initialization and to `handling` listeners.
+     * no bounce. The same rule covers the initial `_onEnter` during lazy
+     * client initialization, whether `handle()` or `transition()` triggered
+     * it, and `handling` listeners in `dispatch()`.
      */
     transition(client: TClient, toState: TStateNames): void {
         if (this.disposed) {
@@ -237,6 +238,12 @@ export class BehavioralFsm<
         }
 
         const meta = this.getOrCreateClientMeta(client);
+        // Lazy initialization ran the initial _onEnter, which may have called
+        // dispose(). Without this check the outer transition would go on to
+        // run the initial state's _onExit on a disposed FSM.
+        if (this.disposed) {
+            return;
+        }
         const fromState = meta.state;
 
         if (toState === fromState) {
