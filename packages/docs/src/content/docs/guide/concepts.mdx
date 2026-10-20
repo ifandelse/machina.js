@@ -240,6 +240,29 @@ const camera = createFsm({
 
 The hook is synchronous. A request that is still in flight when `dispose()` runs cannot be cancelled from the hook. Set a flag on `ctx`, as `closed` above, and have the late result check it before it stores anything.
 
+A release that returns a promise outlives `dispose()`. When a socket flushes on close, or a pool drains, that work is still in flight after `dispose()` returns, and a `process.exit()` on the next line cuts it off. The hook starts the release, and the code around the FSM awaits it:
+
+```ts
+const pending: Promise<unknown>[] = [];
+
+const conn = createFsm({
+    // ...
+    onDispose({ ctx }) {
+        if (ctx.socket) {
+            pending.push(ctx.socket.end().catch(logShutdownError));
+            ctx.socket = null;
+        }
+    },
+});
+
+// shutdown
+conn.dispose();
+await Promise.allSettled(pending);
+process.exit(0);
+```
+
+For a `BehavioralFsm` the array fills once per client, and one `allSettled` covers them all. Attach the `catch` inside the hook: `AggregateError` collects synchronous throws only, and a rejected promise from the hook surfaces as an unhandled rejection with no FSM id attached.
+
 The hook must tolerate a resource that was already released. A terminal state's `_onEnter` can release the same resource before `dispose()` runs, and the hook still runs for that client.
 
 `dispose()` does not run `_onExit` on the current state. When a state-scoped resource must also release on teardown, transition to a terminal state first and then call `dispose()`.
