@@ -18,6 +18,11 @@ import {
     type HandlerFn,
     type BehavioralFsmEventMap,
     type EventMap,
+    type EventMapLike,
+    type EmitArgs,
+    type VocabularyLike,
+    type VocabularyInputs,
+    type VocabularyEvents,
     type ClientMeta,
     type DeferredInput,
     type ChildLink,
@@ -58,6 +63,12 @@ const MAX_TRANSITION_DEPTH = 20;
  *   behavior: `keyof` of the wide map is `string`, so the key intersection
  *   is `TInputNames` and the payload lookup is `unknown[]`. The typed
  *   factory forms pass the user's map here.
+ * @typeParam TEvents - The event payload map (#183). Defaults to the wide
+ *   map, under which `on()` accepts any name with an `unknown` payload and
+ *   `emit()` accepts any name and payload. The typed factory forms pass the
+ *   user's map here, which keys both by the declared names. Custom event
+ *   payloads are exactly the declared types: the engine adds no `client`
+ *   field to them.
  */
 export class BehavioralFsm<
     TClient extends object,
@@ -66,6 +77,7 @@ export class BehavioralFsm<
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- phantom marker: never referenced in the class body, only read back out externally via BubblesOfInstance's `infer`.
     TBubbles extends string = never,
     TInputs extends InputMapLike<TInputs> = InputMap,
+    TEvents extends EventMapLike<TEvents> = EventMap,
 > {
     readonly id: string;
     readonly initialState: TStateNames;
@@ -86,7 +98,9 @@ export class BehavioralFsm<
     private readonly childSubscriptions: Array<{ off(): void }> = [];
     // Config-level teardown hook (#194). Called once per live client from
     // dispose(); see FsmConfig.onDispose for the contract.
-    private readonly onDispose?: (args: Pick<HandlerArgs<TClient>, "ctx" | "emit">) => void;
+    private readonly onDispose?: (
+        args: Pick<HandlerArgs<TClient, string, TEvents>, "ctx" | "emit">
+    ) => void;
     private disposed = false;
     private transitionDepth = 0;
 
@@ -94,7 +108,9 @@ export class BehavioralFsm<
         this.id = config.id;
         this.initialState = config.initialState as TStateNames;
         this.states = config.states as Record<string, Record<string, unknown>>;
-        this.onDispose = config.onDispose;
+        // The constructor's config is typed with the wide maps; the class
+        // generics carry the declared ones. Same erasure as `states` below.
+        this.onDispose = config.onDispose as typeof this.onDispose;
         this.wrapChildLinks();
         this.setupChildSubscriptions();
     }
@@ -697,16 +713,17 @@ export class BehavioralFsm<
      *
      * Named overload: a built-in name's payload includes `{ client: TClient }`
      * so you can identify which client the event pertains to. A custom name
-     * (anything a handler or the public `emit()` fires) gets `unknown`, and
-     * the engine adds no `client` field to it (#183). Wildcard (`"*"`)
-     * receives `(eventName, data)` for every event; it is listed first
-     * because the named overload's key type is `string` once the wide map is
-     * intersected in. Returns a no-op `Subscription` when disposed.
+     * gets the payload type its event map declares, or `unknown` when the FSM
+     * declares no map, and the engine adds no `client` field to it (#183).
+     * Under a declared map an undeclared name is a compile error. Wildcard
+     * (`"*"`) receives `(eventName, data)` for every event; it is listed
+     * first because the named overload's key type is `string` under the wide
+     * map. Returns a no-op `Subscription` when disposed.
      */
     on(eventName: "*", callback: (eventName: string, data: unknown) => void): Subscription;
-    on<K extends keyof (BehavioralFsmEventMap<TClient, TStateNames> & EventMap) & string>(
+    on<K extends keyof (BehavioralFsmEventMap<TClient, TStateNames> & TEvents) & string>(
         eventName: K,
-        callback: (data: (BehavioralFsmEventMap<TClient, TStateNames> & EventMap)[K]) => void
+        callback: (data: (BehavioralFsmEventMap<TClient, TStateNames> & TEvents)[K]) => void
     ): Subscription;
     on(eventName: string, callback: (...args: any[]) => void): Subscription {
         if (this.disposed) {
@@ -718,15 +735,16 @@ export class BehavioralFsm<
     /**
      * Emit a custom event through the FSM. Built-in lifecycle events are
      * emitted automatically — this is for user-defined events from handlers.
-     * No-ops when disposed.
+     * Under a declared event map (#183) the name and payload are checked
+     * against it. No-ops when disposed.
      */
-    emit(eventName: string, data?: unknown): void {
+    emit<K extends keyof TEvents & string>(eventName: K, ...data: EmitArgs<TEvents[K]>): void {
         if (this.disposed) {
             return;
         }
         // Public emit is for user-defined custom events. Built-in events are
         // emitted automatically by the engine.
-        (this.emitter as any).emit(eventName, data);
+        (this.emitter as any).emit(eventName, data[0]);
     }
 
     /**
@@ -1073,7 +1091,7 @@ export class BehavioralFsm<
         // Absent only on the onDispose path, where the client registry is read
         // directly and defer() has no meaning anyway.
         meta: ClientMeta<TStateNames> | undefined
-    ): HandlerArgs<TClient, TStateNames> {
+    ): HandlerArgs<TClient, TStateNames, TEvents> {
         return {
             ctx: client,
             inputName,
@@ -1091,8 +1109,10 @@ export class BehavioralFsm<
                 meta.deferredQueue.push(deferred);
                 this.emitter.emit("deferred", { inputName, client });
             },
-            emit: (evtName: string, evtData?: unknown) => {
-                (this.emitter as any).emit(evtName, evtData);
+            // Wider than the declared signature on purpose: the map is
+            // type-only, and the runtime forwards whatever it was given.
+            emit: (evtName: string, ...evtData: unknown[]) => {
+                (this.emitter as any).emit(evtName, evtData[0]);
             },
         };
     }
@@ -1230,6 +1250,62 @@ function createChildLink(child: any): ChildLink {
 }
 
 /**
+ * The function `createBehavioralFsm<TClient, TVocab>()` returns: it takes the
+ * config and infers everything else from it. See `CurriedFsmFactory` in
+ * fsm.ts for why the two `infer ... extends` clauses exist: they complete the
+ * proof that the maps extracted from the vocabulary slot satisfy the class
+ * constraints, which cannot be done while `TVocab` is unresolved.
+ */
+export type CurriedBehavioralFsmFactory<
+    TClient extends object,
+    TInputsIn,
+    TEventsIn,
+> = TInputsIn extends infer TInputs extends InputMapLike<TInputs>
+    ? TEventsIn extends infer TEvents extends EventMapLike<TEvents>
+        ? <
+              const TStates extends Record<string, Record<string, unknown>>,
+              TStateNames extends string = keyof TStates & string,
+              // Constrained to the map: a bubble declares "I will fire this
+              // input", and the map is the complete set of fireable inputs.
+              // On the untyped path the map is wide, so the constraint
+              // reduces to `string` — today's behavior exactly (#195).
+              TBubbles extends keyof TInputs & string = never,
+          >(
+              config: FsmConfig<TClient, TStates, TStateNames, TBubbles, TInputs, TEvents>
+          ) => BehavioralFsm<
+              TClient,
+              // Both unions inlined rather than written as StateNamesOf/
+              // InputNamesOf — see the comment in fsm.ts's createFsm: a
+              // named alias reference keeps its alias symbol in compiler
+              // diagnostics, so rejected handle()/transition() calls would
+              // display "InputNamesOf<{...}>" instead of the flat union.
+              keyof TStates & string,
+              // With a real payload map (#195), the map is the complete
+              // input vocabulary, so it replaces the inferred union as
+              // handle()'s key source. `string extends keyof TInputs`
+              // detects the wide default (untyped path, or a bag with no
+              // `inputs` member), where the union stays inferred from the
+              // config exactly as before.
+              string extends keyof TInputs
+                  ? | Exclude<
+                          { [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates],
+                          SpecialStateKeys
+                      >
+                    | {
+                          [S in keyof TStates]: TStates[S] extends { _child: infer C }
+                              ? InputNamesOfInstance<C>
+                              : never;
+                      }[keyof TStates]
+                    | TBubbles
+                  : keyof TInputs & string,
+              TBubbles,
+              TInputs,
+              TEvents
+          >
+        : never
+    : never;
+
+/**
  * Create a behavioral FSM (one definition, many clients) from a config object.
  *
  * `TClient` can't be inferred from the config — there's no `context` property
@@ -1315,43 +1391,8 @@ function createChildLink(child: any): ChildLink {
  */
 export function createBehavioralFsm<
     TClient extends object,
-    TInputs extends InputMapLike<TInputs> = InputMap,
->(): <
-    const TStates extends Record<string, Record<string, unknown>>,
-    TStateNames extends string = keyof TStates & string,
-    // Constrained to the map: a bubble declares "I will fire this input",
-    // and the map is the complete set of fireable inputs. On the untyped
-    // path the map is wide, so the constraint reduces to `string` — today's
-    // behavior exactly (#195).
-    TBubbles extends keyof TInputs & string = never,
->(
-    config: FsmConfig<TClient, TStates, TStateNames, TBubbles, TInputs>
-) => BehavioralFsm<
-    TClient,
-    // Both unions inlined rather than written as StateNamesOf/InputNamesOf —
-    // see the comment in fsm.ts's createFsm: a named alias reference keeps its
-    // alias symbol in compiler diagnostics, so rejected handle()/transition()
-    // calls would display "InputNamesOf<{...}>" instead of the flat union.
-    keyof TStates & string,
-    // With a real payload map (#195), the map is the complete input
-    // vocabulary, so it replaces the inferred union as handle()'s key source.
-    // `string extends keyof TInputs` detects the wide default (untyped path),
-    // where the union stays inferred from the config exactly as before.
-    string extends keyof TInputs
-        ? | Exclude<
-                { [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates],
-                SpecialStateKeys
-            >
-          | {
-                [S in keyof TStates]: TStates[S] extends { _child: infer C }
-                    ? InputNamesOfInstance<C>
-                    : never;
-            }[keyof TStates]
-          | TBubbles
-        : keyof TInputs & string,
-    TBubbles,
-    TInputs
->;
+    TVocab extends VocabularyLike<TVocab> = InputMap,
+>(): CurriedBehavioralFsmFactory<TClient, VocabularyInputs<TVocab>, VocabularyEvents<TVocab>>;
 export function createBehavioralFsm<
     TClient extends object,
     const TStates extends Record<string, Record<string, unknown>>,

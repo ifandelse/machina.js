@@ -59,6 +59,14 @@ For a `BehavioralFsm`, the map is the second type argument of the existing curri
 const connectionFsm = createBehavioralFsm<Connection, ConnectionInputs>()({ ... });
 ```
 
+The same slot also takes a vocabulary bag, an object type with an `inputs` member, an `events` member, or both. The `events` member declares the payloads of the custom events the FSM emits, which the [events guide](/guide/events/#typed-custom-events) covers:
+
+```ts
+const light = createFsm<{ inputs: TrafficLightInputs; events: TrafficLightEvents }>()({ ... });
+```
+
+A bare input map and a bag with an `inputs` member mean the same thing for inputs. An input map's values are all tuples, and a bag's members are object maps. TypeScript uses that difference to tell the two forms apart.
+
 ## The map is the complete list of inputs
 
 The map declares the complete list of inputs the machine handles, and TypeScript holds the config to that list. Every handler key in every state must be a key of the map. With `TrafficLightInputs` above, a state containing `timout: "yellow"` fails to compile, and the error anchors on that state. The untyped path cannot catch the mistake, because its index signature (the type that lets states accept any input name) accepts any key.

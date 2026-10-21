@@ -10,8 +10,22 @@ export default {};
 import { createElement } from "react";
 import { act, render } from "@testing-library/react";
 import { createBehavioralFsm, createFsm } from "machina";
-import { useFsm, useBehavioralFsm } from "./index";
-import type { BehavioralFsmHookResult, FsmHookResult } from "./index";
+import { useFsm, useBehavioralFsm, useFsmEvent, useBehavioralFsmEvent } from "./index";
+import type {
+    BehavioralFsmEventName,
+    BehavioralFsmHookResult,
+    FsmEventName,
+    FsmHookResult,
+} from "./index";
+
+type Expect<T extends true> = T;
+type Equal<A, B> =
+    (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+        ? (<T>() => T extends B ? 1 : 2) extends <T>() => T extends A ? 1 : 2
+            ? true
+            : false
+        : false;
+type IsUnknown<T> = unknown extends T ? ([T] extends [unknown] ? true : false) : false;
 
 type CounterInputs = {
     tick: [];
@@ -170,6 +184,150 @@ describe("runtime payload forwarding through the typed handle", () => {
 
         it("should forward the payload to the client's handler", () => {
             expect(session).toEqual({ hits: 4 });
+        });
+    });
+});
+
+describe("event hook name and payload typing (machina #183)", () => {
+    type CounterEvents = {
+        milestone: { count: number };
+        reset: undefined;
+    };
+
+    const createEventedCounterFsm = () =>
+        createFsm<{ events: CounterEvents }>()({
+            id: "evented-counter",
+            initialState: "idle",
+            context: { count: 0 },
+            states: {
+                idle: {
+                    tick({ ctx, emit }) {
+                        ctx.count++;
+                        emit("milestone", { count: ctx.count });
+                    },
+                },
+            },
+        });
+
+    const createEventedSessionFsm = () =>
+        createBehavioralFsm<Session, { events: CounterEvents }>()({
+            id: "evented-session",
+            initialState: "idle",
+            states: {
+                idle: {
+                    tick({ ctx, emit }) {
+                        ctx.hits++;
+                        emit("milestone", { count: ctx.hits });
+                    },
+                },
+            },
+        });
+
+    describe("when the FSM declares an event map", () => {
+        const fsm = createEventedCounterFsm();
+
+        type _Names = Expect<
+            Equal<
+                FsmEventName<typeof fsm>,
+                | "transitioning"
+                | "transitioned"
+                | "handling"
+                | "handled"
+                | "nohandler"
+                | "invalidstate"
+                | "deferred"
+                | "milestone"
+                | "reset"
+            >
+        >;
+
+        const _typeOnly = () => {
+            useFsmEvent(fsm, "milestone", payload => {
+                type _Declared = Expect<Equal<typeof payload, { count: number }>>;
+                void payload;
+            });
+            useFsmEvent(fsm, "transitioned", payload => {
+                type _BuiltIn = Expect<Equal<typeof payload.toState, "idle">>;
+                void payload;
+            });
+            useFsmEvent(fsm, "*", (eventName, data) => {
+                type _Name = Expect<Equal<typeof eventName, string>>;
+                void eventName;
+                void data;
+            });
+            // @ts-expect-error -- not a declared event
+            useFsmEvent(fsm, "milestones", () => {});
+        };
+
+        let result: string;
+
+        beforeEach(() => {
+            result = fsm.currentState();
+        });
+
+        it("should keep the FSM usable at runtime", () => {
+            expect(result).toBe("idle");
+        });
+    });
+
+    describe("when the FSM declares no event map", () => {
+        const fsm = createUntypedCounterFsm();
+
+        type _AnyName = Expect<Equal<FsmEventName<typeof fsm>, string>>;
+
+        const _typeOnly = () => {
+            useFsmEvent(fsm, "anythingGoes", payload => {
+                type _Unknown = Expect<Equal<IsUnknown<typeof payload>, true>>;
+                void payload;
+            });
+            useFsmEvent(fsm, "handled", payload => {
+                type _BuiltInStaysTyped = Expect<Equal<typeof payload, { inputName: string }>>;
+                void payload;
+            });
+        };
+
+        let result: string;
+
+        beforeEach(() => {
+            result = fsm.currentState();
+        });
+
+        it("should keep the FSM usable at runtime", () => {
+            expect(result).toBe("idle");
+        });
+    });
+
+    describe("when a behavioral FSM declares an event map", () => {
+        const fsm = createEventedSessionFsm();
+        const session: Session = { hits: 0 };
+
+        type _NamesIncludeDeclared = Expect<
+            Equal<"milestone" extends BehavioralFsmEventName<typeof fsm> ? true : false, true>
+        >;
+
+        const _typeOnly = () => {
+            // A custom payload is exactly the declared type: no client field.
+            useBehavioralFsmEvent(fsm, session, "milestone", payload => {
+                type _DeclaredOnly = Expect<Equal<typeof payload, { count: number }>>;
+                void payload;
+            });
+            useBehavioralFsmEvent(fsm, session, "handled", payload => {
+                type _BuiltInCarriesClient = Expect<Equal<typeof payload.client, Session>>;
+                void payload;
+            });
+            // @ts-expect-error -- not a declared event
+            useBehavioralFsmEvent(fsm, session, "milestones", () => {});
+        };
+
+        let result: string | undefined;
+
+        beforeEach(() => {
+            fsm.handle(session, "tick");
+            result = fsm.currentState(session);
+        });
+
+        it("should keep the FSM usable at runtime", () => {
+            expect(result).toBe("idle");
         });
     });
 });

@@ -69,13 +69,11 @@ const transitionedSub = fsm.on("transitioned", ({ fromState, toState }) => {
 // Subscribe to custom FSM events by name
 //
 // checkCountUpdated and maxChecksReached are custom domain events fired from
-// handler emit() calls. `fsm.on()` accepts them like any built-in event. The
-// payload is `unknown` because this FSM declares no event map, so the
-// subscriber narrows it.
+// handler emit() calls. fsm.ts declares them in an event map, so `fsm.on()`
+// types each payload: `checkCount` below is a number, with no cast.
 // -----------------------------------------------------------------------------
 
-const checkCountSub = fsm.on("checkCountUpdated", (data: unknown) => {
-    const { checkCount } = data as { checkCount: number };
+const checkCountSub = fsm.on("checkCountUpdated", ({ checkCount }) => {
     renderCheckCount(checkCount, MAX_CHECKS);
 });
 
