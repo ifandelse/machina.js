@@ -2,6 +2,7 @@ import type {
     BehavioralFsmEventMap,
     ClientOf,
     ContextOf,
+    EventMapOfInstance,
     FsmEventMap,
     InputCall,
     InputMapLike,
@@ -95,11 +96,27 @@ export type BehavioralFsmHookResult<TFsm extends BehavioralFsmLike> = Behavioral
     canHandle(inputName: string): boolean;
 };
 
-export type FsmEventName<TFsm extends FsmLike> = keyof FsmEventMap<StateNamesOfInstance<TFsm>> &
-    string;
+/**
+ * Every event an instance can deliver, keyed by name: the built-in map plus
+ * the instance's declared event map (machina #183). An FSM without an event
+ * map contributes the wide map, so every custom name is present with an
+ * `unknown` payload.
+ */
+export type FsmEventMapOf<TFsm extends FsmLike> = FsmEventMap<StateNamesOfInstance<TFsm>> &
+    EventMapOfInstance<TFsm>;
 
-export type BehavioralFsmEventName<TFsm extends BehavioralFsmLike> = keyof BehavioralFsmEventMap<
+export type BehavioralFsmEventMapOf<TFsm extends BehavioralFsmLike> = BehavioralFsmEventMap<
     ClientOf<TFsm>,
     StateNamesOfInstance<TFsm>
 > &
-    string;
+    EventMapOfInstance<TFsm>;
+
+/**
+ * The event names `useFsmEvent` accepts for an instance. Under a declared
+ * event map this is the built-in names plus the declared names; without one
+ * it is `string`.
+ */
+export type FsmEventName<TFsm extends FsmLike> = keyof FsmEventMapOf<TFsm> & string;
+
+export type BehavioralFsmEventName<TFsm extends BehavioralFsmLike> =
+    keyof BehavioralFsmEventMapOf<TFsm> & string;
