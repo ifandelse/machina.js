@@ -66,23 +66,21 @@ const transitionedSub = fsm.on("transitioned", ({ fromState, toState }) => {
 });
 
 // -----------------------------------------------------------------------------
-// Subscribe to custom FSM events via the wildcard listener
+// Subscribe to custom FSM events by name
 //
-// The wildcard fires for every event emitted by the FSM, including built-ins.
-// We use it here because the custom domain events (checkCountUpdated,
-// maxChecksReached) don't have typed overloads on `fsm.on()` — they're plain
-// strings from handler emit() calls. We check eventName and ignore the rest.
+// checkCountUpdated and maxChecksReached are custom domain events fired from
+// handler emit() calls. `fsm.on()` accepts them like any built-in event. The
+// payload is `unknown` because this FSM declares no event map, so the
+// subscriber narrows it.
 // -----------------------------------------------------------------------------
 
-const wildcardSub = fsm.on("*", (eventName: string, data: unknown) => {
-    if (eventName === "checkCountUpdated") {
-        const { checkCount } = data as { checkCount: number };
-        renderCheckCount(checkCount, MAX_CHECKS);
-    }
+const checkCountSub = fsm.on("checkCountUpdated", (data: unknown) => {
+    const { checkCount } = data as { checkCount: number };
+    renderCheckCount(checkCount, MAX_CHECKS);
+});
 
-    if (eventName === "maxChecksReached") {
-        renderCheckCount(MAX_CHECKS, MAX_CHECKS);
-    }
+const maxChecksSub = fsm.on("maxChecksReached", () => {
+    renderCheckCount(MAX_CHECKS, MAX_CHECKS);
 });
 
 // -----------------------------------------------------------------------------
@@ -144,7 +142,8 @@ renderStatus(fsm.currentState() as "online" | "offline" | "checking");
 function handleBeforeUnload() {
     handlingSub.off();
     transitionedSub.off();
-    wildcardSub.off();
+    checkCountSub.off();
+    maxChecksSub.off();
     cleanupSimulateBtn();
     globalThis.removeEventListener("online", handleBrowserOnline);
     globalThis.removeEventListener("offline", handleBrowserOffline);

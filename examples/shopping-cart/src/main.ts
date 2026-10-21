@@ -170,25 +170,25 @@ fsm.on("transitioned", ({ fromState, toState }: { fromState: string; toState: st
     }
 });
 
-// Custom events emitted by FSM handlers via emit()
-fsm.on("*", (eventName: string, data: unknown) => {
-    if (eventName === "itemAdded") {
-        const payload = data as { itemCount: number } | undefined;
-        if (payload) {
-            itemCount = payload.itemCount;
-        }
-        setCheckoutEnabled(itemCount > 0);
-        showTooltip(TOOLTIP_MESSAGES.itemAdded(), lastClickedButton);
+// Custom events emitted by FSM handlers via emit(). They subscribe by name
+// like the built-ins; the payload is `unknown` because this FSM declares no
+// event map, so the subscriber narrows it.
+fsm.on("itemAdded", (data: unknown) => {
+    const payload = data as { itemCount: number } | undefined;
+    if (payload) {
+        itemCount = payload.itemCount;
     }
+    setCheckoutEnabled(itemCount > 0);
+    showTooltip(TOOLTIP_MESSAGES.itemAdded(), lastClickedButton);
+});
 
-    // couponApplied and checkoutInitiated tooltips were removed — the
-    // "transitioned" handler fires after custom events and is the source of
-    // truth for post-transition feedback. Showing a tooltip here only to have
-    // it overwritten 0ms later was dead code.
+// couponApplied and checkoutInitiated tooltips were removed — the
+// "transitioned" handler fires after custom events and is the source of
+// truth for post-transition feedback. Showing a tooltip here only to have
+// it overwritten 0ms later was dead code.
 
-    if (eventName === "analyticsRecorded") {
-        showTooltip(TOOLTIP_MESSAGES.replayed(INPUT_RECORD_PURCHASE_ANALYTICS), null);
-    }
+fsm.on("analyticsRecorded", () => {
+    showTooltip(TOOLTIP_MESSAGES.replayed(INPUT_RECORD_PURCHASE_ANALYTICS), null);
 });
 
 // "deferred" fires when a handler calls defer(). Reconstruct untilState from

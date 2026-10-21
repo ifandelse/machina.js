@@ -773,6 +773,25 @@ describe("BehavioralFsm", () => {
                 expect(wildcardCb).toHaveBeenCalledWith("vehicles", { status: "GREEN" });
             });
         });
+
+        describe("when a named subscriber is attached to a custom event (#183)", () => {
+            let namedCb: jest.Mock;
+            let typedFsm: BehavioralFsm<TrafficClient, "green" | "yellow" | "red", string>;
+
+            beforeEach(() => {
+                namedCb = jest.fn();
+                typedFsm = makeTrafficLightFsm();
+                typedFsm.on("vehicles", namedCb);
+                typedFsm.emit("vehicles", { status: "GREEN", client: "not a client object" });
+            });
+
+            it("should deliver the payload exactly as emitted, with no client field added or removed", () => {
+                expect(namedCb).toHaveBeenCalledWith({
+                    status: "GREEN",
+                    client: "not a client object",
+                });
+            });
+        });
     });
 
     // =========================================================================
@@ -2816,7 +2835,7 @@ describe("BehavioralFsm — setupChildSubscriptions() shared-child dedup", () =>
             parent.handle(bob, "switch"); // bob init -> modeA -> switch -> modeB
 
             relayedCb = jest.fn();
-            parent.on("customEvt" as any, relayedCb);
+            parent.on("customEvt", relayedCb);
 
             // A client-less custom event — no `client` field, the same shape
             // an Fsm child's events take. The old per-declaring-state
@@ -2952,7 +2971,7 @@ describe("BehavioralFsm — setupChildSubscriptions() shared-child dedup", () =>
             parent.handle(clara, "noop" as any); // clara -> modeA too (same declaring name)
 
             relayedCb = jest.fn();
-            parent.on("customEvt" as any, relayedCb);
+            parent.on("customEvt", relayedCb);
 
             // Both alice and clara would independently satisfy isChildActiveForClient()'s
             // check for modeA — the "walk known clients, break on first match" loop

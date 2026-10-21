@@ -17,6 +17,7 @@ import {
     type HandlerArgs,
     type HandlerFn,
     type BehavioralFsmEventMap,
+    type EventMap,
     type ClientMeta,
     type DeferredInput,
     type ChildLink,
@@ -692,18 +693,21 @@ export class BehavioralFsm<
     }
 
     /**
-     * Subscribe to a built-in lifecycle event or the wildcard.
+     * Subscribe to a built-in lifecycle event, a custom event, or the wildcard.
      *
-     * Named overload: typed payload includes `{ client: TClient }` so you can
-     * identify which client the event pertains to. Wildcard (`"*"`) receives
-     * `(eventName, data)` for every event. Returns a no-op `Subscription`
-     * when disposed.
+     * Named overload: a built-in name's payload includes `{ client: TClient }`
+     * so you can identify which client the event pertains to. A custom name
+     * (anything a handler or the public `emit()` fires) gets `unknown`, and
+     * the engine adds no `client` field to it (#183). Wildcard (`"*"`)
+     * receives `(eventName, data)` for every event; it is listed first
+     * because the named overload's key type is `string` once the wide map is
+     * intersected in. Returns a no-op `Subscription` when disposed.
      */
-    on<K extends keyof BehavioralFsmEventMap<TClient, TStateNames> & string>(
-        eventName: K,
-        callback: (data: BehavioralFsmEventMap<TClient, TStateNames>[K]) => void
-    ): Subscription;
     on(eventName: "*", callback: (eventName: string, data: unknown) => void): Subscription;
+    on<K extends keyof (BehavioralFsmEventMap<TClient, TStateNames> & EventMap) & string>(
+        eventName: K,
+        callback: (data: (BehavioralFsmEventMap<TClient, TStateNames> & EventMap)[K]) => void
+    ): Subscription;
     on(eventName: string, callback: (...args: any[]) => void): Subscription {
         if (this.disposed) {
             return { off() {} };
