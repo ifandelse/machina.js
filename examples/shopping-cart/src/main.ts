@@ -170,14 +170,11 @@ fsm.on("transitioned", ({ fromState, toState }: { fromState: string; toState: st
     }
 });
 
-// Custom events emitted by FSM handlers via emit(). They subscribe by name
-// like the built-ins; the payload is `unknown` because this FSM declares no
-// event map, so the subscriber narrows it.
-fsm.on("itemAdded", (data: unknown) => {
-    const payload = data as { itemCount: number } | undefined;
-    if (payload) {
-        itemCount = payload.itemCount;
-    }
+// Custom events emitted by FSM handlers via emit(). fsm.ts declares them in
+// CartEvents, so each subscription below is typed: the itemAdded payload is
+// `{ itemCount: number }`, with no cast and no undefined check.
+fsm.on("itemAdded", payload => {
+    itemCount = payload.itemCount;
     setCheckoutEnabled(itemCount > 0);
     showTooltip(TOOLTIP_MESSAGES.itemAdded(), lastClickedButton);
 });

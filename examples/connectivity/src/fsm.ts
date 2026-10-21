@@ -56,8 +56,16 @@ export { setSimulationMode };
 // eslint-disable-next-line prefer-const
 let fsm: ReturnType<typeof createConnectivityFsm>;
 
+// The custom events this FSM emits, declared once. `createFsm<{ events }>()`
+// types `emit()` inside the handlers below and `fsm.on()` in main.ts against
+// this map, so a misspelled event name or a wrong payload is a compile error.
+type ConnectivityEvents = {
+    checkCountUpdated: { checkCount: number };
+    maxChecksReached: undefined;
+};
+
 function createConnectivityFsm() {
-    return createFsm({
+    return createFsm<{ events: ConnectivityEvents }>()({
         id: "connectivity-monitor",
         initialState: "online",
         context: {
@@ -235,5 +243,5 @@ function createConnectivityFsm() {
 fsm = createConnectivityFsm();
 
 export { fsm };
-export type { ConnectivityContext };
+export type { ConnectivityContext, ConnectivityEvents };
 export { MAX_CHECKS };
