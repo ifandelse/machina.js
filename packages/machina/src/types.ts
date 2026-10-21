@@ -1026,13 +1026,22 @@ export interface DisposeOptions {
 //
 // machina FSMs emit lifecycle events that external code can subscribe to.
 // These types define the payload shape for each built-in event. Custom
-// events (emitted via emit() in handlers) are untyped — they flow through
-// the emitter's wildcard path with `unknown` payloads.
+// events (emitted via emit() in handlers or the public emit()) share the
+// same emitter: `on()` accepts any event name (#183), and a custom event's
+// payload is `unknown` unless the FSM declares an event map.
 //
 // Event naming follows a grammatical pattern:
 //   - Present participle = "about to happen": transitioning, handling
 //   - Past participle = "just happened": transitioned, handled
 // -----------------------------------------------------------------------------
+
+/**
+ * The wide event map: any event name, `unknown` payload. `on()` is keyed by
+ * the built-in map intersected with this one, which is what lets a custom
+ * event name through the named overload while the built-in names keep
+ * their narrowed payloads (#183).
+ */
+export type EventMap = Record<string, unknown>;
 
 /**
  * Built-in event map for Fsm instances.

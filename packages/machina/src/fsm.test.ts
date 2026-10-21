@@ -2045,3 +2045,104 @@ describe("Fsm — onDispose, listener re-checks (#194 review)", () => {
         });
     });
 });
+
+describe("Fsm — custom event subscriptions (#183)", () => {
+    const makeSeatingFsm = () =>
+        createFsm({
+            id: "seating-chart",
+            initialState: "open",
+            context: { seated: 0 },
+            states: {
+                open: {
+                    seat({ ctx, emit }) {
+                        ctx.seated++;
+                        emit("seatAssigned", { client: "Cal Zone", seat: ctx.seated });
+                    },
+                    announce({ emit }) {
+                        emit("lastCall", { minutes: 5 });
+                    },
+                },
+            },
+        });
+
+    describe("when a named subscriber is attached to a custom event", () => {
+        let payload: unknown;
+
+        beforeEach(() => {
+            const fsm = makeSeatingFsm();
+            fsm.on("lastCall", data => {
+                payload = data;
+            });
+            fsm.handle("announce");
+        });
+
+        it("should deliver the custom payload to the named subscriber", () => {
+            expect(payload).toEqual({ minutes: 5 });
+        });
+    });
+
+    describe("when a custom payload carries its own `client` key", () => {
+        let namedPayload: unknown;
+        let wildcardPayload: unknown;
+
+        beforeEach(() => {
+            const fsm = makeSeatingFsm();
+            fsm.on("seatAssigned", data => {
+                namedPayload = data;
+            });
+            fsm.on("*", (eventName, data) => {
+                if (eventName === "seatAssigned") {
+                    wildcardPayload = data;
+                }
+            });
+            fsm.handle("seat");
+        });
+
+        it("should relay the payload to the named subscriber with `client` intact", () => {
+            expect(namedPayload).toEqual({ client: "Cal Zone", seat: 1 });
+        });
+
+        it("should relay the payload to the wildcard subscriber with `client` intact", () => {
+            expect(wildcardPayload).toEqual({ client: "Cal Zone", seat: 1 });
+        });
+    });
+
+    describe("when a custom event is emitted through the public emit() with a `client` key", () => {
+        let payload: unknown;
+
+        beforeEach(() => {
+            const fsm = makeSeatingFsm();
+            fsm.on("seatAssigned", data => {
+                payload = data;
+            });
+            fsm.emit("seatAssigned", { client: "Dee Lish", seat: 8675309 });
+        });
+
+        it("should relay the payload with `client` intact", () => {
+            expect(payload).toEqual({ client: "Dee Lish", seat: 8675309 });
+        });
+    });
+
+    describe("when a built-in event is relayed alongside a custom one", () => {
+        let transitionedPayload: unknown;
+
+        beforeEach(() => {
+            const fsm = createFsm({
+                id: "seating-chart-closing",
+                initialState: "open",
+                states: {
+                    open: { close: "closed" },
+                    closed: {},
+                },
+            });
+            fsm.on("transitioned", data => {
+                transitionedPayload = data;
+            });
+            fsm.handle("close");
+        });
+
+        it("should still strip `client` from the built-in payload", () => {
+            expect(transitionedPayload).toEqual({ fromState: "open", toState: "closed" });
+        });
+    });
+});
