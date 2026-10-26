@@ -2145,4 +2145,40 @@ describe("Fsm — custom event subscriptions (#183)", () => {
             expect(transitionedPayload).toEqual({ fromState: "open", toState: "closed" });
         });
     });
+
+    // End-to-end through both relays: the parent's child routing and the Fsm
+    // wrapper's client strip must both leave a custom payload alone.
+    describe("when a mounted child emits a custom payload with its own `client` key", () => {
+        let namedPayload: unknown;
+        let wildcardPayload: unknown;
+
+        beforeEach(() => {
+            const parent = createFsm({
+                id: "venue",
+                initialState: "seating",
+                states: {
+                    seating: {
+                        _child: makeSeatingFsm(),
+                    },
+                },
+            });
+            parent.on("seatAssigned", data => {
+                namedPayload = data;
+            });
+            parent.on("*", (eventName, data) => {
+                if (eventName === "seatAssigned") {
+                    wildcardPayload = data;
+                }
+            });
+            parent.handle("seat");
+        });
+
+        it("should relay the payload to the parent's named subscriber with `client` intact", () => {
+            expect(namedPayload).toEqual({ client: "Cal Zone", seat: 1 });
+        });
+
+        it("should relay the payload to the parent's wildcard subscriber with `client` intact", () => {
+            expect(wildcardPayload).toEqual({ client: "Cal Zone", seat: 1 });
+        });
+    });
 });
