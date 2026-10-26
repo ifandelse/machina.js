@@ -35,6 +35,23 @@ import {
     type InputMapLike,
 } from "./types";
 
+// The seven built-in event names, as a runtime set. Both relays key on it:
+// the child-event routing below reads `payload.client` as the parent's client
+// only for these names, and the Fsm wrapper strips `client` from these
+// payloads only. A custom payload is opaque, so a `client` key inside one is
+// the user's data (#183). Typed as a Record so adding an event to
+// BehavioralFsmEventMap without listing it here is a compile error.
+const BUILT_IN_EVENT_FLAGS: Record<keyof BehavioralFsmEventMap<object>, true> = {
+    transitioning: true,
+    transitioned: true,
+    handling: true,
+    handled: true,
+    nohandler: true,
+    invalidstate: true,
+    deferred: true,
+};
+export const BUILT_IN_EVENT_NAMES: ReadonlySet<string> = new Set(Object.keys(BUILT_IN_EVENT_FLAGS));
+
 // Safety valve for _onEnter → transition loops. Instance-level counter works
 // because the engine is synchronous — only one transition chain is active at
 // a time. Throws on overflow, then resets so the FSM isn't permanently broken.
@@ -936,14 +953,22 @@ export class BehavioralFsm<
                 // when the child fires during construction or after the parent
                 // has moved to a different state.
                 const payload = data as Record<string, unknown> | undefined;
-                if (payload && typeof payload === "object" && "client" in payload) {
-                    // BehavioralFsm child: payload includes the client.
+                if (
+                    BUILT_IN_EVENT_NAMES.has(eventName) &&
+                    payload &&
+                    typeof payload === "object" &&
+                    "client" in payload
+                ) {
+                    // BehavioralFsm child built-in event: the engine put the
+                    // client in the payload, so filter on it directly.
                     if (this.isChildActiveForClient(payload.client as TClient, childLink)) {
                         (this.emitter as any).emit(eventName, data);
                     }
                 } else {
-                    // Fsm child (or payload without client): walk known clients,
-                    // relay if ANY client is currently in a state with this child.
+                    // Fsm child built-in (client already stripped), or any
+                    // custom event (payload is opaque, even with a `client`
+                    // key): walk known clients, relay if ANY client is
+                    // currently in a state with this child.
                     for (const ref of this.knownClients) {
                         const client = ref.deref();
                         if (!client) {

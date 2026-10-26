@@ -9,7 +9,7 @@
 // =============================================================================
 
 import { Emitter, type Subscription } from "./emitter";
-import { BehavioralFsm } from "./behavioral-fsm";
+import { BehavioralFsm, BUILT_IN_EVENT_NAMES } from "./behavioral-fsm";
 import {
     MACHINA_TYPE,
     type FsmConfig,
@@ -27,20 +27,6 @@ import {
     type VocabularyInputs,
     type VocabularyEvents,
 } from "./types";
-
-// The seven built-in event names, as a runtime set. The relay below strips
-// `client` from these payloads only. Typed as a Record so adding an event to
-// FsmEventMap without listing it here is a compile error.
-const BUILT_IN_EVENT_FLAGS: Record<keyof FsmEventMap, true> = {
-    transitioning: true,
-    transitioned: true,
-    handling: true,
-    handled: true,
-    nohandler: true,
-    invalidstate: true,
-    deferred: true,
-};
-const BUILT_IN_EVENT_NAMES: ReadonlySet<string> = new Set(Object.keys(BUILT_IN_EVENT_FLAGS));
 
 /**
  * Single-client FSM. Wraps a BehavioralFsm and uses the config's `context`

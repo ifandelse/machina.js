@@ -1485,6 +1485,99 @@ describe("BehavioralFsm — hierarchical (Tasks 2-5)", () => {
                 expect(customPayload).toEqual({ from: "child" });
             });
         });
+
+        // The parent's child-event routing must identify a BehavioralFsm
+        // child's client by event name, not by payload shape. A custom payload
+        // that carries its own `client` key (a seat holder's name here) is
+        // opaque data, and treating it as the parent's client silently drops
+        // the event (#183 review).
+        describe("when a mounted Fsm child emits a custom payload with its own `client` key", () => {
+            let parent: any, client: ChildClient;
+            let namedPayload: unknown;
+            let wildcardPayload: unknown;
+
+            beforeEach(() => {
+                const child = createFsm({
+                    id: "seating-child",
+                    initialState: "open",
+                    context: { seated: 0 },
+                    states: {
+                        open: {
+                            seat({ ctx, emit }) {
+                                ctx.seated++;
+                                emit("seatAssigned", { client: "Cal Zone", seat: ctx.seated });
+                            },
+                        },
+                    },
+                });
+                parent = createBehavioralFsm({
+                    id: "seating-parent",
+                    initialState: "active",
+                    states: {
+                        active: {
+                            _child: child,
+                        },
+                    },
+                });
+                client = {};
+                parent.handle(client, "noop" as any); // init
+                parent.on("seatAssigned", (data: unknown) => {
+                    namedPayload = data;
+                });
+                parent.on("*", (evtName: string, data: unknown) => {
+                    if (evtName === "seatAssigned") {
+                        wildcardPayload = data;
+                    }
+                });
+                parent.handle(client, "seat");
+            });
+
+            it("should relay the payload to the parent's named subscriber with `client` intact", () => {
+                expect(namedPayload).toEqual({ client: "Cal Zone", seat: 1 });
+            });
+
+            it("should relay the payload to the parent's wildcard subscriber with `client` intact", () => {
+                expect(wildcardPayload).toEqual({ client: "Cal Zone", seat: 1 });
+            });
+        });
+
+        describe("when a mounted BehavioralFsm child emits a custom payload whose `client` key is not the client object", () => {
+            let parent: any, client: ChildClient;
+            let namedPayload: unknown;
+
+            beforeEach(() => {
+                const child = createBehavioralFsm({
+                    id: "seating-child",
+                    initialState: "open",
+                    states: {
+                        open: {
+                            seat({ emit }: any) {
+                                emit("seatAssigned", { client: "Cal Zone", seat: 1 });
+                            },
+                        },
+                    },
+                });
+                parent = createBehavioralFsm({
+                    id: "seating-parent",
+                    initialState: "active",
+                    states: {
+                        active: {
+                            _child: child,
+                        },
+                    },
+                });
+                client = {};
+                parent.handle(client, "noop" as any); // init
+                parent.on("seatAssigned", (data: unknown) => {
+                    namedPayload = data;
+                });
+                parent.handle(client, "seat");
+            });
+
+            it("should relay the payload to the parent with `client` intact", () => {
+                expect(namedPayload).toEqual({ client: "Cal Zone", seat: 1 });
+            });
+        });
     });
 
     // =========================================================================
