@@ -1,6 +1,6 @@
 {
     "name": "@machina-examples/connectivity",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "private": true,
     "description": "Network Connectivity Monitor — machina.js v6 example",
     "scripts": {

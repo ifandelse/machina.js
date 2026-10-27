@@ -1,6 +1,6 @@
 {
     "name": "@machina-examples/shopping-cart",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "private": true,
     "description": "Shopping Cart — machina.js v6 defer() showcase",
     "scripts": {

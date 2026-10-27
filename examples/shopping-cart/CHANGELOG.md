@@ -1,5 +1,14 @@
 # @machina-examples/shopping-cart
 
+## 0.0.10
+
+### Patch Changes
+
+- Updated dependencies [11620d4]
+- Updated dependencies [11620d4]
+- Updated dependencies [e8381ec]
+    - machina@8.2.0
+
 ## 0.0.9
 
 ### Patch Changes

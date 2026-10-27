@@ -1,5 +1,18 @@
 # machina
 
+## 8.2.0
+
+### Minor Changes
+
+- 11620d4: `on()` accepts custom event names (#183). On both `Fsm` and `BehavioralFsm`, the `on(eventName, callback)` overload is keyed by the built-in event map intersected with a wide map. `fsm.on("checkCountUpdated", cb)` compiles without the `"*"` wildcard and without a cast on the event name. A built-in name keeps its narrowed payload. A custom name's payload is `unknown`. The wildcard overload is unchanged and now sits first in the overload list, so `on("*", (eventName, data) => ...)` resolves as before. The new `EventMap` type is exported. The change is type-only. The emitter already delivered custom events by name at runtime.
+- e8381ec: Add typed custom events (#183). A vocabulary bag in the curried factories' existing map slot declares an event map alongside, or instead of, the input map: `createFsm<{ events: MyEvents }>()({...})`, `createFsm<{ inputs: MyInputs; events: MyEvents }>()({...})`, and `createBehavioralFsm<TClient, { events: MyEvents }>()({...})`. A bare input map in that slot keeps its 8.0 meaning. The slot tells the two apart by their values, so an input map with an input named `inputs` is still an input map. A malformed bag reports TS2344 on the type argument, the same as a malformed input map. That covers a misspelled member beside a valid one and an `events` member that reuses one of the seven built-in names, since the engine owns those payloads.
+
+    Under an event map, `emit()` in handlers, in `onDispose`, and on the instance is keyed by the declared names and checks each payload. A payload is optional only when its declared type admits `undefined`. `on()` accepts the built-in names plus the declared names with typed payloads, and an undeclared name is a compile error on both. A `BehavioralFsm` custom payload is exactly the declared type, with no `client` field added. `Fsm`, `BehavioralFsm`, `FsmConfig`, `HandlerArgs`, `HandlerFn`, and `HandlerDef` gain a trailing `TEvents` generic that defaults to the wide map, so existing annotations keep resolving. The new exports are `EventMapLike`, `EmitArgs`, `EventMapOfInstance`, `VocabularyLike`, `VocabularyInputs`, and `VocabularyEvents`. The map is type-only, and runtime behavior is unchanged.
+
+### Patch Changes
+
+- 11620d4: A custom event's payload now keeps its own `client` key at both relay points. The `Fsm` wrapper removed `client` from any object payload that had one, which was meant for the seven built-in payloads and also hit custom events such as `emit("seatAssigned", { client: "acme", seat: 3 })`, whose subscribers received `{ seat: 3 }`. The parent's child-event routing read the same key as the parent's client, so a mounted child's custom event with its own `client` key was dropped before it reached parent subscribers. Both sites are now keyed by the built-in event names. Built-in payloads on an `Fsm` still arrive without `client`, and a `BehavioralFsm` child's built-in events are still filtered by client.
+
 ## 8.1.0
 
 ### Minor Changes

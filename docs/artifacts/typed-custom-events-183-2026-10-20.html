@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Typed Custom Events</title>
+<meta name="description" content="Re-evaluation of machina.js issue #183 against 8.1.0: is it still open, and what is the least intrusive way to type custom events on both emit() and on().">
+<style>
+  /* Layout: report with a verdict strip up top, tabbed code, a decision panel that exports, evidence folded at the bottom. */
+  :root {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --surface-2: #f1f3f5;
+    --text: #1f2328;
+    --muted: #59636e;
+    --border: #d9dee3;
+    --accent: #0b6e4f;
+    --accent-soft: #d8f0e6;
+    --warn: #b4530a;
+    --warn-soft: #fbe9d7;
+    --danger: #b42318;
+    --danger-soft: #fde8e6;
+    --code-bg: #f1f3f5;
+    --diff-add: #d8f0e6;
+    --diff-del: #fde8e6;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 8px rgba(0,0,0,.04);
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "SF Mono", "Fira Code", "Cascadia Code", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1a2e; --surface: #22223a; --surface-2: #2a2a44; --text: #e6e6f0; --muted: #a2a2bb;
+      --border: #3a3a58; --accent: #5fd3a8; --accent-soft: #1f3d33; --warn: #f0a35e; --warn-soft: #3f2a16;
+      --danger: #ff8a80; --danger-soft: #42201e; --code-bg: #15152a; --diff-add: #1f3d33; --diff-del: #42201e;
+      --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1a2e; --surface: #22223a; --surface-2: #2a2a44; --text: #e6e6f0; --muted: #a2a2bb;
+    --border: #3a3a58; --accent: #5fd3a8; --accent-soft: #1f3d33; --warn: #f0a35e; --warn-soft: #3f2a16;
+    --danger: #ff8a80; --danger-soft: #42201e; --code-bg: #15152a; --diff-add: #1f3d33; --diff-del: #42201e;
+    --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 var(--font-body);
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 20px; }
+  code, pre, .mono { font-family: var(--font-mono); font-size: .92em; }
+  code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow-x: auto; line-height: 1.45; margin: 0; }
+  pre code { background: none; padding: 0; font-size: 13.5px; }
+  a { color: var(--accent); }
+  h1, h2, h3 { line-height: 1.2; text-wrap: balance; margin: 0; }
+  h1 { font-size: 30px; letter-spacing: -.01em; }
+  h2 { font-size: 21px; margin-block: 0 12px; }
+  h3 { font-size: 16px; margin-block: 0 8px; }
+  p { margin: 0 0 12px; max-width: 72ch; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
+  section { margin-top: 40px; }
+  .muted { color: var(--muted); }
+
+  /* Verdict strip */
+  .verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 22px; }
+  .verdict { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow); min-width: 0; }
+  .verdict .q { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .verdict .a { font-size: 20px; font-weight: 650; margin: 4px 0 6px; }
+  .verdict .a.yes { color: var(--danger); }
+  .verdict .a.ok { color: var(--accent); }
+  .verdict .a.warn { color: var(--warn); }
+  .verdict p { font-size: 14px; margin: 0; }
+
+  /* Pills */
+  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; }
+  .pill.ok { background: var(--accent-soft); color: var(--accent); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.bad { background: var(--danger-soft); color: var(--danger); }
+  .pill.neutral { background: var(--surface-2); color: var(--muted); border-color: var(--border); }
+
+  /* Tables */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface-2); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td.k { white-space: nowrap; font-weight: 600; }
+
+  /* Three-surfaces diagram */
+  .surfaces { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .surface { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+  .surface.narrow { border-color: var(--danger); }
+  .surface h3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .surface pre { margin-top: 8px; }
+  .surface .where { font-size: 13px; color: var(--muted); }
+
+  /* Layers */
+  .layers { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .layer { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 10px; padding: 18px 20px; box-shadow: var(--shadow); min-width: 0; }
+  .layer h3 { font-size: 18px; }
+  .layer .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+
+  /* Tabs */
+  .tabs { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  .tablist { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  .tablist button {
+    font: inherit; font-size: 14px; background: none; border: 0; border-right: 1px solid var(--border); padding: 10px 14px; cursor: pointer; color: var(--muted);
+  }
+  .tablist button[aria-selected="true"] { color: var(--text); background: var(--surface); font-weight: 600; }
+  .tablist button:hover { color: var(--text); }
+  .tablist button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .tabpanel { padding: 14px; }
+  .tabpanel[hidden] { display: none; }
+  .tabpanel pre { border: 0; border-radius: 6px; }
+  .tabpanel .note { font-size: 14px; margin: 10px 0 0; color: var(--muted); }
+  .add { background: var(--diff-add); display: inline-block; width: 100%; }
+  .del { background: var(--diff-del); display: inline-block; width: 100%; text-decoration: line-through; opacity: .85; }
+  .cm { color: var(--muted); }
+
+  /* Decision panel */
+  .decisions { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; box-shadow: var(--shadow); }
+  fieldset { border: 0; padding: 0; margin: 0 0 18px; }
+  legend { font-weight: 650; margin-bottom: 6px; padding: 0; }
+  .choice { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; cursor: pointer; background: var(--surface); }
+  .choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .choice input { margin-top: 4px; }
+  .choice .lbl { font-weight: 600; }
+  .choice .why { font-size: 14px; color: var(--muted); display: block; }
+  .choice:has(input:focus-visible) { outline: 2px solid var(--accent); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .btn { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+  .btn.secondary { background: var(--surface); color: var(--accent); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn:hover { filter: brightness(1.05); }
+  .copied { font-size: 14px; color: var(--accent); min-width: 70px; }
+  textarea#prompt-out { width: 100%; min-height: 160px; font: 13.5px/1.45 var(--font-mono); background: var(--code-bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 10px; resize: vertical; }
+
+  details { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 0 16px; margin-bottom: 10px; }
+  details summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
+  details[open] summary { border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+  details .body { padding-bottom: 14px; }
+  .callout { border-left: 4px solid var(--warn); background: var(--warn-soft); padding: 12px 14px; border-radius: 8px; margin: 12px 0; }
+  .callout.fire { border-color: var(--danger); background: var(--danger-soft); }
+  .callout p:last-child { margin-bottom: 0; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .two > * { min-width: 0; }
+
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  @media print {
+    :root { --bg: #fff; --surface: #fff; --surface-2: #f4f4f4; --text: #000; --muted: #444; --border: #bbb; --code-bg: #f4f4f4; }
+    .actions, textarea#prompt-out, .tablist { display: none !important; }
+    .tabpanel[hidden] { display: block !important; }
+    .tabpanel::before { content: attr(data-label); display: block; font-weight: 700; margin-bottom: 6px; }
+    details { page-break-inside: avoid; }
+    details:not([open]) > *:not(summary) { display: block; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">machina.js &middot; issue <a href="https://github.com/ifandelse/machina.js/issues/183">#183</a> &middot; evaluated against machina 8.1.0, TypeScript 5.9.3 &middot; 2026-10-20</div>
+  <h1>Typed Custom Events</h1>
+  <p class="muted" style="margin-top:8px">You can <code>emit()</code> a custom event, but you can't <code>on()</code> it. Filed July 21 against 6.x. The repo has had 76 commits and four releases since. Here is where it stands and what to do about it.</p>
+
+  <div class="verdicts">
+    <div class="verdict">
+      <div class="q">Still an issue?</div>
+      <div class="a yes">Yes, unchanged</div>
+      <p>Same <code>TS2769</code> on both <code>createFsm</code> and <code>createBehavioralFsm</code>. Nothing since July touched <code>on()</code>. The events guide now documents the wildcard-and-cast workaround as the official path.</p>
+    </div>
+    <div class="verdict">
+      <div class="q">A less intrusive fix?</div>
+      <div class="a ok">Yes: two layers</div>
+      <p>Layer 1 widens <code>on()</code>, adds nothing to the config or the factories, and closes the complaint for everyone. Layer 2 adds an opt-in event map that types <em>both</em> halves. One decision is yours: where the map gets declared.</p>
+    </div>
+    <div class="verdict">
+      <div class="q">Found during review</div>
+      <div class="a warn">🔥 Relay strips <code>client</code></div>
+      <p>An <code>Fsm</code> removes any <code>client</code> key from <em>custom</em> payloads, not just built-ins. Typed events would make that lie visible, so it needs a fix first.</p>
+    </div>
+  </div>
+</header>
+
+<section id="changed">
+  <h2>What changed since July that matters here</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Release</th><th>Change</th><th>Relevance to #183</th></tr></thead>
+      <tbody>
+        <tr><td class="k">7.0.0</td><td>Inference split (#188, #189). <code>bubbles</code> declaration, type-only, engine never reads it.</td><td>Precedent for a config-level declaration that only feeds types.</td></tr>
+        <tr><td class="k">8.0.0</td><td>Curried factories: <code>createFsm&lt;TInputs&gt;()</code> and <code>createBehavioralFsm&lt;TClient, TInputs&gt;()</code>. Input payload map is type-only.</td><td>The "natural home" the issue predicted now exists. Class generics are now five: <code>&lt;TCtx, TStateNames, TInputNames, TBubbles, TInputs&gt;</code>.</td></tr>
+        <tr><td class="k">8.1.0</td><td><code>onDispose({ ctx, emit })</code> hook.</td><td>A third <code>emit</code> site (handler args, <code>onDispose</code> args, public <code>fsm.emit()</code>). All three stay <code>(string, unknown)</code>.</td></tr>
+        <tr><td class="k">machina-react 0.1.0</td><td>Structural <code>FsmLike</code> / <code>BehavioralFsmLike</code> interfaces with <code>on(eventName: string, cb: (payload: unknown) =&gt; void)</code>.</td><td>The adapter already declares the fallback overload the issue called "the uglier option". Core refuses it. See below.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="surfaces">
+  <h2>Three surfaces, two opinions</h2>
+  <p>The private emitter and the React adapter already accept any string. Only the public <code>on()</code> overloads on the two classes refuse. Layer 1 is the public surface agreeing with the other two.</p>
+  <div class="surfaces">
+    <div class="surface">
+      <h3>Private emitter <span class="pill ok">wide</span></h3>
+      <div class="where mono">packages/machina/src/fsm.ts:70</div>
+      <pre><code>new Emitter&lt;FsmEventMap&lt;S&gt; &amp; Record&lt;string, unknown&gt;&gt;()</code></pre>
+      <p class="where">Already keyed by <code>string</code> with built-ins narrowed. The public <code>on()</code> overload hides this.</p>
+    </div>
+    <div class="surface narrow">
+      <h3>Public <code>on()</code> <span class="pill bad">built-ins only</span></h3>
+      <div class="where mono">fsm.ts:188 &middot; behavioral-fsm.ts:702</div>
+      <pre><code>on&lt;K extends keyof FsmEventMap&lt;S&gt; &amp; string&gt;(...)
+on(eventName: "*", ...)</code></pre>
+      <p class="where">Only the built-in names and the wildcard. <code>on("say")</code> fails here.</p>
+    </div>
+    <div class="surface">
+      <h3>machina-react <code>FsmLike</code> <span class="pill ok">wide</span></h3>
+      <div class="where mono">packages/machina-react/src/types.ts:43</div>
+      <pre><code>on(eventName: string,
+   callback: (payload: unknown) =&gt; void)</code></pre>
+      <p class="where">The adapter's structural contract already has the string fallback.</p>
+    </div>
+  </div>
+</section>
+
+<section id="proposal">
+  <h2>Proposal</h2>
+  <div class="layers">
+
+    <article class="layer">
+      <div class="meta"><span class="pill ok">Layer 1</span><span class="pill neutral">ship regardless</span><span class="pill neutral">minor bump</span><span class="pill neutral">type-only</span></div>
+      <h3>Widen <code>on()</code> so any string subscribes, with <code>unknown</code> for undeclared names</h3>
+      <p>Key the <code>on&lt;K&gt;</code> overload by <code>keyof (FsmEventMap&lt;S&gt; &amp; Record&lt;string, unknown&gt;)</code>. Built-in names keep their narrowed payloads because the intersection resolves them first. Any other string resolves to <code>unknown</code>. Declare the <code>"*"</code> overload <em>before</em> the keyed overload so <code>"*"</code> never falls into the index signature.</p>
+      <ul>
+        <li>It does not touch the class generics or the config type. The change is the <code>on()</code> overloads in <code>fsm.ts</code> and the same edit in <code>behavioral-fsm.ts</code>.</li>
+        <li>Closes the issue's literal complaint for JS users, the untyped path, and anyone who never declares a map.</li>
+        <li>Strictly removes a false error. No existing call becomes invalid.</li>
+      </ul>
+    </article>
+
+    <article class="layer">
+      <div class="meta"><span class="pill ok">Layer 2</span><span class="pill neutral">opt-in</span><span class="pill neutral">minor bump</span><span class="pill neutral">type-only</span></div>
+      <h3>An event map that types <code>emit</code> in handlers and <code>on</code> on the instance</h3>
+      <p>The contract is the input payload map's. The engine never reads the type. You declare it once, and the compiler checks <code>emit</code> and <code>on</code> against it. The pieces:</p>
+      <ul>
+        <li><code>EventMap = Record&lt;string, unknown&gt;</code> and <code>EventMapLike&lt;T&gt;</code>, mirroring <code>InputMap</code> / <code>InputMapLike</code> for the same reason (a named interface has no index signature).</li>
+        <li>Sixth class generic on <code>Fsm</code> and <code>BehavioralFsm</code>: <code>TEvents extends EventMapLike&lt;TEvents&gt; = EventMap</code>. Default reproduces Layer 1 exactly.</li>
+        <li><code>HandlerArgs&lt;TCtx, TStateNames, TEvents = EventMap&gt;</code>: <code>emit&lt;K extends keyof TEvents &amp; string&gt;(name: K, ...data: EmitArgs&lt;TEvents[K]&gt;)</code>. Under the wide default it degenerates to today's <code>emit(name: string, data?: unknown)</code>. Payload is optional only when the declared type admits <code>undefined</code>.</li>
+        <li><code>on()</code> keyed by <code>FsmEventMap&lt;S&gt; &amp; TEvents</code> (or <code>BehavioralFsmEventMap&lt;C, S&gt; &amp; TEvents</code>). Built-in names win on collision.</li>
+        <li><code>EventMapOfInstance&lt;TFsm&gt;</code> extractor, so machina-react's <code>useFsmEvent</code> can offer custom names in a follow-up.</li>
+      </ul>
+      <p>Compared with Layer 1, <code>emit("sya")</code> becomes a compile error. A payload that does not match the declared type becomes a compile error. Subscribers get the declared type without a cast. Every assertion held in the spike (see Evidence).</p>
+    </article>
+  </div>
+
+  <h3 style="margin-top:22px">Code, four ways</h3>
+  <div class="tabs" id="code-tabs">
+    <div class="tablist" role="tablist">
+      <button role="tab" aria-selected="true" aria-controls="tab-today" id="t-today">Today (8.1.0)</button>
+      <button role="tab" aria-selected="false" aria-controls="tab-l1" id="t-l1">Layer 1</button>
+      <button role="tab" aria-selected="false" aria-controls="tab-l2a" id="t-l2a">Layer 2 · curried slot</button>
+      <button role="tab" aria-selected="false" aria-controls="tab-l2c" id="t-l2c">Layer 2 · vocabulary bag</button>
+      <button role="tab" aria-selected="false" aria-controls="tab-l2b" id="t-l2b">Layer 2 · config property</button>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="tab-l2c" data-label="Layer 2, vocabulary bag" aria-labelledby="t-l2c" hidden>
+<pre><code><span class="cm">// The existing slot accepts EITHER an input map (8.0 form, unchanged)</span>
+<span class="cm">// OR a bag with named members. No ladder, no placeholder.</span>
+const a = createFsm&lt;ConnectivityInputs&gt;()({ ... });                       <span class="cm">// 8.0, untouched</span>
+const b = createFsm&lt;{ events: ConnectivityEvents }&gt;()({ ... });            <span class="cm">// events only</span>
+const c = createFsm&lt;{ inputs: ConnectivityInputs; events: ConnectivityEvents }&gt;()({ ... });
+
+<span class="cm">// Behavioral: TClient stays first because it is required information,</span>
+<span class="cm">// not a placeholder. Everything after it is one named bag.</span>
+const conn = createBehavioralFsm&lt;Connection, { events: ConnectionEvents }&gt;()({ ... });
+
+<span class="cm">// How the slot tells them apart (verified in the spike):</span>
+<span class="cm">// an input map's values are all tuples; a bag's members are object maps.</span>
+type IsInputMap&lt;T&gt; = T extends InputMapLike&lt;T&gt; ? true : false;
+type InputsOf&lt;T&gt;  = IsInputMap&lt;T&gt; extends true ? T        : T extends { inputs: infer I } ? I : InputMap;
+type EventsOf&lt;T&gt;  = IsInputMap&lt;T&gt; extends true ? EventMap : T extends { events: infer E } ? E : EventMap;
+
+<span class="cm">// Edge: an input map with an input literally named `inputs` (tuple payload)</span>
+<span class="cm">// is still an input map. The discriminator is the value type, not the key.</span>
+type Weird = { inputs: [n: number]; events: [] };
+createFsm&lt;Weird&gt;()   <span class="cm">// InputsOf = Weird, EventsOf = EventMap</span></code></pre>
+      <p class="note">The library keeps one declaration convention and the 8.0 docs stay correct. The class generics are unchanged. <code>typeof createBehavioralFsm&lt;Client, X&gt;</code> keeps binding X to the same position, which is the exact break that made 8.0 a major. The slot's constraint becomes a union. A malformed bag then reports <code>TS2344</code> on the type argument, the same error a malformed input map reports today.</p>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="tab-today" data-label="Today (8.1.0)" aria-labelledby="t-today">
+<pre><code><span class="cm">// examples/connectivity/src/main.ts, as shipped today</span>
+const wildcardSub = fsm.on("*", (eventName: string, data: unknown) =&gt; {
+    if (eventName === "checkCountUpdated") {
+        const { checkCount } = data as { checkCount: number };
+        renderCheckCount(checkCount, MAX_CHECKS);
+    }
+});
+
+<span class="cm">// What the user wanted to write:</span>
+fsm.on("checkCountUpdated", (data) =&gt; { /* ... */ });
+<span class="cm">// error TS2769: Argument of type '"checkCountUpdated"' is not assignable to</span>
+<span class="cm">//   parameter of type '"transitioning" | "transitioned" | ... | "deferred"'.</span></code></pre>
+      <p class="note">Every subscriber re-does the dispatch the emitter already did, then casts. The events guide documents this as the way to do it.</p>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="tab-l1" data-label="Layer 1" aria-labelledby="t-l1" hidden>
+<pre><code><span class="cm">// fsm.ts (BehavioralFsm gets the same edit with its own map)</span>
+<span class="add">on(eventName: "*", callback: (eventName: string, data: unknown) =&gt; void): Subscription;</span>
+<span class="add">on&lt;K extends keyof (FsmEventMap&lt;TStateNames&gt; &amp; EventMap) &amp; string&gt;(</span>
+<span class="add">    eventName: K,</span>
+<span class="add">    callback: (data: (FsmEventMap&lt;TStateNames&gt; &amp; EventMap)[K]) =&gt; void</span>
+<span class="add">): Subscription;</span>
+<span class="del">on&lt;K extends keyof FsmEventMap&lt;TStateNames&gt; &amp; string&gt;(</span>
+<span class="del">    eventName: K, callback: (data: FsmEventMap&lt;TStateNames&gt;[K]) =&gt; void</span>
+<span class="del">): Subscription;</span>
+<span class="del">on(eventName: "*", callback: (eventName: string, data: unknown) =&gt; void): Subscription;</span>
+
+<span class="cm">// Caller</span>
+fsm.on("transitioned", ({ fromState }) =&gt; { ... });   <span class="cm">// fromState: "online" | "offline" | "checking"</span>
+fsm.on("checkCountUpdated", (data) =&gt; { ... });        <span class="cm">// data: unknown, compiles</span>
+fsm.on("*", (name, data) =&gt; { ... });                   <span class="cm">// unchanged</span></code></pre>
+      <p class="note">The <code>"*"</code> overload moves first. With the index signature in play, <code>"*"</code> would otherwise match the keyed overload for a one-argument callback.</p>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="tab-l2a" data-label="Layer 2, curried slot" aria-labelledby="t-l2a" hidden>
+<pre><code>type ConnectivityEvents = {
+    checkCountUpdated: { checkCount: number };
+    maxChecksReached: undefined;              <span class="cm">// no payload</span>
+};
+
+<span class="cm">// Second curried slot, after the input map. Same shape as #195.</span>
+const fsm = createFsm&lt;ConnectivityInputs, ConnectivityEvents&gt;()({
+    id: "connectivity",
+    initialState: "online",
+    context: { checkCount: 0 },
+    states: {
+        checking: {
+            _onEnter({ ctx, emit }) {
+                emit("checkCountUpdated", { checkCount: ctx.checkCount }); <span class="cm">// checked</span>
+                emit("maxChecksReached");                                   <span class="cm">// payload optional</span>
+                emit("checkCountUpdate", {});   <span class="cm">// error: not in the map</span>
+            },
+        },
+    },
+});
+
+fsm.on("checkCountUpdated", ({ checkCount }) =&gt; renderCheckCount(checkCount)); <span class="cm">// typed</span>
+fsm.on("transitioned", ({ toState }) =&gt; ...);                                  <span class="cm">// still typed</span>
+
+<span class="cm">// Events only, no input map. Type arguments are positional, so the</span>
+<span class="cm">// input slot needs a placeholder to reach the events slot:</span>
+const light = createFsm&lt;InputMap, TrafficLightEvents&gt;()({ ... });
+
+<span class="cm">// createBehavioralFsm is worse. TClient is required (it is why the curry</span>
+<span class="cm">// exists), and the input placeholder sits between it and the events:</span>
+const conn  = createBehavioralFsm&lt;Connection, InputMap, ConnectionEvents&gt;()({ ... });
+<span class="cm">//                                 ^ required    ^ placeholder  ^ what you wanted</span></code></pre>
+      <p class="note">Consistent with the 8.0 rule that currying is forced, not styled. The cost is the positional ladder. TypeScript has no named type arguments and no way to skip one, so every map before the one you want becomes a placeholder. On <code>createBehavioralFsm</code> that is two arguments of ceremony for one map.</p>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="tab-l2b" data-label="Layer 2, config property" aria-labelledby="t-l2b" hidden>
+<pre><code><span class="cm">// Inferred from a config property, like `context` infers TCtx.</span>
+<span class="cm">// Works on the direct form AND the curried form, no ladder.</span>
+const fsm = createFsm({
+    id: "connectivity",
+    initialState: "online",
+    context: { checkCount: 0 },
+    events: {} as ConnectivityEvents,      <span class="cm">// phantom value; engine never reads it</span>
+    states: { ... },                        <span class="cm">// emit typed inside handlers, same as above</span>
+});
+
+fsm.on("checkCountUpdated", ({ checkCount }) =&gt; ...);  <span class="cm">// typed</span>
+
+<span class="cm">// Optional sugar to hide the cast:</span>
+events: eventMap&lt;ConnectivityEvents&gt;(),   <span class="cm">// returns {} as T</span></code></pre>
+      <p class="note">XState v5 does exactly this with <code>setup({ types: {} as {...} })</code>. XState has used it in production since v5, and it reads well. The cost is a runtime key whose value is a lie, and a second way to declare a type-only map next to the curried one you just shipped.</p>
+    </div>
+  </div>
+</section>
+
+<section id="decide">
+  <h2>Decisions that are yours</h2>
+  <div class="decisions">
+    <fieldset>
+      <legend>1. Where does the event map get declared?</legend>
+      <label class="choice"><input type="radio" name="d1" value="bag" id="d1-bag" checked>
+        <span><span class="lbl">Vocabulary bag in the existing slot: <code>createFsm&lt;{ inputs?; events? }&gt;()</code> (recommended)</span>
+        <span class="why">Keeps one declaration mechanism, keeps the 8.0 form and docs intact, and has no placeholder on either factory. <code>createBehavioralFsm&lt;Connection, { events: E }&gt;()</code> is the whole events-only form. Spike-verified, including the input-named-<code>inputs</code> edge.</span></span>
+      </label>
+      <label class="choice"><input type="radio" name="d1" value="config-prop" id="d1-prop">
+        <span><span class="lbl">Config property: <code>events: {} as MyEvents</code></span>
+        <span class="why">No ladder, works on the direct form with no curry at all, XState-proven. Adds a phantom runtime key and a second declaration style beside the #195 slot, and invites the same question for <code>inputs</code>.</span></span>
+      </label>
+      <label class="choice"><input type="radio" name="d1" value="curried" id="d1-curried">
+        <span><span class="lbl">Positional slot: <code>createFsm&lt;TInputs, TEvents&gt;()</code></span>
+        <span class="why">The issue's original shape. Events-only users write <code>InputMap</code> as a placeholder, and on <code>createBehavioralFsm</code> the placeholder sits between the required client and the events. The ladder grows with every future map.</span></span>
+      </label>
+      <label class="choice"><input type="radio" name="d1" value="layer1-only" id="d1-none">
+        <span><span class="lbl">Layer 1 only for now</span>
+        <span class="why">Widen <code>on()</code> now and leave typed maps for a later issue. The spike shows Layer 2 adds on cleanly later, so this closes no door.</span></span>
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>2. Should a <code>BehavioralFsm</code> stamp <code>client</code> onto custom event payloads?</legend>
+      <label class="choice"><input type="radio" name="d2" value="no" id="d2-no" checked>
+        <span><span class="lbl">No. Typed payload is exactly the declared type (recommended)</span>
+        <span class="why">Today's runtime behavior, documented in the events guide. A subscriber that needs the client puts it in the payload. Keeps this change type-only.</span></span>
+      </label>
+      <label class="choice"><input type="radio" name="d2" value="yes" id="d2-yes">
+        <span><span class="lbl">Yes. Intersect <code>{ client }</code> like built-ins</span>
+        <span class="why">Symmetric with <code>BehavioralFsmEventMap</code>, but a runtime change: the engine must spread <code>client</code> into every custom emit, which breaks any non-object payload. Separate issue if wanted.</span></span>
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>3. The <code>Fsm</code> relay strips <code>client</code> from custom payloads. What now?</legend>
+      <label class="choice"><input type="radio" name="d3" value="builtins-only" id="d3-fix" checked>
+        <span><span class="lbl">Strip only for the seven built-in names (recommended)</span>
+        <span class="why">Three-line runtime fix in <code>fsm.ts</code>'s relay: check the name against a <code>Set</code> of built-ins instead of sniffing for a <code>client</code> key. Goes in the Layer 1 PR as a bug fix.</span></span>
+      </label>
+      <label class="choice"><input type="radio" name="d3" value="document" id="d3-doc">
+        <span><span class="lbl">Leave it, document it</span>
+        <span class="why">Cheaper now, but a declared <code>{ client: string }</code> payload would then be typed one way and delivered another.</span></span>
+      </label>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn" id="copy-prompt" type="button">Copy as prompt</button>
+      <button class="btn secondary" id="copy-json" type="button">Copy as JSON</button>
+      <span class="copied" id="copied" aria-live="polite"></span>
+    </div>
+    <textarea id="prompt-out" readonly aria-label="Decision summary"></textarea>
+  </div>
+</section>
+
+<section id="rejected">
+  <h2>Considered and set aside</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Option</th><th>Why not</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Infer the map from <code>emit()</code> call sites</td><td>TypeScript does not infer type parameters from calls inside a function body. Handler bodies are context-sensitive and checked after inference settles, so there is nothing to infer from.</td></tr>
+        <tr><td class="k">Per-call generic: <code>fsm.on&lt;{ line: string }&gt;("say", cb)</code></td><td>Trust-me typing. The subscriber asserts a type nothing verified. <code>emit</code> stays untyped, so the typo class the issue cares about survives.</td></tr>
+        <tr><td class="k">Typed view helper: <code>typedEvents&lt;MyEvents&gt;(fsm).on(...)</code></td><td>It leaves the classes and factories untouched, but it types only the subscribe half, the mirror image of today's problem.</td></tr>
+        <tr><td class="k">Builder chain: <code>createFsm().inputs&lt;I&gt;().events&lt;E&gt;()(cfg)</code></td><td>Named, no ladder, but a function-with-properties return type is harder to read in hover text and in errors than one slot, and it is a third calling convention for the same factory.</td></tr>
+        <tr><td class="k">Issue's fallback: add <code>on(eventName: string, cb: (data: unknown) =&gt; void)</code></td><td>Equivalent to Layer 1 in effect, but a third overload on top of two. Keying the existing overload by the wide map is the same result in fewer signatures, and it is what the private emitter already is.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="impact">
+  <h2>Impact by layer</h2>
+  <div class="two">
+    <div>
+      <h3>Layer 1 + relay fix</h3>
+      <ul>
+        <li><code>packages/machina/src/fsm.ts</code>: reorder and widen the <code>on()</code> overloads. The relay strips <code>client</code> only for built-in names.</li>
+        <li><code>packages/machina/src/behavioral-fsm.ts</code>: same <code>on()</code> edit.</li>
+        <li><code>types.ts</code>: export <code>EventMap</code>.</li>
+        <li><code>instance-types.test.ts</code>: pins that prove built-in payloads stay narrowed once <code>on()</code> accepts any string, that a custom name compiles with <code>unknown</code>, and that the wildcard signature is unchanged.</li>
+        <li><code>fsm.test.ts</code>: relay test for a custom payload with a <code>client</code> key.</li>
+        <li>Docs <code>guide/events.mdx</code>: rewrite "Custom events" and "TypeScript". Examples: connectivity and shopping-cart drop the wildcard filter.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Layer 2 adds</h3>
+      <ul>
+        <li><code>types.ts</code>: <code>EventMapLike</code>, <code>EmitArgs</code>, <code>EventMapOfInstance</code>; <code>HandlerArgs</code> and <code>HandlerFn</code> gain a defaulted <code>TEvents</code>. <code>FsmConfig</code> threads it to handlers and <code>onDispose</code>.</li>
+        <li>Both classes: sixth generic. Compat pins for 3-arg and 5-arg annotations must still pass (defaults make this additive).</li>
+        <li>Factories, per decision 1. Bag: widen the slot's constraint to <code>InputMapLike&lt;T&gt; | Vocab</code> and route <code>InputsOf</code> / <code>EventsOf</code> into the return type. Config property: add <code>events?: TEvents</code> to <code>FsmConfig</code>. Positional: one more defaulted type argument on each factory.</li>
+        <li><code>index.ts</code>: export the new types.</li>
+        <li>Docs <code>guide/typed-payloads.mdx</code>: a "Typed events" section beside the input map.</li>
+        <li>Follow-up PR in machina-react: <code>FsmEventName&lt;TFsm&gt;</code> unions <code>keyof EventMapOfInstance&lt;TFsm&gt;</code>.</li>
+      </ul>
+    </div>
+  </div>
+  <p style="margin-top:12px">Both layers add types only. The relay fix is the one change to engine behavior. One minor release (8.2.0) covers both. Split the work into a Layer 1 PR, which is small and uncontroversial, and a Layer 2 PR, which carries the decision.</p>
+  <div class="callout">
+    <p><strong>⚠️ One thing to verify during implementation, not design.</strong> The five <code>*OfInstance</code> extractors use positional <code>infer</code> lists. They kept working when 8.0 added the fifth generic because unlisted parameters fall to defaults. A sixth should behave the same. The pin suite is the proof, not this page.</p>
+  </div>
+</section>
+
+<section id="evidence">
+  <h2>Evidence</h2>
+  <details open>
+    <summary>Repro on 8.1.0 (both factories)</summary>
+    <div class="body">
+<pre><code>packages/machina/src/__repro183.ts(17,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(eventName: "*", callback: (eventName: string, data: unknown) =&gt; void): Subscription', gave the following error.
+    Argument of type '"say"' is not assignable to parameter of type '"*"'.
+  Overload 2 of 2, '(eventName: "transitioning" | "transitioned" | "handling" | "handled" | "nohandler" | "invalidstate" | "deferred", ...
+    Argument of type '"say"' is not assignable to parameter of type '"transitioning" | ... | "deferred"'.
+packages/machina/src/__repro183.ts(24,6): error TS2769: No overload matches this call.   <span class="cm">// createBehavioralFsm&lt;{ id: string }&gt;()</span></code></pre>
+    </div>
+  </details>
+  <details>
+    <summary>Type spike: all assertions held under strict tsc 5.9.3</summary>
+    <div class="body">
+      <p>A standalone model of the proposed <code>on()</code> / <code>emit()</code> signatures. Every positive case compiled and every <code>@ts-expect-error</code> was a real error. Summary of what it proved:</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Case</th><th>Wide map (Layer 1)</th><th>Declared map (Layer 2)</th></tr></thead>
+          <tbody>
+            <tr><td><code>on("transitioned", cb)</code> payload narrowed to state names</td><td><span class="pill ok">✅ kept</span></td><td><span class="pill ok">✅ kept</span></td></tr>
+            <tr><td><code>on("say", cb)</code> compiles</td><td><span class="pill ok">✅ data: unknown</span></td><td><span class="pill ok">✅ data: { line: string }</span></td></tr>
+            <tr><td><code>on("*", (name, data) =&gt; ...)</code></td><td><span class="pill ok">✅ unchanged</span></td><td><span class="pill ok">✅ unchanged</span></td></tr>
+            <tr><td><code>emit("anything")</code> with optional payload</td><td><span class="pill ok">✅ allowed</span></td><td><span class="pill ok">✅ only when payload admits undefined</span></td></tr>
+            <tr><td><code>on("sya", cb)</code> / <code>emit("sya", ...)</code></td><td><span class="pill neutral">allowed, unknown</span></td><td><span class="pill ok">✅ rejected</span></td></tr>
+            <tr><td><code>emit("say", { lien })</code> and <code>emit("say")</code> with required payload</td><td><span class="pill neutral">allowed</span></td><td><span class="pill ok">✅ rejected</span></td></tr>
+            <tr><td>Curried slot <code>createFsm&lt;InputMap, MyEvents&gt;()</code></td><td colspan="2"><span class="pill ok">✅ infers TEvents, states inference intact</span></td></tr>
+            <tr><td>Config property <code>events: {} as MyEvents</code></td><td colspan="2"><span class="pill ok">✅ infers TEvents; omitted property falls back to the wide map</span></td></tr>
+            <tr><td>Vocabulary bag in one slot: plain map, <code>{ events }</code>, <code>{ inputs; events }</code>, empty, and a map with an input named <code>inputs</code></td><td colspan="2"><span class="pill ok">✅ each resolves to the right inputs and events; events-only does not narrow inputs to the bag</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+  <details>
+    <summary>🔥 Fsm relay strips <code>client</code> from custom payloads</summary>
+    <div class="body">
+<pre><code><span class="cm">// fsm.ts:86, the relay from the inner BehavioralFsm to the Fsm's own emitter</span>
+this.bfsm.on("*", (eventName, data) =&gt; {
+    if (data &amp;&amp; typeof data === "object" &amp;&amp; "client" in data) {
+        const { client: _, ...payload } = data as Record&lt;string, unknown&gt;;
+        (this.emitter as any).emit(eventName, payload);   <span class="cm">// custom events take this branch too</span>
+    } else { ... }
+});
+
+<span class="cm">// Jest, run against 8.1.0:</span>
+fsm.emit("assigned", { client: "acme", seat: 3 });
+<span class="cm">// subscriber received:</span> [{"seat":3}]</code></pre>
+      <p>Built-ins are the only events the engine stamps <code>client</code> onto, so the relay should key on the event name, not on the payload's shape.</p>
+    </div>
+  </details>
+</section>
+
+</div>
+<script>
+(function () {
+  // Tabs
+  var tabs = document.querySelectorAll('#code-tabs [role="tab"]');
+  var panels = document.querySelectorAll('#code-tabs [role="tabpanel"]');
+  function select(tab) {
+    tabs.forEach(function (t) { t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+    panels.forEach(function (p) { p.hidden = p.id !== tab.getAttribute('aria-controls'); });
+    try { localStorage.setItem('typed-events-183-tab', tab.id); } catch (e) {}
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { select(t); });
+    t.addEventListener('keydown', function (e) {
+      var i = Array.prototype.indexOf.call(tabs, t);
+      if (e.key === 'ArrowRight') { tabs[(i + 1) % tabs.length].focus(); select(tabs[(i + 1) % tabs.length]); }
+      if (e.key === 'ArrowLeft') { tabs[(i - 1 + tabs.length) % tabs.length].focus(); select(tabs[(i - 1 + tabs.length) % tabs.length]); }
+    });
+  });
+  try {
+    var saved = localStorage.getItem('typed-events-183-tab');
+    var savedTab = saved && document.getElementById(saved);
+    if (savedTab) { select(savedTab); }
+  } catch (e) {}
+
+  // Decisions
+  var labels = {
+    d1: { bag: 'vocabulary bag in the existing slot: createFsm<{ inputs?; events? }>() / createBehavioralFsm<TClient, { inputs?; events? }>(), discriminated from a plain input map by value type',
+          curried: 'positional type slot createFsm<TInputs, TEvents>() / createBehavioralFsm<TClient, TInputs, TEvents>() with InputMap as the placeholder',
+          'config-prop': 'config property `events: {} as MyEvents` inferred like `context`',
+          'layer1-only': 'Layer 1 only; defer the typed map to a later issue' },
+    d2: { no: 'no; custom payload type is exactly the declared type (no runtime change)',
+          yes: 'yes; intersect { client } and have the engine spread it into custom emits (runtime change, separate issue)' },
+    d3: { 'builtins-only': 'fix: strip `client` only for the seven built-in event names',
+          document: 'leave as is and document it' }
+  };
+  function val(name) { var el = document.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : null; }
+  function state() { return { issue: 183, layer1: true, eventMapDeclaration: val('d1'), stampClientOnBehavioralCustomEvents: val('d2'), fsmRelayClientStrip: val('d3') }; }
+  function prompt() {
+    var s = state();
+    return [
+      'Implement the #183 fix for machina.js as proposed in docs/artifacts/typed-custom-events-183-2026-10-20.html.',
+      '',
+      'Decisions:',
+      '1. Layer 1 (widen on() with the wildcard overload first, built-ins stay narrowed, undeclared names resolve to unknown): yes, ship it.',
+      '2. Layer 2 event map declaration: ' + labels.d1[s.eventMapDeclaration] + '.',
+      '3. BehavioralFsm custom events carry client: ' + labels.d2[s.stampClientOnBehavioralCustomEvents] + '.',
+      '4. Fsm relay stripping client from custom payloads: ' + labels.d3[s.fsmRelayClientStrip] + '.',
+      '',
+      'Constraints: type-only except the relay fix; one minor release; two PRs (Layer 1 + relay fix, then Layer 2); pins in instance-types.test.ts for every new contract; update guide/events.mdx and the connectivity and shopping-cart examples; machina-react FsmEventName follow-up in a separate PR.'
+    ].join('\n');
+  }
+  var out = document.getElementById('prompt-out');
+  function render() { out.value = prompt(); }
+  document.querySelectorAll('.decisions input[type="radio"]').forEach(function (r) { r.addEventListener('change', render); });
+  render();
+
+  function copy(text) {
+    var flag = document.getElementById('copied');
+    function done(ok) { flag.textContent = ok ? 'Copied ✓' : 'Select and copy manually'; setTimeout(function () { flag.textContent = ''; }, 1800); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { out.value = text; out.focus(); out.select(); done(false); });
+    } else { out.value = text; out.focus(); out.select(); done(false); }
+  }
+  document.getElementById('copy-prompt').addEventListener('click', function () { render(); copy(out.value); });
+  document.getElementById('copy-json').addEventListener('click', function () { copy(JSON.stringify(state(), null, 2)); });
+})();
+</script>
+</body>
+</html>
