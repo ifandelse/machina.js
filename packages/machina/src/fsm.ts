@@ -9,11 +9,12 @@
 // =============================================================================
 
 import { Emitter, type Subscription } from "./emitter";
-import { BehavioralFsm } from "./behavioral-fsm";
+import { BehavioralFsm, BUILT_IN_EVENT_NAMES } from "./behavioral-fsm";
 import {
     MACHINA_TYPE,
     type FsmConfig,
     type FsmEventMap,
+    type EventMap,
     type InputNamesOfInstance,
     type DisposeOptions,
     type SpecialStateKeys,
@@ -67,7 +68,7 @@ export class Fsm<
     // that Emitter's Record<string, unknown> constraint needs. The mapped type
     // BehavioralFsmEventMap doesn't have this issue. Intersect with Record to
     // satisfy the constraint while preserving typed event signatures.
-    private readonly emitter = new Emitter<FsmEventMap<TStateNames> & Record<string, unknown>>();
+    private readonly emitter = new Emitter<FsmEventMap<TStateNames> & EventMap>();
     private disposed = false;
 
     constructor(config: FsmConfig<TCtx, Record<string, Record<string, unknown>>>) {
@@ -82,9 +83,16 @@ export class Fsm<
 
         // Relay events from BehavioralFsm → Fsm emitter, stripping the
         // `client` field from built-in event payloads. Custom events (from
-        // handler emit() or public emit()) pass through unchanged.
+        // handler emit() or public emit()) pass through unchanged, including
+        // a custom payload that happens to carry its own `client` key: the
+        // strip is keyed by event name, not by payload shape (#183).
         this.bfsm.on("*", (eventName: string, data: unknown) => {
-            if (data && typeof data === "object" && "client" in data) {
+            if (
+                BUILT_IN_EVENT_NAMES.has(eventName) &&
+                data &&
+                typeof data === "object" &&
+                "client" in data
+            ) {
                 const { client: _, ...payload } = data as Record<string, unknown>;
                 (this.emitter as any).emit(eventName, payload);
             } else {
@@ -179,17 +187,21 @@ export class Fsm<
     }
 
     /**
-     * Subscribe to a built-in lifecycle event or the wildcard.
+     * Subscribe to a built-in lifecycle event, a custom event, or the wildcard.
      *
-     * Named overload: typed payload, no event name in callback.
-     * Wildcard (`"*"`): receives `(eventName, data)` for every event.
+     * Named overload: the callback receives the payload only. A built-in
+     * name gets its typed payload; a custom name (anything a handler or the
+     * public `emit()` fires) gets `unknown` (#183).
+     * Wildcard (`"*"`): receives `(eventName, data)` for every event. It is
+     * listed first because the named overload's key type is `string` once
+     * the wide map is intersected in, so `"*"` would otherwise match it.
      * Returns a no-op `Subscription` when disposed.
      */
-    on<K extends keyof FsmEventMap<TStateNames> & string>(
-        eventName: K,
-        callback: (data: FsmEventMap<TStateNames>[K]) => void
-    ): Subscription;
     on(eventName: "*", callback: (eventName: string, data: unknown) => void): Subscription;
+    on<K extends keyof (FsmEventMap<TStateNames> & EventMap) & string>(
+        eventName: K,
+        callback: (data: (FsmEventMap<TStateNames> & EventMap)[K]) => void
+    ): Subscription;
     on(eventName: string, callback: (...args: any[]) => void): Subscription {
         if (this.disposed) {
             return { off() {} };

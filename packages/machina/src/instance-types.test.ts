@@ -15,6 +15,9 @@ import {
     type InputMapFromUnion,
     type InputMap,
     type InputMapOfInstance,
+    type EventMap,
+    type FsmEventMap,
+    type BehavioralFsmEventMap,
 } from "./index";
 
 type Expect<T extends true> = T;
@@ -2692,6 +2695,125 @@ describe("onDispose hook typing (#194)", () => {
 
         it("should preserve the runtime FSM behavior used for type extraction", () => {
             expect(result).toBe("init");
+        });
+    });
+});
+
+describe("#183 — custom event subscriptions", () => {
+    describe("when a single-client FSM subscribes by name", () => {
+        const light = createFsm({
+            id: "custom-events-fsm",
+            initialState: "green",
+            context: { ticks: 0 },
+            states: {
+                green: {
+                    tick({ ctx, emit }) {
+                        ctx.ticks++;
+                        emit("tickCounted", { ticks: ctx.ticks });
+                    },
+                    timeout: "yellow",
+                },
+                yellow: { timeout: "green" },
+            },
+        });
+
+        type _EventMapIsWide = Expect<Equal<EventMap, Record<string, unknown>>>;
+
+        // A custom name compiles through the named overload; its payload is unknown.
+        light.on("tickCounted", data => {
+            type _CustomPayloadIsUnknown = Expect<Equal<IsUnknown<typeof data>, true>>;
+            void data;
+        });
+
+        // Built-in names keep their narrowed payloads under the widened overload.
+        light.on("transitioned", data => {
+            type _BuiltInStaysNarrow = Expect<
+                Equal<typeof data, FsmEventMap<"green" | "yellow">["transitioned"]>
+            >;
+            type _StateNamesNotWidened = Expect<
+                Equal<string extends typeof data.toState ? true : false, false>
+            >;
+            void data;
+        });
+
+        // The wildcard resolves to its own overload, not the named one.
+        light.on("*", (eventName, data) => {
+            type _WildcardName = Expect<Equal<typeof eventName, string>>;
+            type _WildcardData = Expect<Equal<IsUnknown<typeof data>, true>>;
+            void eventName;
+            void data;
+        });
+
+        // A named subscription takes one callback parameter; the wildcard
+        // shape does not leak into it.
+        // @ts-expect-error -- a named event's callback receives the payload only
+        light.on("tickCounted", (eventName: string, data: unknown) => {
+            void eventName;
+            void data;
+        });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = light.currentState();
+        });
+
+        it("should preserve the runtime FSM behavior used for type extraction", () => {
+            expect(result).toBe("green");
+        });
+    });
+
+    describe("when a behavioral FSM subscribes by name", () => {
+        type Connection = { url: string };
+        const connectivity = createBehavioralFsm<Connection>()({
+            id: "custom-events-bfsm",
+            initialState: "offline",
+            states: {
+                offline: {
+                    connect({ emit }) {
+                        emit("dialing", { attempt: 1 });
+                        return "online";
+                    },
+                },
+                online: { disconnect: "offline" },
+            },
+        });
+
+        // A custom name compiles; its payload is unknown, with no client added.
+        connectivity.on("dialing", data => {
+            type _CustomPayloadIsUnknown = Expect<Equal<IsUnknown<typeof data>, true>>;
+            void data;
+        });
+
+        // Built-in names keep the client-bearing payload.
+        connectivity.on("transitioned", data => {
+            type _BuiltInCarriesClient = Expect<
+                Equal<
+                    typeof data,
+                    BehavioralFsmEventMap<Connection, "offline" | "online">["transitioned"]
+                >
+            >;
+            type _ClientIsTyped = Expect<Equal<typeof data.client, Connection>>;
+            void data;
+        });
+
+        connectivity.on("*", (eventName, data) => {
+            type _WildcardName = Expect<Equal<typeof eventName, string>>;
+            type _WildcardData = Expect<Equal<IsUnknown<typeof data>, true>>;
+            void eventName;
+            void data;
+        });
+
+        let result: string | undefined;
+
+        beforeEach(() => {
+            const conn: Connection = { url: "wss://hal-9000" };
+            connectivity.handle(conn, "connect");
+            result = connectivity.currentState(conn);
+        });
+
+        it("should preserve the runtime FSM behavior used for type extraction", () => {
+            expect(result).toBe("online");
         });
     });
 });

@@ -773,6 +773,25 @@ describe("BehavioralFsm", () => {
                 expect(wildcardCb).toHaveBeenCalledWith("vehicles", { status: "GREEN" });
             });
         });
+
+        describe("when a named subscriber is attached to a custom event (#183)", () => {
+            let namedCb: jest.Mock;
+            let typedFsm: BehavioralFsm<TrafficClient, "green" | "yellow" | "red", string>;
+
+            beforeEach(() => {
+                namedCb = jest.fn();
+                typedFsm = makeTrafficLightFsm();
+                typedFsm.on("vehicles", namedCb);
+                typedFsm.emit("vehicles", { status: "GREEN", client: "not a client object" });
+            });
+
+            it("should deliver the payload exactly as emitted, with no client field added or removed", () => {
+                expect(namedCb).toHaveBeenCalledWith({
+                    status: "GREEN",
+                    client: "not a client object",
+                });
+            });
+        });
     });
 
     // =========================================================================
@@ -1464,6 +1483,99 @@ describe("BehavioralFsm — hierarchical (Tasks 2-5)", () => {
 
             it("should relay child custom events through the parent emitter", () => {
                 expect(customPayload).toEqual({ from: "child" });
+            });
+        });
+
+        // The parent's child-event routing must identify a BehavioralFsm
+        // child's client by event name, not by payload shape. A custom payload
+        // that carries its own `client` key (a seat holder's name here) is
+        // opaque data, and treating it as the parent's client silently drops
+        // the event (#183 review).
+        describe("when a mounted Fsm child emits a custom payload with its own `client` key", () => {
+            let parent: any, client: ChildClient;
+            let namedPayload: unknown;
+            let wildcardPayload: unknown;
+
+            beforeEach(() => {
+                const child = createFsm({
+                    id: "seating-child",
+                    initialState: "open",
+                    context: { seated: 0 },
+                    states: {
+                        open: {
+                            seat({ ctx, emit }) {
+                                ctx.seated++;
+                                emit("seatAssigned", { client: "Cal Zone", seat: ctx.seated });
+                            },
+                        },
+                    },
+                });
+                parent = createBehavioralFsm({
+                    id: "seating-parent",
+                    initialState: "active",
+                    states: {
+                        active: {
+                            _child: child,
+                        },
+                    },
+                });
+                client = {};
+                parent.handle(client, "noop" as any); // init
+                parent.on("seatAssigned", (data: unknown) => {
+                    namedPayload = data;
+                });
+                parent.on("*", (evtName: string, data: unknown) => {
+                    if (evtName === "seatAssigned") {
+                        wildcardPayload = data;
+                    }
+                });
+                parent.handle(client, "seat");
+            });
+
+            it("should relay the payload to the parent's named subscriber with `client` intact", () => {
+                expect(namedPayload).toEqual({ client: "Cal Zone", seat: 1 });
+            });
+
+            it("should relay the payload to the parent's wildcard subscriber with `client` intact", () => {
+                expect(wildcardPayload).toEqual({ client: "Cal Zone", seat: 1 });
+            });
+        });
+
+        describe("when a mounted BehavioralFsm child emits a custom payload whose `client` key is not the client object", () => {
+            let parent: any, client: ChildClient;
+            let namedPayload: unknown;
+
+            beforeEach(() => {
+                const child = createBehavioralFsm({
+                    id: "seating-child",
+                    initialState: "open",
+                    states: {
+                        open: {
+                            seat({ emit }: any) {
+                                emit("seatAssigned", { client: "Cal Zone", seat: 1 });
+                            },
+                        },
+                    },
+                });
+                parent = createBehavioralFsm({
+                    id: "seating-parent",
+                    initialState: "active",
+                    states: {
+                        active: {
+                            _child: child,
+                        },
+                    },
+                });
+                client = {};
+                parent.handle(client, "noop" as any); // init
+                parent.on("seatAssigned", (data: unknown) => {
+                    namedPayload = data;
+                });
+                parent.handle(client, "seat");
+            });
+
+            it("should relay the payload to the parent with `client` intact", () => {
+                expect(namedPayload).toEqual({ client: "Cal Zone", seat: 1 });
             });
         });
     });
@@ -2816,7 +2928,7 @@ describe("BehavioralFsm — setupChildSubscriptions() shared-child dedup", () =>
             parent.handle(bob, "switch"); // bob init -> modeA -> switch -> modeB
 
             relayedCb = jest.fn();
-            parent.on("customEvt" as any, relayedCb);
+            parent.on("customEvt", relayedCb);
 
             // A client-less custom event — no `client` field, the same shape
             // an Fsm child's events take. The old per-declaring-state
@@ -2952,7 +3064,7 @@ describe("BehavioralFsm — setupChildSubscriptions() shared-child dedup", () =>
             parent.handle(clara, "noop" as any); // clara -> modeA too (same declaring name)
 
             relayedCb = jest.fn();
-            parent.on("customEvt" as any, relayedCb);
+            parent.on("customEvt", relayedCb);
 
             // Both alice and clara would independently satisfy isChildActiveForClient()'s
             // check for modeA — the "walk known clients, break on first match" loop

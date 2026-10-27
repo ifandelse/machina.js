@@ -22,6 +22,7 @@ export type {
     FsmConfig,
     FsmEventMap,
     BehavioralFsmEventMap,
+    EventMap,
     HandlerArgs,
     HandlerFn,
     HandlerDef,

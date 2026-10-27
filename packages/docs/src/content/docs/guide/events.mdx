@@ -43,7 +43,7 @@ connFsm.on("transitioned", ({ client, fromState, toState }) => {
 
 The field is necessary because one `BehavioralFsm` instance manages many independent clients. Without `client` in the payload, you couldn't tell whose event just fired.
 
-Custom events emitted with `emit()` pass through with the payload you supply, and machina doesn't add a `client` field to them.
+Custom events emitted with `emit()` pass through with the payload you supply, and machina doesn't add a `client` field to them. An `Fsm` removes the `client` field from the seven built-in payloads only. A custom payload with its own `client` key arrives intact.
 
 ## Wildcard subscriber
 
@@ -59,32 +59,30 @@ Wildcard listeners fire before named listeners for the same event. The ordering 
 
 ## Custom events
 
-Handlers can emit custom events via the `emit` argument on the handler args object. The engine emits built-in lifecycle events automatically, and `emit` is for user-defined events.
+Handlers can emit custom events via the `emit` argument on the handler args object. The engine emits built-in lifecycle events automatically, and `emit` is for user-defined events. Subscribe to a custom event by name, the same way you subscribe to a built-in one.
 
 ```ts
 const fsm = createFsm({
-    id: "checkout",
-    initialState: "idle",
-    context: { count: 0 },
+    id: "connectivity",
+    initialState: "checking",
+    context: { checkCount: 0 },
     states: {
-        idle: {
+        checking: {
             _onEnter({ ctx, emit }) {
-                ctx.count++;
-                emit("checkCountUpdated", { count: ctx.count });
+                ctx.checkCount++;
+                emit("checkCountUpdated", { checkCount: ctx.checkCount });
             },
         },
     },
 });
 
-fsm.on("*", (eventName, data) => {
-    if (eventName === "checkCountUpdated") {
-        const { count } = data as { count: number };
-        console.log("check count:", count);
-    }
+fsm.on("checkCountUpdated", data => {
+    const { checkCount } = data as { checkCount: number };
+    console.log("check count:", checkCount);
 });
 ```
 
-The named `on()` overloads accept the built-in event names, so you subscribe to custom events with the `"*"` wildcard. The wildcard callback receives the event name and the payload, and your code narrows the payload type.
+The payload of a custom event is `unknown` until you narrow it, because the FSM has no declaration to check it against. The `"*"` wildcard still receives custom events along with the built-in ones.
 
 ## TypeScript
 
@@ -102,4 +100,4 @@ type NarrowedPayload = FsmEventMap<"green" | "yellow" | "red">["transitioned"];
 // => { fromState: "green" | "yellow" | "red"; toState: "green" | "yellow" | "red" }
 ```
 
-Custom events emitted via `emit()` are untyped, and they flow through as `unknown` on the wildcard path. If you need typed custom events, narrow them at the subscriber.
+A custom event's payload is `unknown` on both the named and the wildcard path. Narrow it at the subscriber.
