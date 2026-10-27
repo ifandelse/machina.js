@@ -4,7 +4,7 @@ Focused finite state machine library for JavaScript and TypeScript. States in, s
 
 - **Repo**: https://github.com/ifandelse/machina.js
 - **Docs**: https://machina-js.org
-- **Version**: 7.0.1
+- **Version**: see `packages/machina/package.json` (the line here drifted; the manifest is the source of truth)
 - **License**: MIT
 
 ## Architecture
