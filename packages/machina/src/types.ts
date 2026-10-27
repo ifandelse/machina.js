@@ -340,11 +340,21 @@ export type InputMapFromUnion<TEvent extends { type: string }> = {
 /**
  * The constraint a user-supplied event map must satisfy: every declared
  * property is a payload type (any type, `undefined` for a payload-free
- * event). Self-mapped for the same reason as `InputMapLike`: a named
- * interface has no string index signature, so a bare `Record<string, unknown>`
- * bound would reject it.
+ * event), and no declared name is one of the seven built-in event names.
+ * Self-mapped for the same reason as `InputMapLike`: a named interface has
+ * no string index signature, so a bare `Record<string, unknown>` bound would
+ * reject it.
+ *
+ * A built-in name is constrained to `never` because the engine owns those
+ * payloads. `on()` is keyed by the built-in map intersected with the declared
+ * map, so a declared `transitioned: { trackingId: string }` would type the
+ * subscriber's payload as carrying `trackingId` while the engine emits
+ * `{ fromState, toState }` only. The wide `EventMap` still satisfies this:
+ * its index signature maps `string`, which is not a built-in literal.
  */
-export type EventMapLike<T> = { [K in keyof T]-?: unknown };
+export type EventMapLike<T> = {
+    [K in keyof T]-?: K extends keyof FsmEventMap ? never : unknown;
+};
 
 /**
  * The payload argument list for one `emit()` call. The payload is optional
@@ -383,8 +393,9 @@ type IsVocabularyBag<T> = T extends { inputs: unknown } | { events: unknown }
  * The constraint is computed from the argument itself, so a malformed bag
  * reports TS2344 on the type argument the same way a malformed input map
  * does: an `inputs` member whose values are not tuples, a misspelled member
- * name, or an optional member all fail here instead of degrading silently
- * to the wide maps.
+ * name (alone or beside a valid member), an optional member, or an `events`
+ * member that reuses a built-in event name all fail here instead of
+ * degrading silently to the wide maps.
  */
 export type VocabularyLike<T> =
     IsVocabularyBag<T> extends true
@@ -394,6 +405,12 @@ export type VocabularyLike<T> =
               // re-checked against its own map constraint.
               inputs?: T extends { inputs: infer I } ? InputMapLike<I> : never;
               events?: T extends { events: infer E } ? EventMapLike<E> : never;
+          } & {
+              // Any other key is constrained to `never`. Without this, a bag
+              // with one valid member is structurally assignable with a
+              // misspelled second member (`{ inputs: I; evnets: E }`), and
+              // the misspelled map silently degrades to the wide one.
+              [K in Exclude<keyof T, "inputs" | "events">]: never;
           }
         : InputMapLike<T>;
 

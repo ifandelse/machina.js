@@ -123,6 +123,8 @@ fsm.on("checkCountUpdate", () => {}); // error: not in the map
 
 A payload is required unless its declared type admits `undefined`. Declare a payload-free event as `undefined`.
 
+A declared name can't be one of the seven built-in names. The engine owns those payloads, so `events: { transitioned: { trackingId: string } }` fails on the type argument with TS2344. A misspelled bag member fails the same way, with or without a valid member beside it.
+
 To declare inputs and events together, give the bag both members. A bare input map in the slot keeps its meaning:
 
 ```ts

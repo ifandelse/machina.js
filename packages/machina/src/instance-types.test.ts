@@ -3080,6 +3080,24 @@ describe("#183 — typed event maps", () => {
         const _optionalMember = () => createFsm<{ events?: TrafficLightEvents }>();
         // @ts-expect-error -- a bare input map with a non-tuple value still fails (8.0 contract)
         const _badInputMap = () => createFsm<{ go: { x: number } }>();
+        const _misspelledBesideInputs = () =>
+            // @ts-expect-error -- `evnets` beside a valid `inputs` member is still a misspelling; it must not degrade silently to the wide event map
+            createFsm<{ inputs: TrafficLightInputs; evnets: TrafficLightEvents }>();
+        const _misspelledBesideEvents = () =>
+            // @ts-expect-error -- `inptus` beside a valid `events` member must not degrade silently to the wide input map
+            createFsm<{ events: TrafficLightEvents; inptus: TrafficLightInputs }>();
+        const _builtInCollision = () =>
+            // @ts-expect-error -- a declared event may not reuse a built-in name; the engine emits `{ fromState, toState }` and never the declared fields
+            createFsm<{ events: { transitioned: { trackingId: string } } }>();
+        const _builtInCollisionBehavioral = () =>
+            // @ts-expect-error -- the built-in name rule applies to the behavioral form too
+            createBehavioralFsm<{ url: string }, { events: { handled: { note: string } } }>();
+        type _BuiltInCollisionOnHandlerArgs = HandlerArgs<
+            object,
+            string,
+            // @ts-expect-error -- the rule lives on EventMapLike itself, so a direct annotation cannot smuggle a built-in name past the factories
+            { deferred: { reason: string } }
+        >;
 
         let result: string;
 

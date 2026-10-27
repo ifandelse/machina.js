@@ -14,7 +14,7 @@ npm install machina machina-react
 pnpm add machina machina-react
 ```
 
-`machina` >= 8.0.0 and `react` >= 18 are peer dependencies. The floor is v8 because the hook types reuse the types behind core's [input payload maps](https://machina-js.org/guide/typed-payloads/).
+`machina` >= 8.2.0 and `react` >= 18 are peer dependencies. The floor is 8.2 because the hook types reuse the types behind core's [input payload maps](https://machina-js.org/guide/typed-payloads/) and [event maps](https://machina-js.org/guide/events/#typed-custom-events).
 
 ## Quick Start
 
