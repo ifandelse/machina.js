@@ -14,7 +14,7 @@ npm install machina machina-react
 pnpm add machina machina-react
 ```
 
-`machina` >= 8.0.0 and `react` >= 18 are peer dependencies. The floor is v8 because the hook types reuse the types behind core's [input payload maps](https://machina-js.org/guide/typed-payloads/).
+`machina` >= 8.2.0 and `react` >= 18 are peer dependencies. The floor is 8.2 because the hook types reuse the types behind core's [input payload maps](https://machina-js.org/guide/typed-payloads/) and [event maps](https://machina-js.org/guide/events/#typed-custom-events).
 
 ## Quick Start
 
@@ -143,6 +143,14 @@ useBehavioralFsmEvent(fsm, client, "handled", payload => {
 ```
 
 Event hooks subscribe in an effect and read the latest callback through a ref. They do not update React state internally, so events do not cause renders unless your callback does.
+
+Custom events subscribe by name too. Under an FSM that declares an event map (`createFsm<{ events: MyEvents }>()`), the hook accepts the declared names and types each payload, and an undeclared name is a compile error. Without a map, any name is accepted and the payload is `unknown`.
+
+```tsx
+useFsmEvent(light, "cycleCompleted", ({ cycles }) => {
+    console.log(cycles); // number, from the declared map
+});
+```
 
 Behavioral event hooks filter built-in client-bearing payloads to the matching client. Wildcard subscriptions also receive clientless custom events as global events.
 

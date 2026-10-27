@@ -212,6 +212,34 @@ export type InputMapOfInstance<TFsm> = 0 extends 1 & TFsm
         ? TInputs
         : InputMap;
 
+/**
+ * Extracts the event payload map from a concrete machina FSM instance (#183).
+ * Same fallback rules as `InputMapOfInstance`: the wide map for an undeclared
+ * instance, for non-FSM types, and for `any`. machina-react derives its event
+ * hook's name and payload types from this.
+ */
+export type EventMapOfInstance<TFsm> = 0 extends 1 & TFsm
+    ? EventMap
+    : TFsm extends import("./fsm").Fsm<
+            infer _TCtx extends object,
+            infer _TStateNames extends string,
+            infer _TInputNames extends string,
+            infer _TBubbles extends string,
+            infer _TInputs extends InputMapLike<_TInputs>,
+            infer TEvents extends EventMapLike<TEvents>
+        >
+      ? TEvents
+      : TFsm extends import("./behavioral-fsm").BehavioralFsm<
+              infer _TClient extends object,
+              infer _TStateNames extends string,
+              infer _TInputNames extends string,
+              infer _TBubbles extends string,
+              infer _TInputs extends InputMapLike<_TInputs>,
+              infer TEvents extends EventMapLike<TEvents>
+          >
+        ? TEvents
+        : EventMap;
+
 // -----------------------------------------------------------------------------
 // Input payload map (#195)
 //
@@ -295,6 +323,128 @@ export type InputMapFromUnion<TEvent extends { type: string }> = {
 };
 
 // -----------------------------------------------------------------------------
+// Event payload map (#183)
+//
+// An opt-in map from custom event name to payload type. Declared through the
+// same curried slot as the input map, as a member of a vocabulary bag:
+// `createFsm<{ events: MyEvents }>()` or
+// `createBehavioralFsm<TClient, { inputs: MyInputs; events: MyEvents }>()`.
+// A bare input map in that slot keeps its 8.0 meaning. Under a declared map,
+// `emit()` in handlers, in `onDispose`, and on the instance is keyed by the
+// map's names and checks each payload, and `on()` accepts the built-in names
+// plus the declared names with typed payloads. Undeclared names are compile
+// errors on both. Type-only; the runtime never reads it. Without a map, the
+// wide default keeps `emit()` and `on()` exactly as loose as before.
+// -----------------------------------------------------------------------------
+
+/**
+ * The constraint a user-supplied event map must satisfy: every declared
+ * property is a payload type (any type, `undefined` for a payload-free
+ * event), and no declared name is one of the seven built-in event names.
+ * Self-mapped for the same reason as `InputMapLike`: a named interface has
+ * no string index signature, so a bare `Record<string, unknown>` bound would
+ * reject it.
+ *
+ * A built-in name is constrained to `never` because the engine owns those
+ * payloads. `on()` is keyed by the built-in map intersected with the declared
+ * map, so a declared `transitioned: { trackingId: string }` would type the
+ * subscriber's payload as carrying `trackingId` while the engine emits
+ * `{ fromState, toState }` only. The wide `EventMap` still satisfies this:
+ * its index signature maps `string`, which is not a built-in literal.
+ */
+export type EventMapLike<T> = {
+    [K in keyof T]-?: K extends keyof FsmEventMap ? never : unknown;
+};
+
+/**
+ * The payload argument list for one `emit()` call. The payload is optional
+ * when the declared type admits `undefined` (`ping: undefined`, or a union
+ * with it) and required otherwise. On the wide map every payload is `unknown`,
+ * which admits `undefined`, so `emit(name)` stays legal there.
+ */
+export type EmitArgs<TPayload> = undefined extends TPayload ? [data?: TPayload] : [data: TPayload];
+
+/**
+ * Whether the curried slot holds a vocabulary bag rather than a bare input
+ * map. A bag has an `inputs` or `events` member whose value is an object map.
+ * The discriminator is the value type, not the key: an input map that happens
+ * to declare an input literally named `inputs` has a tuple there, still
+ * satisfies `InputMapLike`, and is still an input map.
+ * @internal
+ */
+type IsVocabularyBag<T> = T extends { inputs: unknown } | { events: unknown }
+    ? T extends InputMapLike<T>
+        ? false
+        : true
+    : false;
+
+/**
+ * The constraint on the curried factories' map slot (#195, #183). The slot
+ * accepts either a bare input map, which is the 8.0 form unchanged, or a
+ * vocabulary bag with an `inputs` member, an `events` member, or both:
+ *
+ * ```ts
+ * createFsm<MyInputs>()({ ... });                                 // input map
+ * createFsm<{ events: MyEvents }>()({ ... });                     // events only
+ * createFsm<{ inputs: MyInputs; events: MyEvents }>()({ ... });   // both
+ * createBehavioralFsm<Connection, { events: MyEvents }>()({ ... });
+ * ```
+ *
+ * The constraint is computed from the argument itself, so a malformed bag
+ * reports TS2344 on the type argument the same way a malformed input map
+ * does: an `inputs` member whose values are not tuples, a misspelled member
+ * name (alone or beside a valid member), an optional member, or an `events`
+ * member that reuses a built-in event name all fail here instead of
+ * degrading silently to the wide maps.
+ */
+export type VocabularyLike<T> =
+    IsVocabularyBag<T> extends true
+        ? {
+              // A member the bag omits is constrained to `never`, which the
+              // bag satisfies by not having it. A member the bag declares is
+              // re-checked against its own map constraint.
+              inputs?: T extends { inputs: infer I } ? InputMapLike<I> : never;
+              events?: T extends { events: infer E } ? EventMapLike<E> : never;
+          } & {
+              // Any other key is constrained to `never`. Without this, a bag
+              // with one valid member is structurally assignable with a
+              // misspelled second member (`{ inputs: I; evnets: E }`), and
+              // the misspelled map silently degrades to the wide one.
+              [K in Exclude<keyof T, "inputs" | "events">]: never;
+          }
+        : InputMapLike<T>;
+
+/**
+ * The input map a curried slot resolves to: the bare map itself, a bag's
+ * `inputs` member, or the wide `InputMap` when a bag declares no inputs.
+ *
+ * Both branches re-check the map against `InputMapLike` through an `infer`
+ * constraint so the result carries its own proof. The factories still cannot
+ * hand a deferred `VocabularyInputs<TVocab>` to a constrained position while
+ * `TVocab` is unresolved; see `CurriedFsmFactory` in fsm.ts for where that
+ * proof is completed.
+ */
+export type VocabularyInputs<T> =
+    IsVocabularyBag<T> extends true
+        ? T extends { inputs: infer I extends InputMapLike<I> }
+            ? I
+            : InputMap
+        : T extends infer M extends InputMapLike<M>
+          ? M
+          : InputMap;
+
+/**
+ * The event map a curried slot resolves to: a bag's `events` member, or the
+ * wide `EventMap` for a bare input map and for a bag without events.
+ */
+export type VocabularyEvents<T> =
+    IsVocabularyBag<T> extends true
+        ? T extends { events: infer E extends EventMapLike<E> }
+            ? E
+            : EventMap
+        : EventMap;
+
+// -----------------------------------------------------------------------------
 // Handler argument object
 //
 // Every handler in machina receives this as its first argument. This replaces
@@ -326,6 +476,9 @@ export type InputMapFromUnion<TEvent extends { type: string }> = {
  * @typeParam TStateNames - String literal union of valid state names.
  *   Defaults to `string` for loose usage; the factory functions narrow this
  *   to the actual state names inferred from the config.
+ * @typeParam TEvents - The event payload map (#183). Defaults to the wide
+ *   map, under which `emit()` accepts any name and any payload. A declared
+ *   map keys `emit()` by its names and checks each payload.
  *
  * @example
  * ```ts
@@ -345,7 +498,11 @@ export type InputMapFromUnion<TEvent extends { type: string }> = {
  * }
  * ```
  */
-export interface HandlerArgs<TCtx, TStateNames extends string = string> {
+export interface HandlerArgs<
+    TCtx,
+    TStateNames extends string = string,
+    TEvents extends EventMapLike<TEvents> = EventMap,
+> {
     /** The context (Fsm) or client object (BehavioralFsm) */
     ctx: TCtx;
 
@@ -379,8 +536,13 @@ export interface HandlerArgs<TCtx, TStateNames extends string = string> {
      * Emit a custom event through the FSM's emitter.
      * Built-in events (transitioning, transitioned, etc.) are emitted
      * automatically by the FSM engine — this is for user-defined events.
+     *
+     * Under a declared event map (#183) the name must be a key of the map
+     * and the payload must match that key's type; the payload is optional
+     * only when the declared type admits `undefined`. Without a map, any
+     * name and any payload are accepted.
      */
-    emit(eventName: string, data?: unknown): void;
+    emit<K extends keyof TEvents & string>(eventName: K, ...data: EmitArgs<TEvents[K]>): void;
 }
 
 // -----------------------------------------------------------------------------
@@ -436,7 +598,8 @@ export type HandlerFn<
     TCtx,
     TStateNames extends string = string,
     TPayload extends unknown[] = unknown[],
-> = (args: HandlerArgs<TCtx, TStateNames>, ...extra: TPayload) => TStateNames | void;
+    TEvents extends EventMapLike<TEvents> = EventMap,
+> = (args: HandlerArgs<TCtx, TStateNames, TEvents>, ...extra: TPayload) => TStateNames | void;
 
 // -----------------------------------------------------------------------------
 // Handler definition forms
@@ -483,7 +646,8 @@ export type HandlerDef<
     TCtx,
     TStateNames extends string = string,
     TPayload extends unknown[] = unknown[],
-> = TStateNames | HandlerFn<TCtx, TStateNames, TPayload> | MachinaInstance;
+    TEvents extends EventMapLike<TEvents> = EventMap,
+> = TStateNames | HandlerFn<TCtx, TStateNames, TPayload, TEvents> | MachinaInstance;
 
 // -----------------------------------------------------------------------------
 // State validation
@@ -560,21 +724,25 @@ export type HandlerDef<
  *   serves both paths. Lifecycle hooks and the catch-all keep `unknown[]`
  *   either way: they can receive the arguments of ANY input, so no single
  *   tuple fits them.
+ * @typeParam TEvents - The event payload map (#183). Flows into every
+ *   handler's `emit`. Like `TInputs`, it is fixed by the curried factory
+ *   before inference starts, so it is not an inference target here.
  */
 export type ValidateStates<
     TCtx,
     TStates extends Record<string, Record<string, unknown>>,
     TStateNames extends string = keyof TStates & string,
     TInputs extends InputMapLike<TInputs> = InputMap,
+    TEvents extends EventMapLike<TEvents> = EventMap,
 > = Record<
     TStateNames,
     {
-        _onEnter?: HandlerFn<TCtx, NoInfer<TStateNames>>;
-        _onExit?: HandlerFn<TCtx, NoInfer<TStateNames>>;
+        _onEnter?: HandlerFn<TCtx, NoInfer<TStateNames>, unknown[], TEvents>;
+        _onExit?: HandlerFn<TCtx, NoInfer<TStateNames>, unknown[], TEvents>;
         _child?: MachinaInstance;
-        "*"?: HandlerFn<TCtx, NoInfer<TStateNames>>;
+        "*"?: HandlerFn<TCtx, NoInfer<TStateNames>, unknown[], TEvents>;
     } & {
-        [I in keyof TInputs]?: HandlerDef<TCtx, NoInfer<TStateNames>, TInputs[I]>;
+        [I in keyof TInputs]?: HandlerDef<TCtx, NoInfer<TStateNames>, TInputs[I], TEvents>;
     }
 >;
 
@@ -756,6 +924,10 @@ export type InputVocabulary<
  *   `ValidateStates` and `InputVocabulary` behaving exactly as the untyped
  *   path always has.
  *
+ * @typeParam TEvents - The event payload map (#183). Fixed by the curried
+ *   factory forms the same way as `TInputs`. Flows into `emit` on every
+ *   handler and on `onDispose`. Defaults to the wide map.
+ *
  * @example
  * ```ts
  * // TCtx inferred as { tickCount: number }, TStates inferred from states object:
@@ -813,6 +985,7 @@ export interface FsmConfig<
     TStateNames extends string = keyof TStates & string,
     TBubbles extends string = never,
     TInputs extends InputMapLike<TInputs> = InputMap,
+    TEvents extends EventMapLike<TEvents> = EventMap,
 > {
     /** Unique identifier for this FSM */
     id: string;
@@ -912,7 +1085,7 @@ export interface FsmConfig<
      * });
      * ```
      */
-    onDispose?: (args: Pick<HandlerArgs<NoInfer<TCtx>>, "ctx" | "emit">) => void;
+    onDispose?: (args: Pick<HandlerArgs<NoInfer<TCtx>, string, TEvents>, "ctx" | "emit">) => void;
 
     /**
      * State definitions. Keys become the state name union.
@@ -924,7 +1097,7 @@ export interface FsmConfig<
      * source themselves.
      */
     states: TStates &
-        ValidateStates<TCtx, TStates, TStateNames, TInputs> &
+        ValidateStates<TCtx, TStates, TStateNames, TInputs, TEvents> &
         ChildCoverage<TStates, TStateNames, TBubbles> &
         InputVocabulary<TStates, TStateNames, TInputs>;
 }

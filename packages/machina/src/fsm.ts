@@ -15,12 +15,17 @@ import {
     type FsmConfig,
     type FsmEventMap,
     type EventMap,
+    type EventMapLike,
+    type EmitArgs,
     type InputNamesOfInstance,
     type DisposeOptions,
     type SpecialStateKeys,
     type InputMap,
     type InputCall,
     type InputMapLike,
+    type VocabularyLike,
+    type VocabularyInputs,
+    type VocabularyEvents,
 } from "./types";
 
 /**
@@ -41,6 +46,10 @@ import {
  * @typeParam TInputs - The input payload map (#195). Defaults to the wide
  *   map, under which `handle()`'s signature reduces to exactly the untyped
  *   behavior. `createFsm<TInputs>()` passes the user's map here.
+ * @typeParam TEvents - The event payload map (#183). Defaults to the wide
+ *   map, under which `on()` accepts any name with an `unknown` payload and
+ *   `emit()` accepts any name and payload. `createFsm<{ events: TEvents }>()`
+ *   passes the user's map here, which keys both by the declared names.
  */
 export class Fsm<
     TCtx extends object,
@@ -49,6 +58,7 @@ export class Fsm<
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- phantom marker: never referenced in the class body, only read back out externally via BubblesOfInstance's `infer`.
     TBubbles extends string = never,
     TInputs extends InputMapLike<TInputs> = InputMap,
+    TEvents extends EventMapLike<TEvents> = EventMap,
 > {
     readonly id: string;
     readonly initialState: TStateNames;
@@ -58,7 +68,7 @@ export class Fsm<
     // Set from config.states — same object reference as BehavioralFsm.states,
     // so ChildLink wrapping done by wrapChildLinks() is reflected automatically.
     readonly states: Record<string, Record<string, unknown>>;
-    private readonly bfsm: BehavioralFsm<TCtx, TStateNames, TInputNames, never, TInputs>;
+    private readonly bfsm: BehavioralFsm<TCtx, TStateNames, TInputNames, never, TInputs, TEvents>;
     // Public readonly so external tooling (and walkAll's invariant) can read
     // context without needing to plumb it through every call site. The context
     // is already visible inside handlers via ctx — this just makes it accessible
@@ -190,17 +200,18 @@ export class Fsm<
      * Subscribe to a built-in lifecycle event, a custom event, or the wildcard.
      *
      * Named overload: the callback receives the payload only. A built-in
-     * name gets its typed payload; a custom name (anything a handler or the
-     * public `emit()` fires) gets `unknown` (#183).
+     * name gets its typed payload. A custom name gets the payload type its
+     * event map declares, or `unknown` when the FSM declares no map; under a
+     * declared map an undeclared name is a compile error (#183).
      * Wildcard (`"*"`): receives `(eventName, data)` for every event. It is
-     * listed first because the named overload's key type is `string` once
-     * the wide map is intersected in, so `"*"` would otherwise match it.
+     * listed first because the named overload's key type is `string` under
+     * the wide map, so `"*"` would otherwise match it.
      * Returns a no-op `Subscription` when disposed.
      */
     on(eventName: "*", callback: (eventName: string, data: unknown) => void): Subscription;
-    on<K extends keyof (FsmEventMap<TStateNames> & EventMap) & string>(
+    on<K extends keyof (FsmEventMap<TStateNames> & TEvents) & string>(
         eventName: K,
-        callback: (data: (FsmEventMap<TStateNames> & EventMap)[K]) => void
+        callback: (data: (FsmEventMap<TStateNames> & TEvents)[K]) => void
     ): Subscription;
     on(eventName: string, callback: (...args: any[]) => void): Subscription {
         if (this.disposed) {
@@ -212,16 +223,17 @@ export class Fsm<
     /**
      * Emit a custom event through the FSM. Built-in lifecycle events are
      * emitted automatically — this is for user-defined events from handlers.
-     * Routes through the BehavioralFsm so all relay paths are consistent.
-     * No-ops when disposed.
+     * Under a declared event map (#183) the name and payload are checked
+     * against it. Routes through the BehavioralFsm so all relay paths are
+     * consistent. No-ops when disposed.
      */
-    emit(eventName: string, data?: unknown): void {
+    emit<K extends keyof TEvents & string>(eventName: K, ...data: EmitArgs<TEvents[K]>): void {
         if (this.disposed) {
             return;
         }
         // Route through BehavioralFsm so custom events from handler emit()
         // and public fsm.emit() take the same path through the relay.
-        this.bfsm.emit(eventName, data);
+        this.bfsm.emit(eventName, ...data);
     }
 
     /**
@@ -248,6 +260,69 @@ export class Fsm<
 }
 
 /**
+ * The function `createFsm<TVocab>()` returns: it takes the config and infers
+ * everything else from it.
+ *
+ * The two `infer ... extends` clauses are the proof that the maps extracted
+ * from the vocabulary slot satisfy `Fsm`'s constraints. `VocabularyInputs`
+ * and `VocabularyEvents` are conditional types, and TypeScript will not hand
+ * a conditional type to a constrained type parameter while the type it
+ * depends on (`TVocab`) is still unresolved, so the overload cannot write
+ * `Fsm<..., VocabularyInputs<TVocab>, ...>` directly. Re-inferring each map
+ * under its constraint defers the check to the call site, where `TVocab` is
+ * concrete, both conditionals resolve, and the result is the plain generic
+ * function below. The `never` branches are unreachable for any argument that
+ * passed `VocabularyLike`.
+ *
+ * @typeParam TInputsIn - `VocabularyInputs<TVocab>`, not yet proven.
+ * @typeParam TEventsIn - `VocabularyEvents<TVocab>`, not yet proven.
+ */
+export type CurriedFsmFactory<TInputsIn, TEventsIn> = TInputsIn extends infer TInputs extends
+    InputMapLike<TInputs>
+    ? TEventsIn extends infer TEvents extends EventMapLike<TEvents>
+        ? <
+              TCtx extends object,
+              const TStates extends Record<string, Record<string, unknown>>,
+              TStateNames extends string = keyof TStates & string,
+              // Constrained to the map: a bubble declares "I will fire this
+              // input", and the map is the complete set of fireable inputs.
+              // A bubble outside the map is unfireable — reject it at the
+              // declaration (#195). On the wide map the constraint reduces
+              // to `string`.
+              TBubbles extends keyof TInputs & string = never,
+          >(
+              config: FsmConfig<TCtx, TStates, TStateNames, TBubbles, TInputs, TEvents>
+          ) => Fsm<
+              TCtx,
+              keyof TStates & string,
+              // With a real input map (#195), the map is the complete input
+              // vocabulary, so it replaces the config-inferred union as
+              // handle()'s key source. `string extends keyof TInputs`
+              // detects the wide map (a bag with no `inputs` member), where
+              // the union stays inferred from the config exactly as the
+              // direct form infers it. Payload flow through `_child` mounts
+              // is phase 2 — a typed parent does not yet accept its
+              // children's inputs.
+              string extends keyof TInputs
+                  ? | Exclude<
+                          { [S in keyof TStates]: keyof TStates[S] & string }[keyof TStates],
+                          SpecialStateKeys
+                      >
+                    | {
+                          [S in keyof TStates]: TStates[S] extends { _child: infer C }
+                              ? InputNamesOfInstance<C>
+                              : never;
+                      }[keyof TStates]
+                    | TBubbles
+                  : keyof TInputs & string,
+              TBubbles,
+              TInputs,
+              TEvents
+          >
+        : never
+    : never;
+
+/**
  * Create a single-client FSM from a config object.
  *
  * Generic parameters are inferred automatically:
@@ -270,6 +345,13 @@ export class Fsm<
  * from the map's tuples and `handle()` enforces them at the call site. The
  * map is also the complete input vocabulary: handler keys outside it are
  * compile errors.
+ *
+ * To type custom events as well (#183), put a vocabulary bag in the same
+ * slot: `createFsm<{ events: TEvents }>()` for events alone, or
+ * `createFsm<{ inputs: TInputs; events: TEvents }>()` for both. Under an
+ * event map, `emit()` in handlers and on the instance is keyed by the map's
+ * names and checks each payload, and `on()` types the declared events
+ * alongside the built-in ones.
  *
  * @example
  * ```ts
@@ -314,27 +396,38 @@ export class Fsm<
  *
  * light.handle("emergency", { severity: 5 }); // payload enforced
  * ```
+ *
+ * @example Typed custom events via a vocabulary bag
+ * ```ts
+ * type TrafficLightEvents = {
+ *   cycleCompleted: { cycles: number };
+ *   maintenanceDue: undefined; // payload-free
+ * };
+ *
+ * const light = createFsm<{ events: TrafficLightEvents }>()({
+ *   id: "traffic-light",
+ *   initialState: "green",
+ *   context: { cycles: 0 },
+ *   states: {
+ *     green: { timeout: "yellow" },
+ *     yellow: { timeout: "red" },
+ *     red: {
+ *       timeout({ ctx, emit }) {
+ *         ctx.cycles++;
+ *         emit("cycleCompleted", { cycles: ctx.cycles }); // payload checked
+ *         emit("maintenanceDue");                          // payload optional
+ *         return "green";
+ *       },
+ *     },
+ *   },
+ * });
+ *
+ * light.on("cycleCompleted", ({ cycles }) => console.log(cycles)); // typed
+ * ```
  */
-export function createFsm<TInputs extends InputMapLike<TInputs>>(): <
-    TCtx extends object,
-    const TStates extends Record<string, Record<string, unknown>>,
-    TStateNames extends string = keyof TStates & string,
-    // Constrained to the map: a bubble declares "I will fire this input",
-    // and the map is the complete set of fireable inputs. A bubble outside
-    // the map is unfireable — reject it at the declaration (#195).
-    TBubbles extends keyof TInputs & string = never,
->(
-    config: FsmConfig<TCtx, TStates, TStateNames, TBubbles, TInputs>
-) => Fsm<
-    TCtx,
-    keyof TStates & string,
-    // The map is the complete input vocabulary (#195), so it replaces the
-    // config-inferred union as handle()'s key source. Payload flow through
-    // `_child` mounts is phase 2 — a typed parent does not yet accept its
-    // children's inputs.
-    keyof TInputs & string,
-    TBubbles,
-    TInputs
+export function createFsm<TVocab extends VocabularyLike<TVocab> = InputMap>(): CurriedFsmFactory<
+    VocabularyInputs<TVocab>,
+    VocabularyEvents<TVocab>
 >;
 // The direct overload must stay LAST (matching createBehavioralFsm). Utility
 // types that collapse an overload set — ReturnType<typeof createFsm> in

@@ -44,7 +44,7 @@
         "use-sync-external-store": "^1.7.0"
     },
     "peerDependencies": {
-        "machina": ">=8.0.0",
+        "machina": ">=8.2.0",
         "react": ">=18"
     },
     "devDependencies": {

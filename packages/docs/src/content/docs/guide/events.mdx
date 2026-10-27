@@ -82,7 +82,66 @@ fsm.on("checkCountUpdated", data => {
 });
 ```
 
-The payload of a custom event is `unknown` until you narrow it, because the FSM has no declaration to check it against. The `"*"` wildcard still receives custom events along with the built-in ones.
+The payload of a custom event is `unknown` until you narrow it, because this FSM doesn't declare an event map. The next section adds that declaration. The `"*"` wildcard still receives custom events along with the built-in ones.
+
+## Typed custom events
+
+An event map declares each custom event's payload once. The declaration types `emit` inside handlers and `on()` on the instance, so a misspelled event name or a wrong payload is a compile error on both sides.
+
+The map goes in the same curried slot as the [input payload map](/guide/typed-payloads/), as the `events` member of a vocabulary bag:
+
+```ts
+import { createFsm } from "machina";
+
+type ConnectivityEvents = {
+    checkCountUpdated: { checkCount: number };
+    maxChecksReached: undefined; // payload-free
+};
+
+const fsm = createFsm<{ events: ConnectivityEvents }>()({
+    id: "connectivity",
+    initialState: "checking",
+    context: { checkCount: 0 },
+    states: {
+        checking: {
+            _onEnter({ ctx, emit }) {
+                ctx.checkCount++;
+                emit("checkCountUpdated", { checkCount: ctx.checkCount }); // payload checked
+                emit("maxChecksReached"); // payload optional: the type admits undefined
+                emit("checkCountUpdate", {}); // error: not in the map
+            },
+        },
+    },
+});
+
+fsm.on("checkCountUpdated", ({ checkCount }) => {
+    console.log("check count:", checkCount); // number
+});
+fsm.on("transitioned", ({ toState }) => {}); // built-ins stay typed
+fsm.on("checkCountUpdate", () => {}); // error: not in the map
+```
+
+A payload is required unless its declared type admits `undefined`. Declare a payload-free event as `undefined`.
+
+A declared name can't be one of the seven built-in names. The engine owns those payloads, so `events: { transitioned: { trackingId: string } }` fails on the type argument with TS2344. A misspelled bag member fails the same way, with or without a valid member beside it.
+
+To declare inputs and events together, give the bag both members. A bare input map in the slot keeps its meaning:
+
+```ts
+createFsm<ConnectivityInputs>()({ ... }); // inputs only, unchanged
+createFsm<{ events: ConnectivityEvents }>()({ ... }); // events only
+createFsm<{ inputs: ConnectivityInputs; events: ConnectivityEvents }>()({ ... }); // both
+```
+
+For a `BehavioralFsm`, the bag is the second type argument, after the client type:
+
+```ts
+const connFsm = createBehavioralFsm<Connection, { events: ConnectionEvents }>()({ ... });
+```
+
+A custom event's payload is exactly the declared type. The engine doesn't add a `client` field to it, on either class. A subscriber that needs the client for a custom event reads it from the payload, so include the client or its id when you emit.
+
+`onDispose` and the public `fsm.emit()` are checked against the same map. The map is type-only. The engine never reads it, and the untyped forms keep working as before.
 
 ## TypeScript
 
@@ -100,4 +159,11 @@ type NarrowedPayload = FsmEventMap<"green" | "yellow" | "red">["transitioned"];
 // => { fromState: "green" | "yellow" | "red"; toState: "green" | "yellow" | "red" }
 ```
 
-A custom event's payload is `unknown` on both the named and the wildcard path. Narrow it at the subscriber.
+A custom event's payload comes from the FSM's event map when it declares one, and is `unknown` otherwise. The wildcard path is always `unknown`. `EventMapOfInstance` extracts the declared map from an instance, for code that types callbacks outside the `on()` call:
+
+```ts
+import type { EventMapOfInstance } from "machina";
+
+type CheckCountPayload = EventMapOfInstance<typeof fsm>["checkCountUpdated"];
+// => { checkCount: number }
+```

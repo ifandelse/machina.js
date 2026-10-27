@@ -16,6 +16,8 @@ import {
     type InputMap,
     type InputMapOfInstance,
     type EventMap,
+    type EventMapOfInstance,
+    type EmitArgs,
     type FsmEventMap,
     type BehavioralFsmEventMap,
 } from "./index";
@@ -2814,6 +2816,431 @@ describe("#183 — custom event subscriptions", () => {
 
         it("should preserve the runtime FSM behavior used for type extraction", () => {
             expect(result).toBe("online");
+        });
+    });
+});
+
+describe("#183 — typed event maps", () => {
+    type TrafficLightInputs = {
+        timeout: [];
+        emergency: [event: { severity: number }];
+    };
+    type TrafficLightEvents = {
+        cycleCompleted: { cycles: number };
+        maintenanceDue: undefined;
+        operatorNote: string | undefined;
+    };
+
+    describe("when EmitArgs decides whether a payload is optional", () => {
+        type _RequiredObject = Expect<
+            Equal<EmitArgs<{ cycles: number }>, [data: { cycles: number }]>
+        >;
+        type _UndefinedIsOptional = Expect<Equal<EmitArgs<undefined>, [data?: undefined]>>;
+        type _UnionWithUndefinedIsOptional = Expect<
+            Equal<EmitArgs<string | undefined>, [data?: string | undefined]>
+        >;
+        type _UnknownIsOptional = Expect<Equal<EmitArgs<unknown>, [data?: unknown]>>;
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should make the payload optional only when the declared type admits undefined", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when an events-only bag is supplied to the single-client form", () => {
+        const light = createFsm<{ events: TrafficLightEvents }>()({
+            id: "events-only-light",
+            initialState: "green",
+            context: { cycles: 0 },
+            states: {
+                green: { timeout: "yellow" },
+                yellow: { timeout: "red" },
+                red: {
+                    timeout({ ctx, emit }) {
+                        ctx.cycles++;
+                        emit("cycleCompleted", { cycles: ctx.cycles });
+                        emit("maintenanceDue");
+                        emit("maintenanceDue", undefined);
+                        emit("operatorNote");
+                        emit("operatorNote", "lamp replaced");
+                        // @ts-expect-error -- cycleCompleted requires its payload
+                        emit("cycleCompleted");
+                        // @ts-expect-error -- wrong payload shape
+                        emit("cycleCompleted", { cycle: ctx.cycles });
+                        // @ts-expect-error -- "cycleComplete" is not in the event map
+                        emit("cycleComplete", { cycles: ctx.cycles });
+                        return "green";
+                    },
+                    // payload-free inputs still infer: no map entry, so `extra` is unknown[]
+                    emergency({ emit }, ...extra) {
+                        type _ExtraStaysWide = Expect<Equal<typeof extra, unknown[]>>;
+                        emit("maintenanceDue");
+                    },
+                },
+            },
+        });
+
+        // The event map is extracted back off the instance.
+        type _EventMap = Expect<Equal<EventMapOfInstance<typeof light>, TrafficLightEvents>>;
+        // No inputs member: the input map stays wide and the input union is
+        // inferred from the config, exactly as the direct form infers it.
+        type _InputMapStaysWide = Expect<Equal<InputMapOfInstance<typeof light>, InputMap>>;
+        type _InputNamesFromConfig = Expect<
+            Equal<InputNamesOfInstance<typeof light>, "timeout" | "emergency">
+        >;
+        // The other extractors survive the sixth class generic.
+        type _StateNames = Expect<
+            Equal<StateNamesOfInstance<typeof light>, "green" | "yellow" | "red">
+        >;
+        type _Context = Expect<Equal<ContextOf<typeof light>, { cycles: number }>>;
+        type _Bubbles = Expect<Equal<BubblesOfInstance<typeof light>, never>>;
+
+        // Compile-time only: the thunk never runs, so the instance the
+        // runtime check below reads stays in its initial state.
+        const _typeOnlyCalls = () => {
+            light.handle("timeout");
+            light.handle("emergency", { severity: 5 });
+            // @ts-expect-error -- input names still come from the config under an events-only bag
+            light.handle("timeoutt");
+
+            // on(): declared events are typed, built-ins stay typed, undeclared names are rejected.
+            light.on("cycleCompleted", data => {
+                type _DeclaredPayload = Expect<Equal<typeof data, { cycles: number }>>;
+                void data;
+            });
+            light.on("maintenanceDue", data => {
+                type _PayloadFreePayload = Expect<Equal<typeof data, undefined>>;
+                void data;
+            });
+            light.on("transitioned", data => {
+                type _BuiltInStaysNarrow = Expect<
+                    Equal<typeof data, FsmEventMap<"green" | "yellow" | "red">["transitioned"]>
+                >;
+                void data;
+            });
+            light.on("*", (eventName, data) => {
+                type _WildcardName = Expect<Equal<typeof eventName, string>>;
+                type _WildcardData = Expect<Equal<IsUnknown<typeof data>, true>>;
+                void eventName;
+                void data;
+            });
+            // @ts-expect-error -- "cycleComplete" is not a declared event
+            light.on("cycleComplete", () => {});
+
+            // Public emit() is keyed by the map too.
+            light.emit("cycleCompleted", { cycles: 1 });
+            light.emit("maintenanceDue");
+            // @ts-expect-error -- payload required
+            light.emit("cycleCompleted");
+            // @ts-expect-error -- undeclared name
+            light.emit("cycleComplete", { cycles: 1 });
+        };
+
+        let result: string;
+
+        beforeEach(() => {
+            result = light.currentState();
+        });
+
+        it("should preserve the runtime FSM behavior used for type extraction", () => {
+            expect(result).toBe("green");
+        });
+    });
+
+    describe("when a bag declares both inputs and events", () => {
+        const light = createFsm<{ inputs: TrafficLightInputs; events: TrafficLightEvents }>()({
+            id: "both-light",
+            initialState: "green",
+            context: { minSeverity: 3, cycles: 0 },
+            bubbles: ["timeout"],
+            states: {
+                green: {
+                    timeout: "yellow",
+                    emergency({ ctx, emit }, event) {
+                        type _Payload = Expect<Equal<typeof event, { severity: number }>>;
+                        if (event.severity < ctx.minSeverity) {
+                            return;
+                        }
+                        emit("cycleCompleted", { cycles: ctx.cycles });
+                        return "red";
+                    },
+                },
+                yellow: { timeout: "red" },
+                red: { timeout: "green" },
+            },
+        });
+
+        type _InputMap = Expect<Equal<InputMapOfInstance<typeof light>, TrafficLightInputs>>;
+        type _EventMap = Expect<Equal<EventMapOfInstance<typeof light>, TrafficLightEvents>>;
+        type _InputNamesFromMap = Expect<
+            Equal<InputNamesOfInstance<typeof light>, "timeout" | "emergency">
+        >;
+        type _Bubbles = Expect<Equal<BubblesOfInstance<typeof light>, "timeout">>;
+
+        const _typeOnlyCalls = () => {
+            light.handle("emergency", { severity: 5 });
+            // @ts-expect-error -- payload enforced by the inputs member
+            light.handle("emergency");
+        };
+
+        const _bubbleOutsideInputs = () =>
+            createFsm<{ inputs: TrafficLightInputs; events: TrafficLightEvents }>()({
+                id: "bad-bubble",
+                initialState: "green",
+                context: {},
+                // @ts-expect-error -- bubbles are constrained to the inputs member's keys
+                bubbles: ["cycleCompleted"],
+                states: { green: {} },
+            });
+
+        let result: string;
+
+        beforeEach(() => {
+            result = light.currentState();
+        });
+
+        it("should preserve the runtime FSM behavior used for type extraction", () => {
+            expect(result).toBe("green");
+        });
+    });
+
+    describe("when a bare input map is supplied (the 8.0 form)", () => {
+        const light = createFsm<TrafficLightInputs>()({
+            id: "bare-map-light",
+            initialState: "green",
+            context: {},
+            states: {
+                green: {
+                    timeout: "green",
+                    emergency({ emit }, event) {
+                        type _Payload = Expect<Equal<typeof event, { severity: number }>>;
+                        // No event map: any name and any payload.
+                        emit("anythingAtAll", { free: "form" });
+                        emit("alsoFine");
+                    },
+                },
+            },
+        });
+
+        type _InputMap = Expect<Equal<InputMapOfInstance<typeof light>, TrafficLightInputs>>;
+        type _EventMapStaysWide = Expect<Equal<EventMapOfInstance<typeof light>, EventMap>>;
+
+        const _typeOnlyCalls = () => {
+            light.on("anythingAtAll", data => {
+                type _StillUnknown = Expect<Equal<IsUnknown<typeof data>, true>>;
+                void data;
+            });
+        };
+
+        // An input map with an input literally named `inputs` (tuple payload)
+        // is still an input map: the discriminator is the value type.
+        type Weird = { inputs: [count: number]; events: [] };
+        const weird = createFsm<Weird>()({
+            id: "weird",
+            initialState: "only",
+            context: {},
+            states: {
+                only: {
+                    inputs(_args, count) {
+                        type _Count = Expect<Equal<typeof count, number>>;
+                    },
+                    events: "only",
+                },
+            },
+        });
+        type _WeirdInputs = Expect<Equal<InputMapOfInstance<typeof weird>, Weird>>;
+        type _WeirdEvents = Expect<Equal<EventMapOfInstance<typeof weird>, EventMap>>;
+
+        let result: string;
+
+        beforeEach(() => {
+            result = light.currentState();
+        });
+
+        it("should preserve the runtime FSM behavior used for type extraction", () => {
+            expect(result).toBe("green");
+        });
+    });
+
+    describe("when a malformed bag is supplied", () => {
+        // Each failure is TS2344 on the type argument, the same place a
+        // malformed input map fails, rather than a silent fallback to the
+        // wide maps.
+
+        // @ts-expect-error -- inputs member values must be tuples
+        const _objectPayloads = () => createFsm<{ inputs: { go: { x: number } } }>();
+        // @ts-expect-error -- `event` is not a bag member
+        const _misspelledMember = () => createFsm<{ event: TrafficLightEvents }>();
+        // @ts-expect-error -- bag members are required when present
+        const _optionalMember = () => createFsm<{ events?: TrafficLightEvents }>();
+        // @ts-expect-error -- a bare input map with a non-tuple value still fails (8.0 contract)
+        const _badInputMap = () => createFsm<{ go: { x: number } }>();
+        const _misspelledBesideInputs = () =>
+            // @ts-expect-error -- `evnets` beside a valid `inputs` member is still a misspelling; it must not degrade silently to the wide event map
+            createFsm<{ inputs: TrafficLightInputs; evnets: TrafficLightEvents }>();
+        const _misspelledBesideEvents = () =>
+            // @ts-expect-error -- `inptus` beside a valid `events` member must not degrade silently to the wide input map
+            createFsm<{ events: TrafficLightEvents; inptus: TrafficLightInputs }>();
+        const _builtInCollision = () =>
+            // @ts-expect-error -- a declared event may not reuse a built-in name; the engine emits `{ fromState, toState }` and never the declared fields
+            createFsm<{ events: { transitioned: { trackingId: string } } }>();
+        const _builtInCollisionBehavioral = () =>
+            // @ts-expect-error -- the built-in name rule applies to the behavioral form too
+            createBehavioralFsm<{ url: string }, { events: { handled: { note: string } } }>();
+        type _BuiltInCollisionOnHandlerArgs = HandlerArgs<
+            object,
+            string,
+            // @ts-expect-error -- the rule lives on EventMapLike itself, so a direct annotation cannot smuggle a built-in name past the factories
+            { deferred: { reason: string } }
+        >;
+
+        let result: string;
+
+        beforeEach(() => {
+            result = "checked";
+        });
+
+        it("should reject malformed bags on the type argument", () => {
+            expect(result).toBe("checked");
+        });
+    });
+
+    describe("when an events bag is supplied to the behavioral form", () => {
+        type Connection = { url: string; attempts: number };
+        type ConnectionEvents = {
+            dialing: { attempt: number };
+            gaveUp: undefined;
+        };
+
+        const connectivity = createBehavioralFsm<Connection, { events: ConnectionEvents }>()({
+            id: "events-only-connectivity",
+            initialState: "offline",
+            onDispose({ ctx, emit }) {
+                emit("gaveUp");
+                // @ts-expect-error -- onDispose's emit is keyed by the map too
+                emit("gaveup");
+                ctx.attempts = 0;
+            },
+            states: {
+                offline: {
+                    connect({ ctx, emit }) {
+                        ctx.attempts++;
+                        emit("dialing", { attempt: ctx.attempts });
+                        // @ts-expect-error -- undeclared name
+                        emit("dialling", { attempt: ctx.attempts });
+                        return "online";
+                    },
+                },
+                online: { disconnect: "offline" },
+            },
+        });
+
+        type _EventMap = Expect<Equal<EventMapOfInstance<typeof connectivity>, ConnectionEvents>>;
+        type _Client = Expect<Equal<ClientOf<typeof connectivity>, Connection>>;
+        type _InputNamesFromConfig = Expect<
+            Equal<InputNamesOfInstance<typeof connectivity>, "connect" | "disconnect">
+        >;
+
+        const _typeOnlyCalls = () => {
+            // A custom event's payload is exactly the declared type: no client field.
+            connectivity.on("dialing", data => {
+                type _DeclaredPayloadOnly = Expect<Equal<typeof data, { attempt: number }>>;
+                void data;
+            });
+            // Built-ins keep their client-bearing payload.
+            connectivity.on("transitioned", data => {
+                type _ClientIsTyped = Expect<Equal<typeof data.client, Connection>>;
+                void data;
+            });
+            // @ts-expect-error -- undeclared name
+            connectivity.on("dialling", () => {});
+
+            connectivity.emit("gaveUp");
+            // @ts-expect-error -- payload required
+            connectivity.emit("dialing");
+        };
+
+        // The second type argument of the curried behavioral form still binds
+        // to the input map (the 8.0 contract) when it is a bare map.
+        const stillInputs = createBehavioralFsm<Connection, TrafficLightInputs>()({
+            id: "bare-map-behavioral",
+            initialState: "green",
+            states: { green: { timeout: "green" } },
+        });
+        type _BareMapBindsInputs = Expect<
+            Equal<InputMapOfInstance<typeof stillInputs>, TrafficLightInputs>
+        >;
+        type _BareMapEventsWide = Expect<Equal<EventMapOfInstance<typeof stillInputs>, EventMap>>;
+
+        let result: string | undefined;
+
+        beforeEach(() => {
+            const conn: Connection = { url: "wss://hal-9000", attempts: 0 };
+            connectivity.handle(conn, "connect");
+            result = connectivity.currentState(conn);
+        });
+
+        it("should preserve the runtime FSM behavior used for type extraction", () => {
+            expect(result).toBe("online");
+        });
+    });
+
+    describe("when pre-existing annotations meet the sixth generic", () => {
+        const light = createFsm<{ events: TrafficLightEvents }>()({
+            id: "compat-events",
+            initialState: "green",
+            context: { ticks: 0 },
+            states: {
+                green: {
+                    // The blessed HandlerArgs<TCtx> annotation keeps compiling
+                    // under a declared map. Inside it, `emit` is the wide form.
+                    tick({ ctx, emit }: HandlerArgs<{ ticks: number }>) {
+                        ctx.ticks++;
+                        emit("anything");
+                    },
+                    timeout: "yellow",
+                },
+                yellow: { timeout: "green" },
+            },
+        });
+
+        // A five-argument annotation written before TEvents existed still
+        // accepts an instance that declares events; TEvents widens to its
+        // default on the annotated side.
+        const describedAsFiveArg: Fsm<
+            { ticks: number },
+            "green" | "yellow",
+            "tick" | "timeout",
+            never,
+            InputMap
+        > = light;
+        type _EventMapWidensOnAnnotation = Expect<
+            Equal<EventMapOfInstance<typeof describedAsFiveArg>, EventMap>
+        >;
+
+        // The three-argument form still works too.
+        const describedAsThreeArg: Fsm<{ ticks: number }, "green" | "yellow", "tick" | "timeout"> =
+            light;
+
+        // Extractors against any/non-FSM types fall back to the wide map.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pins the any-detector
+        type _AnyFalls = Expect<Equal<EventMapOfInstance<any>, EventMap>>;
+        type _NonFsmFalls = Expect<Equal<EventMapOfInstance<{ states: object }>, EventMap>>;
+
+        let result: string;
+
+        beforeEach(() => {
+            describedAsThreeArg.handle("timeout");
+            result = describedAsFiveArg.currentState();
+        });
+
+        it("should accept pre-existing class annotations against a six-generic instance", () => {
+            expect(result).toBe("yellow");
         });
     });
 });

@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/with-selector";
-import type {
-    BehavioralFsmEventMap,
-    ClientOf,
-    ContextOf,
-    FsmEventMap,
-    StateNamesOfInstance,
-} from "machina";
+import type { ClientOf, ContextOf, StateNamesOfInstance } from "machina";
 import { createBehavioralFsmSnapshotStore, createFsmSnapshotStore } from "./snapshots";
 import type {
+    BehavioralFsmEventMapOf,
     BehavioralFsmEventName,
     BehavioralFsmHookResult,
     BehavioralFsmLike,
     BehavioralFsmSnapshot,
+    FsmEventMapOf,
     FsmEventName,
     FsmHookResult,
     FsmLike,
@@ -28,17 +24,14 @@ type FsmEventCallback<
     TEventName extends FsmEventName<TFsm> | "*",
 > = TEventName extends "*"
     ? (eventName: string, data: unknown) => void
-    : (payload: FsmEventMap<StateNamesOfInstance<TFsm>>[TEventName & FsmEventName<TFsm>]) => void;
+    : (payload: FsmEventMapOf<TFsm>[TEventName & FsmEventName<TFsm>]) => void;
 
 type BehavioralFsmEventCallback<
     TFsm extends BehavioralFsmLike,
     TEventName extends BehavioralFsmEventName<TFsm> | "*",
 > = TEventName extends "*"
     ? (eventName: string, data: unknown) => void
-    : (
-          payload: BehavioralFsmEventMap<ClientOf<TFsm>, StateNamesOfInstance<TFsm>>[TEventName &
-              BehavioralFsmEventName<TFsm>]
-      ) => void;
+    : (payload: BehavioralFsmEventMapOf<TFsm>[TEventName & BehavioralFsmEventName<TFsm>]) => void;
 
 export const useFsm = <TFsm extends FsmLike>(
     fsm: TFsm,

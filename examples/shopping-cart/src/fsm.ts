@@ -22,10 +22,11 @@
 //    This is the idiomatic machina pattern — the FSM drives itself.
 //
 // 2. INSTANCE CAPTURE FOR TIMER CALLBACKS.
-//    The factory declares `let instance` before calling createFsm(). The timer
-//    callback closes over `instance`. Because JavaScript is single-threaded and
-//    timers are async, `instance` is guaranteed to be assigned by the time any
-//    timer fires. This is the same hoisting pattern used in dungeon-critters.
+//    The factory declares `let instance` before calling createFsm() and
+//    assigns it right after. The timer callback closes over `instance`.
+//    Because JavaScript is single-threaded and timers are async, `instance`
+//    is guaranteed to be assigned by the time any timer fires. This is the
+//    same hoisting pattern used in dungeon-critters.
 //
 // 3. SPEED MULTIPLIER IS A FACTORY PARAMETER, READ AT OPERATION START.
 //    The timer duration is: BASE_DURATION * getSpeedMultiplier().
@@ -36,7 +37,8 @@
 // 4. THE FSM EMITS CUSTOM EVENTS VIA emit() SO main.ts CAN REACT.
 //    "itemAdded", "couponApplied", "checkoutInitiated", "analyticsRecorded",
 //    "orderConfirmed" — these tell the orchestrator what just happened without
-//    coupling the FSM to UI code.
+//    coupling the FSM to UI code. CartEvents declares them once, so emit()
+//    here and fsm.on() in main.ts are both checked against the same map.
 //
 // 5. reset INPUT RETURNS TO browsing FROM ANY STATE.
 //    _onExit on the departing state clears the timer. The reset handler also
@@ -68,20 +70,34 @@ import {
 // `let instance` is declared before createFsm() is called so that timer
 // callbacks in _onEnter can close over it. JavaScript's single-threaded
 // event loop guarantees that instance is assigned before any setTimeout
-// callback fires — so `instance!.handle(...)` is always safe.
+// callback fires — so `instance.handle(...)` is always safe.
 // -----------------------------------------------------------------------------
 
-export function createShoppingCartFsm(getSpeedMultiplier: () => number = () => 1) {
-    // Declared before createFsm() so timer callbacks in _onEnter can close over it.
-    // TypeScript can't infer the fully-typed FSM return value here (the type
-    // depends on the config that hasn't been written yet). We use `any` so the
-    // closure compiles — the alternative is a brittle explicit type annotation
-    // that would need updating every time the state/input sets change.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let instance: any;
+/**
+ * The custom events the cart emits, with their payloads. `undefined` marks
+ * a payload-free event.
+ */
+export type CartEvents = {
+    itemAdded: { itemCount: number };
+    couponApplied: undefined;
+    checkoutInitiated: undefined;
+    analyticsRecorded: undefined;
+    orderConfirmed: undefined;
+};
 
-    // eslint-disable-next-line prefer-const
-    instance = createFsm({
+/** The fully typed cart FSM instance, as returned by the factory below. */
+export type CartFsm = ReturnType<typeof createShoppingCartFsm>;
+
+export function createShoppingCartFsm(getSpeedMultiplier: () => number = () => 1) {
+    // Declared before createFsm() so timer callbacks in _onEnter can close
+    // over it, and assigned right after. The annotation does not create a
+    // type cycle because the factory returns the createFsm() call itself,
+    // and `instance` only appears inside timer callbacks, which play no part
+    // in inferring the return type.
+    // eslint-disable-next-line prefer-const -- assigned after createFsm() returns; the closures above read it later
+    let instance: CartFsm;
+
+    const cart = createFsm<{ events: CartEvents }>()({
         id: "shopping-cart",
         initialState: "browsing",
         context: {
@@ -375,22 +391,21 @@ export function createShoppingCartFsm(getSpeedMultiplier: () => number = () => 1
         },
     });
 
-    return instance;
+    instance = cart;
+    return cart;
 }
 
 // Module-level singleton used by main.ts. The factory closes over its own
 // `instance` variable, not this one — this is just the demo's entry point.
 // Lazy-initialized by initFsm() so main.ts can supply the speed multiplier getter
 // before the FSM is constructed.
-let fsm: ReturnType<typeof createShoppingCartFsm>;
+let fsm: CartFsm;
 
 /**
  * Initialize the module-level FSM singleton with the UI speed multiplier getter.
  * Called once from main.ts so the FSM is wired to the slider before any events fire.
  */
-export function initFsm(
-    getSpeedMultiplier: () => number
-): ReturnType<typeof createShoppingCartFsm> {
+export function initFsm(getSpeedMultiplier: () => number): CartFsm {
     fsm = createShoppingCartFsm(getSpeedMultiplier);
     return fsm;
 }
