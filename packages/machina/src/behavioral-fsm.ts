@@ -10,6 +10,7 @@
 
 import { Emitter, type Subscription } from "./emitter";
 import { cloneDeep, cloneJsonSafe, NonSerializableValueError } from "./json-safe";
+import { ClientRegistry } from "./client-registry";
 import {
     MACHINA_TYPE,
     type FsmConfig,
@@ -105,11 +106,9 @@ export class BehavioralFsm<
     // at construction time — _child values become ChildLink wrappers in-place.
     readonly states: Record<string, Record<string, unknown>>;
     private readonly emitter = new Emitter<BehavioralFsmEventMap<TClient, TStateNames>>();
-    private readonly clients = new WeakMap<TClient, ClientMeta<TStateNames>>();
-    // Tracks all initialized clients so the Fsm-child nohandler listener can
-    // find which clients need bubbling (Fsm events have no client in payload).
-    // WeakRef prevents retention; clients clean themselves up naturally.
-    private readonly knownClients: Set<WeakRef<TClient>> = new Set();
+    // Per-client records plus the live-client enumeration the relay and
+    // dispose() need. See client-registry.ts for why the two are one module.
+    private readonly registry = new ClientRegistry<TClient, TStateNames>();
     // Subscriptions to child FSM wildcard events, keyed by state name.
     // Set up once during construction, torn down in dispose().
     private readonly childSubscriptions: Array<{ off(): void }> = [];
@@ -210,7 +209,7 @@ export class BehavioralFsm<
         // Does NOT initialize the client. We want a pure state check —
         // no side effects, no _onEnter, no events. Use initialState as the
         // fallback for unseen clients (they'd start there anyway).
-        const state = this.clients.get(client)?.state ?? this.initialState;
+        const state = this.registry.stateOf(client) ?? this.initialState;
         const stateObj = this.states[state];
         if (stateObj?.[inputName] ?? stateObj?.["*"]) {
             return true;
@@ -244,7 +243,7 @@ export class BehavioralFsm<
     currentState(client: TClient): TStateNames | undefined {
         // Intentionally uses WeakMap.get() directly — does NOT trigger initialization.
         // Returns undefined for clients the FSM has never seen.
-        return this.clients.get(client)?.state;
+        return this.registry.stateOf(client);
     }
 
     /**
@@ -386,7 +385,7 @@ export class BehavioralFsm<
      * have never been initialized (unlike `currentState()` which returns `undefined`).
      */
     compositeState(client: TClient): string {
-        const meta = this.clients.get(client);
+        const meta = this.registry.get(client);
         if (!meta) {
             // Returns "" (not undefined like currentState()) because compositeState
             // produces dot-delimited paths ("stateA.child.grandchild") for hierarchies.
@@ -483,7 +482,7 @@ export class BehavioralFsm<
      * state alone.
      */
     dehydrate(client: TClient, isOnActivePath = true): ClientSnapshot | undefined {
-        const meta = this.clients.get(client);
+        const meta = this.registry.get(client);
         if (!meta) {
             return undefined;
         }
@@ -565,12 +564,7 @@ export class BehavioralFsm<
         }));
 
         writes.push(() => {
-            // Guard knownClients before writing meta — if the client is already
-            // tracked, skip adding another WeakRef to avoid accumulating duplicates.
-            if (!this.clients.has(client)) {
-                this.knownClients.add(new WeakRef(client));
-            }
-            this.clients.set(client, { state: state as TStateNames, deferredQueue });
+            this.registry.set(client, { state: state as TStateNames, deferredQueue });
         });
 
         return writes;
@@ -604,12 +598,7 @@ export class BehavioralFsm<
             childLink.rehydrate(client, childPath);
         }
 
-        // Guard knownClients before writing meta — if the client is already tracked,
-        // skip adding another WeakRef to avoid accumulating duplicate live refs.
-        if (!this.clients.has(client)) {
-            this.knownClients.add(new WeakRef(client));
-        }
-        this.clients.set(client, { state: state as TStateNames, deferredQueue: [] });
+        this.registry.set(client, { state: state as TStateNames, deferredQueue: [] });
     }
 
     /**
@@ -794,15 +783,9 @@ export class BehavioralFsm<
         const errors: unknown[] = [];
 
         if (this.onDispose) {
-            for (const ref of this.knownClients) {
-                const client = ref.deref();
-                if (!client) {
-                    // GC'd — clean up the dead ref, same idiom as the relay walks.
-                    this.knownClients.delete(ref);
-                    continue;
-                }
+            for (const client of this.registry.liveClients()) {
                 try {
-                    this.onDispose(this.buildHandlerArgs(client, "", this.clients.get(client)));
+                    this.onDispose(this.buildHandlerArgs(client, "", this.registry.get(client)));
                 } catch (error) {
                     errors.push(error);
                 }
@@ -929,13 +912,7 @@ export class BehavioralFsm<
                         // Fsm child: single-client, no client in payload.
                         // Walk all known clients and bubble for any that are
                         // currently in a state with this child.
-                        for (const ref of this.knownClients) {
-                            const client = ref.deref();
-                            if (client === undefined) {
-                                // GC'd — clean up the dead ref
-                                this.knownClients.delete(ref);
-                                continue;
-                            }
+                        for (const client of this.registry.liveClients()) {
                             this.bubbleNohandler(
                                 client,
                                 childLink,
@@ -969,12 +946,7 @@ export class BehavioralFsm<
                     // custom event (payload is opaque, even with a `client`
                     // key): walk known clients, relay if ANY client is
                     // currently in a state with this child.
-                    for (const ref of this.knownClients) {
-                        const client = ref.deref();
-                        if (!client) {
-                            this.knownClients.delete(ref);
-                            continue;
-                        }
+                    for (const client of this.registry.liveClients()) {
                         if (this.isChildActiveForClient(client, childLink)) {
                             (this.emitter as any).emit(eventName, data);
                             break; // one match is enough — relay once
@@ -1003,7 +975,7 @@ export class BehavioralFsm<
         }
         // Safe to assert — isChildActiveForClient confirmed meta exists AND
         // the client is in a state whose _child matches childLink.
-        const meta = this.clients.get(client)!;
+        const meta = this.registry.get(client)!;
         meta.currentActionArgs = args;
         this.handleLocally(client, inputName as TInputNames, args, meta);
     }
@@ -1023,7 +995,7 @@ export class BehavioralFsm<
      * silently breaking relay for every other declaring name of a shared child.
      */
     private isChildActiveForClient(client: TClient, childLink: ChildLink): boolean {
-        const meta = this.clients.get(client);
+        const meta = this.registry.get(client);
         if (!meta) {
             return false;
         }
@@ -1082,7 +1054,7 @@ export class BehavioralFsm<
     }
 
     private getOrCreateClientMeta(client: TClient): ClientMeta<TStateNames> {
-        let meta = this.clients.get(client);
+        let meta = this.registry.get(client);
         if (meta) {
             return meta;
         }
@@ -1097,10 +1069,7 @@ export class BehavioralFsm<
             state: undefined as unknown as TStateNames,
             deferredQueue: [],
         };
-        this.clients.set(client, meta);
-        // Track this client weakly so Fsm-child nohandler listeners can find
-        // which clients to bubble to (Fsm events carry no client in payload).
-        this.knownClients.add(new WeakRef(client));
+        this.registry.set(client, meta);
 
         // v5-style active initialization: full transition into initialState.
         // Fires _onEnter, emits transitioning/transitioned, processes deferred
