@@ -21,6 +21,7 @@ import {
     type ChildLink,
     type ChildListener,
     type ClientSnapshot,
+    type DisposeOptions,
     type MachinaInstance,
 } from "./types";
 
@@ -173,12 +174,32 @@ export class MountTable<TClient extends object, TStateNames extends string> {
         return mount ? mount.compositeState(client) : "";
     }
 
-    /** Close every child subscription. Safe to call once; the engine guards re-entry. */
-    dispose(): void {
+    /**
+     * Close every child subscription, then dispose each distinct child once
+     * unless `preserveChildren` is set. A shared child is disposed once, not
+     * once per mount. Every child is attempted even when an earlier one
+     * throws; the failures are rethrown together as one `AggregateError`
+     * whose `errors` holds what each child threw.
+     */
+    dispose(options?: DisposeOptions): void {
         for (const sub of this.subscriptions) {
             sub.off();
         }
         this.subscriptions.length = 0;
+        if (options?.preserveChildren) {
+            return;
+        }
+        const errors: unknown[] = [];
+        for (const { childLink } of this.byChild.values()) {
+            try {
+                childLink.dispose();
+            } catch (error) {
+                errors.push(error);
+            }
+        }
+        if (errors.length > 0) {
+            throw new AggregateError(errors, `${errors.length} child FSM(s) threw from dispose()`);
+        }
     }
 
     // -------------------------------------------------------------------------

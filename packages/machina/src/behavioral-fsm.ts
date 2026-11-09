@@ -778,27 +778,14 @@ export class BehavioralFsm<
             }
         }
 
-        // Tear down all child wildcard subscriptions before clearing our emitter.
-        this.mounts.dispose();
-        // Cascade disposal to child FSMs unless explicitly opted out.
-        // Dedup keys on the underlying instance, not the ChildLink wrapper —
-        // the mount table mints a fresh wrapper per declaring state, so a
-        // wrapper-keyed Set never matches for a shared child (the same
-        // identity bug the relay and collectChildSnapshots() had). Double-dispose was harmless (dispose() is idempotent), but
-        // one dedup idiom everywhere beats a latent inconsistency.
-        if (!options?.preserveChildren) {
-            const seen = new Set<MachinaInstance>();
-            for (const stateName of Object.keys(this.states)) {
-                const childLink = this.states[stateName]?._child as ChildLink | undefined;
-                if (childLink && !seen.has(childLink.instance)) {
-                    seen.add(childLink.instance);
-                    try {
-                        childLink.dispose();
-                    } catch (error) {
-                        errors.push(error);
-                    }
-                }
-            }
+        // Child subscriptions close before our emitter clears, then the
+        // children dispose unless the caller opted out. The table reports its
+        // child failures as one AggregateError; spread it so the caller still
+        // receives a single flat `errors` array alongside the hook failures.
+        try {
+            this.mounts.dispose(options);
+        } catch (error) {
+            errors.push(...(error instanceof AggregateError ? error.errors : [error]));
         }
         this.emitter.clear();
         // WeakMap entries are GC'd naturally — can't iterate, don't need to
