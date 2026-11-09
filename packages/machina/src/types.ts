@@ -1127,10 +1127,12 @@ export type MachinaType = "Fsm" | "BehavioralFsm";
 export type MachinaInstance = { readonly [MACHINA_TYPE]: MachinaType };
 
 // -----------------------------------------------------------------------------
-// ChildLink — internal adapter interface
+// ChildLink — the adapter installed at every `_child` mount
 //
 // Normalizes Fsm (no client arg) vs BehavioralFsm (client arg) delegation.
-// The BehavioralFsm engine uses this internally; never exported to users.
+// The engine's mount table creates one per mount and writes it back into
+// `states[name]._child` (docs/adr/0001). The type is exported because
+// machina-inspect reads `instance` and `canHandle` off the installed value.
 // -----------------------------------------------------------------------------
 
 /**
@@ -1148,8 +1150,9 @@ export interface ChildListener {
 }
 
 /**
- * Internal adapter that wraps either an Fsm or BehavioralFsm child,
- * presenting a uniform API for parent-initiated delegation.
+ * Adapter that wraps either an Fsm or BehavioralFsm child, presenting a
+ * uniform API for parent-initiated delegation and, through `subscribe`,
+ * for the child's events with the client already resolved.
  */
 export interface ChildLink {
     /** Check if the child's current state can handle this input */
