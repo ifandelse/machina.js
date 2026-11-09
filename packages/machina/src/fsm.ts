@@ -9,7 +9,8 @@
 // =============================================================================
 
 import { Emitter, type Subscription } from "./emitter";
-import { BehavioralFsm, BUILT_IN_EVENT_NAMES } from "./behavioral-fsm";
+import { BehavioralFsm } from "./behavioral-fsm";
+import { BUILT_IN_EVENT_NAMES } from "./mount-table";
 import {
     MACHINA_TYPE,
     type FsmConfig,
@@ -66,7 +67,7 @@ export class Fsm<
     readonly [MACHINA_TYPE] = "Fsm" as const;
     // Public so inspection tooling (machina-inspect) can read the state graph.
     // Set from config.states — same object reference as BehavioralFsm.states,
-    // so ChildLink wrapping done by wrapChildLinks() is reflected automatically.
+    // so the ChildLink adapters the mount table installs are reflected automatically.
     readonly states: Record<string, Record<string, unknown>>;
     private readonly bfsm: BehavioralFsm<TCtx, TStateNames, TInputNames, never, TInputs, TEvents>;
     // Public readonly so external tooling (and walkAll's invariant) can read
@@ -87,8 +88,8 @@ export class Fsm<
         this.context = (config.context ?? {}) as TCtx;
 
         this.bfsm = new BehavioralFsm(config);
-        // Assign after bfsm construction so ChildLink wrapping (done by
-        // BehavioralFsm.wrapChildLinks) is already reflected in config.states.
+        // Assign after bfsm construction so the ChildLink adapters installed
+        // by the engine's mount table are already reflected in config.states.
         this.states = config.states as Record<string, Record<string, unknown>>;
 
         // Relay events from BehavioralFsm → Fsm emitter, stripping the

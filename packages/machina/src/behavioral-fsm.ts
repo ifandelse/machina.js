@@ -11,6 +11,7 @@
 import { Emitter, type Subscription } from "./emitter";
 import { cloneDeep, cloneJsonSafe, NonSerializableValueError } from "./json-safe";
 import { ClientRegistry } from "./client-registry";
+import { BUILT_IN_EVENT_NAMES, MountTable } from "./mount-table";
 import {
     MACHINA_TYPE,
     type FsmConfig,
@@ -35,23 +36,6 @@ import {
     type InputCall,
     type InputMapLike,
 } from "./types";
-
-// The seven built-in event names, as a runtime set. Both relays key on it:
-// the child-event routing below reads `payload.client` as the parent's client
-// only for these names, and the Fsm wrapper strips `client` from these
-// payloads only. A custom payload is opaque, so a `client` key inside one is
-// the user's data (#183). Typed as a Record so adding an event to
-// BehavioralFsmEventMap without listing it here is a compile error.
-const BUILT_IN_EVENT_FLAGS: Record<keyof BehavioralFsmEventMap<object>, true> = {
-    transitioning: true,
-    transitioned: true,
-    handling: true,
-    handled: true,
-    nohandler: true,
-    invalidstate: true,
-    deferred: true,
-};
-export const BUILT_IN_EVENT_NAMES: ReadonlySet<string> = new Set(Object.keys(BUILT_IN_EVENT_FLAGS));
 
 // Safety valve for _onEnter → transition loops. Instance-level counter works
 // because the engine is synchronous — only one transition chain is active at
@@ -102,13 +86,17 @@ export class BehavioralFsm<
     // Type discriminant — lets ChildLink adapter identify this at runtime
     readonly [MACHINA_TYPE] = "BehavioralFsm" as const;
     // Public so inspection tooling (machina-inspect) can read the state graph
-    // without private field access. The states object is mutated by wrapChildLinks()
-    // at construction time — _child values become ChildLink wrappers in-place.
+    // without private field access. The mount table mutates this object at
+    // construction time: _child values become ChildLink adapters in place
+    // (docs/adr/0001).
     readonly states: Record<string, Record<string, unknown>>;
     private readonly emitter = new Emitter<BehavioralFsmEventMap<TClient, TStateNames>>();
     // Per-client records plus the live-client enumeration the relay and
     // dispose() need. See client-registry.ts for why the two are one module.
     private readonly registry = new ClientRegistry<TClient, TStateNames>();
+    // Every state that declares `_child`, with the adapter installed there.
+    // The only code in this class that knows a child exists goes through it.
+    private readonly mounts: MountTable<TClient>;
     // Subscriptions to child FSM wildcard events, keyed by state name.
     // Set up once during construction, torn down in dispose().
     private readonly childSubscriptions: Array<{ off(): void }> = [];
@@ -127,7 +115,7 @@ export class BehavioralFsm<
         // The constructor's config is typed with the wide maps; the class
         // generics carry the declared ones. Same erasure as `states` below.
         this.onDispose = config.onDispose as typeof this.onDispose;
-        this.wrapChildLinks();
+        this.mounts = new MountTable<TClient>(this.states);
         this.setupChildSubscriptions();
     }
 
@@ -172,22 +160,25 @@ export class BehavioralFsm<
         }
         meta.currentActionArgs = args;
 
-        // Delegation: if the current state has a _child and the child can
-        // handle this input, send it there. Otherwise fall through to
-        // handleLocally(). No nohandler emitted for the delegation path.
-        const stateObj = this.states[meta.state];
-        const childLink = stateObj?._child as ChildLink | undefined;
-        if (childLink) {
-            if (childLink.canHandle(client, inputName)) {
-                try {
-                    childLink.handle(client, inputName, ...args);
-                } finally {
-                    // Clear args even if the child handler throws — stale args
-                    // on meta would corrupt subsequent handle() calls for this client.
-                    meta.currentActionArgs = undefined;
-                }
-                return;
+        // Delegation: if the current state's child can handle this input,
+        // send it there. Otherwise fall through to handleLocally(). No
+        // nohandler emitted for the delegation path.
+        //
+        // `delegated` starts true so a child handler that throws still
+        // clears the args in `finally`: stale args on meta would corrupt the
+        // next handle() for this client. When the table declines, the args
+        // must survive for handleLocally(), whose own finally clears them
+        // after defer() has read them.
+        let delegated = true;
+        try {
+            delegated = this.mounts.delegate(client, meta.state, inputName, args);
+        } finally {
+            if (delegated) {
+                meta.currentActionArgs = undefined;
             }
+        }
+        if (delegated) {
+            return;
         }
 
         this.handleLocally(client, inputName, args, meta);
@@ -220,8 +211,7 @@ export class BehavioralFsm<
         // grandchild-only input answers "no" at the top even though the
         // delegation chain would carry it all the way down — which made
         // D1-surfaced grandchild inputs type-check and then silently no-op.
-        const childLink = stateObj?._child as ChildLink | undefined;
-        return childLink ? childLink.canHandle(client, inputName) : false;
+        return this.mounts.canHandle(client, state, inputName);
     }
 
     /**
@@ -359,10 +349,7 @@ export class BehavioralFsm<
             // always starts from its initialState when the parent enters. Happens
             // after _onEnter and transitioned but before deferred queue processing,
             // so deferred inputs see the post-reset child state.
-            const childLink = newStateObj?._child as ChildLink | undefined;
-            if (childLink) {
-                childLink.reset(client);
-            }
+            this.mounts.resetAt(client, toState);
 
             // Replay deferred inputs targeting this state
             this.processQueue(client, meta);
@@ -393,16 +380,8 @@ export class BehavioralFsm<
             return "";
         }
 
-        const stateObj = this.states[meta.state];
-        const childLink = stateObj?._child as ChildLink | undefined;
-        if (childLink) {
-            const childComposite = childLink.compositeState(client);
-            if (childComposite) {
-                return `${meta.state}.${childComposite}`;
-            }
-        }
-
-        return meta.state;
+        const childPath = this.mounts.pathAt(client, meta.state);
+        return childPath ? `${meta.state}.${childPath}` : meta.state;
     }
 
     /**
@@ -609,7 +588,7 @@ export class BehavioralFsm<
      * treats shared children elsewhere (dispose, event subscriptions).
      *
      * Declaring names are grouped by `childLink.instance` (the actual FSM
-     * instance, not the `ChildLink` wrapper — `wrapChildLinks()` mints a fresh
+     * instance, not the `ChildLink` wrapper — the mount table mints a fresh
      * wrapper per declaring state, so grouping by wrapper would never hit for a
      * shared child) BEFORE any `onPath` is computed or any child is dehydrated.
      * A shared child's `onPath` is the OR of `stateName === activeState` across
@@ -798,7 +777,7 @@ export class BehavioralFsm<
         }
         // Cascade disposal to child FSMs unless explicitly opted out.
         // Dedup keys on the underlying instance, not the ChildLink wrapper —
-        // wrapChildLinks() mints a fresh wrapper per declaring state, so a
+        // the mount table mints a fresh wrapper per declaring state, so a
         // wrapper-keyed Set never matches for a shared child (the same
         // identity bug setupChildSubscriptions() and collectChildSnapshots()
         // had). Double-dispose was harmless (dispose() is idempotent), but
@@ -833,38 +812,11 @@ export class BehavioralFsm<
     // -------------------------------------------------------------------------
 
     /**
-     * Walks all states at construction time, detects raw FSM instances assigned
-     * to _child, and wraps them into ChildLink adapters via createChildLink().
-     * Must run BEFORE setupChildSubscriptions() so the subscriptions see
-     * ChildLink objects, not raw FSM instances.
-     */
-    private wrapChildLinks(): void {
-        for (const stateName of Object.keys(this.states)) {
-            const stateObj = this.states[stateName];
-            const rawChild = stateObj?._child;
-            if (!rawChild) {
-                continue;
-            }
-            if (typeof rawChild !== "object") {
-                throw new Error(
-                    `State "${stateName}"._child: expected an Fsm or BehavioralFsm instance, got ${String(rawChild)}`
-                );
-            }
-            if (!(MACHINA_TYPE in rawChild)) {
-                throw new Error(
-                    `State "${stateName}"._child: expected an Fsm or BehavioralFsm instance, got a plain object`
-                );
-            }
-            stateObj._child = createChildLink(rawChild);
-        }
-    }
-
-    /**
      * Walks all states at construction time, finds states with _child, and
      * subscribes once to each unique child's wildcard events. Subscriptions are
      * stored for cleanup in dispose(). We deduplicate by `childLink.instance`
      * (the underlying Fsm/BehavioralFsm instance), not the `ChildLink` wrapper —
-     * `wrapChildLinks()` mints a fresh wrapper per declaring state, so a child
+     * the mount table mints a fresh wrapper per declaring state, so a child
      * shared across states would otherwise get one subscription PER declaring
      * state, each independently walking known clients and relaying events. That
      * silently double-fires client-less relays (Fsm-child events, or a
@@ -989,7 +941,7 @@ export class BehavioralFsm<
      * Compares `.instance`, not the `ChildLink` wrapper itself — setupChildSubscriptions()
      * dedupes subscriptions by instance and keeps only ONE representative wrapper
      * per shared child, so the client's actual active declaring state may hold a
-     * DIFFERENT wrapper for that same instance (wrapChildLinks() mints one per
+     * DIFFERENT wrapper for that same instance (the mount table mints one per
      * declaring state). Comparing wrappers directly would only ever match the one
      * declaring state whose wrapper happened to be kept for the subscription,
      * silently breaking relay for every other declaring name of a shared child.
@@ -1129,118 +1081,6 @@ export class BehavioralFsm<
             this.dispatch(client, item.inputName as TInputNames, item.args);
         }
     }
-}
-
-// -----------------------------------------------------------------------------
-// createChildLink — internal adapter factory
-//
-// Wraps either an Fsm or BehavioralFsm child and presents a uniform interface
-// for the parent engine to call. Never exported. The MACHINA_TYPE discriminant
-// tells us which call shape to use.
-// -----------------------------------------------------------------------------
-
-/**
- * Internal factory called by `wrapChildLinks()` during construction.
- * Wraps a raw Fsm or BehavioralFsm instance in a uniform `ChildLink` adapter
- * so the parent engine doesn't need to know which type it's talking to.
- *
- * Users never call this directly — they assign an FSM instance to `_child`
- * in their state config and `wrapChildLinks()` handles the wrapping.
- */
-function createChildLink(child: any): ChildLink {
-    if (!child || typeof child !== "object") {
-        throw new Error(
-            `createChildLink: expected an Fsm or BehavioralFsm instance, got ${String(child)}`
-        );
-    }
-    const childType: string = child[MACHINA_TYPE];
-
-    if (childType === "BehavioralFsm") {
-        return {
-            instance: child,
-            canHandle(client: object, inputName: string): boolean {
-                return child.canHandle(client, inputName);
-            },
-            handle(client: object, inputName: string, ...args: unknown[]): void {
-                child.handle(client, inputName, ...args);
-            },
-            reset(client: object): void {
-                child.transition(client, child.initialState);
-            },
-            onAny(callback: (eventName: string, data: unknown) => void): { off(): void } {
-                return child.on("*", callback);
-            },
-            compositeState(client: object): string {
-                return child.compositeState(client);
-            },
-            rehydrate(client: object, compositeState: string): void {
-                child.rehydrate(client, compositeState);
-            },
-            dehydrate(client: object, isOnActivePath: boolean): ClientSnapshot | undefined {
-                return child.dehydrate(client, isOnActivePath);
-            },
-            planRehydrate(client: object, snapshot: ClientSnapshot): Array<() => void> {
-                return child.planSnapshotWrites(client, snapshot);
-            },
-            dispose(): void {
-                child.dispose();
-            },
-        };
-    }
-
-    if (childType === "Fsm") {
-        return {
-            instance: child,
-            canHandle(_client: object, inputName: string): boolean {
-                return child.canHandle(inputName);
-            },
-            handle(_client: object, inputName: string, ...args: unknown[]): void {
-                child.handle(inputName, ...args);
-            },
-            reset(_client: object): void {
-                child.reset();
-            },
-            onAny(callback: (eventName: string, data: unknown) => void): { off(): void } {
-                return child.on("*", callback);
-            },
-            compositeState(_client: object): string {
-                return child.compositeState();
-            },
-            rehydrate(_client: object, _compositeState: string): void {
-                // Fsm owns its context internally — there is no per-client state to restore.
-                // Rehydrating into a BehavioralFsm hierarchy that has Fsm children is a
-                // structural mismatch; throw immediately so the caller gets a clear signal.
-                throw new Error(
-                    `rehydrate: cannot rehydrate an Fsm child. Fsm owns its own context; ` +
-                        `rehydrate is only valid for BehavioralFsm hierarchies.`
-                );
-            },
-            dehydrate(_client: object, _isOnActivePath: boolean): ClientSnapshot | undefined {
-                // Fsm owns a single global context shared across every client of the
-                // parent BehavioralFsm — there's no per-client slice of it to snapshot.
-                // collectChildSnapshots() only reaches this call when onPath is true
-                // (it skips the call entirely otherwise), so this always throws.
-                throw new Error(
-                    `dehydrate: cannot dehydrate an Fsm child. Fsm owns its own context; ` +
-                        `dehydrate is only valid for BehavioralFsm hierarchies.`
-                );
-            },
-            planRehydrate(_client: object, _snapshot: ClientSnapshot): Array<() => void> {
-                throw new Error(
-                    `rehydrate: cannot rehydrate an Fsm child. Fsm owns its own context; ` +
-                        `rehydrate is only valid for BehavioralFsm hierarchies.`
-                );
-            },
-            dispose(): void {
-                child.dispose();
-            },
-        };
-    }
-
-    throw new Error(
-        `createChildLink: expected an Fsm or BehavioralFsm instance, ` +
-            `got [MACHINA_TYPE] = ${String(childType ?? "undefined")}`
-    );
 }
 
 /**
