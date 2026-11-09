@@ -1134,6 +1134,20 @@ export type MachinaInstance = { readonly [MACHINA_TYPE]: MachinaType };
 // -----------------------------------------------------------------------------
 
 /**
+ * What a parent learns from a child's events, with the client already
+ * resolved by the adapter. `client` is the parent's client object when the
+ * child is a BehavioralFsm and the event is one of the seven built-in names
+ * (or `nohandler`); it is `undefined` for an Fsm child, whose events carry
+ * no client, and for every custom event, whose payload is opaque.
+ */
+export interface ChildListener {
+    /** Any child event other than `nohandler`, built-in or custom. */
+    onEvent(eventName: string, data: unknown, client: object | undefined): void;
+    /** The child emitted `nohandler`: it had no handler for `inputName`. */
+    onUnhandled(inputName: string, args: unknown[], client: object | undefined): void;
+}
+
+/**
  * Internal adapter that wraps either an Fsm or BehavioralFsm child,
  * presenting a uniform API for parent-initiated delegation.
  */
@@ -1144,8 +1158,12 @@ export interface ChildLink {
     handle(client: object, inputName: string, ...args: unknown[]): void;
     /** Reset the child to its initialState */
     reset(client: object): void;
-    /** Subscribe to all child events (wildcard). Returns unsubscribe fn. */
-    onAny(callback: (eventName: string, data: unknown) => void): { off(): void };
+    /**
+     * Open one wildcard subscription on the child and route every event to
+     * the listener with its client resolved. One subscription per call: the
+     * parent calls this once per distinct child.
+     */
+    subscribe(listener: ChildListener): { off(): void };
     /** The child FSM's compositeState for the given client */
     compositeState(client: object): string;
     /**

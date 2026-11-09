@@ -47,6 +47,7 @@ export type {
     BubblesOfInstance,
     DisposeOptions,
     ChildLink,
+    ChildListener,
     DeferredInput,
     ClientSnapshot,
 } from "./types";

@@ -11,7 +11,7 @@
 import { Emitter, type Subscription } from "./emitter";
 import { cloneDeep, cloneJsonSafe, NonSerializableValueError } from "./json-safe";
 import { ClientRegistry } from "./client-registry";
-import { BUILT_IN_EVENT_NAMES, MountTable } from "./mount-table";
+import { MountTable } from "./mount-table";
 import {
     MACHINA_TYPE,
     type FsmConfig,
@@ -837,74 +837,48 @@ export class BehavioralFsm<
             }
             seenInstances.add(childLink.instance);
 
-            // Subscribe to all child events. We use the wildcard so we get
-            // every event type in a single listener.
-            const sub = childLink.onAny((eventName: string, data: unknown) => {
+            // One wildcard subscription per distinct child. The adapter has
+            // already resolved the client, so the rules below only decide
+            // which of this engine's clients an event applies to.
+            const sub = childLink.subscribe({
                 // Nohandler from child = child couldn't handle the input.
                 // Re-dispatch to parent via handleLocally() (not handle(), to
                 // avoid re-entering the delegation path and looping).
-                if (eventName === "nohandler") {
-                    const payload = data as {
-                        inputName: string;
-                        args: unknown[];
-                        client?: TClient;
-                    };
-
-                    if (payload.client !== undefined) {
-                        // BehavioralFsm child: payload includes the client.
-                        // Filter stale events: only bubble if this client is
-                        // currently in a state that has this child.
-                        this.bubbleNohandler(
-                            payload.client,
-                            childLink,
-                            payload.inputName,
-                            payload.args ?? []
-                        );
-                    } else {
-                        // Fsm child: single-client, no client in payload.
-                        // Walk all known clients and bubble for any that are
-                        // currently in a state with this child.
-                        for (const client of this.registry.liveClients()) {
-                            this.bubbleNohandler(
-                                client,
-                                childLink,
-                                payload.inputName,
-                                payload.args ?? []
-                            );
-                        }
+                onUnhandled: (inputName, args, client) => {
+                    if (client !== undefined) {
+                        // BehavioralFsm child: filter stale events, bubble
+                        // only if this client is currently in a state that
+                        // has this child.
+                        this.bubbleNohandler(client as TClient, childLink, inputName, args);
+                        return;
                     }
-                    return;
-                }
-
+                    // Fsm child: single-client, so bubble for every live
+                    // client currently in a state with this child.
+                    for (const liveClient of this.registry.liveClients()) {
+                        this.bubbleNohandler(liveClient, childLink, inputName, args);
+                    }
+                },
                 // All other child events: only relay if at least one client
                 // is currently in a parent state that delegates to this child.
                 // Prevents stale events from leaking through the parent emitter
                 // when the child fires during construction or after the parent
                 // has moved to a different state.
-                const payload = data as Record<string, unknown> | undefined;
-                if (
-                    BUILT_IN_EVENT_NAMES.has(eventName) &&
-                    payload &&
-                    typeof payload === "object" &&
-                    "client" in payload
-                ) {
-                    // BehavioralFsm child built-in event: the engine put the
-                    // client in the payload, so filter on it directly.
-                    if (this.isChildActiveForClient(payload.client as TClient, childLink)) {
-                        (this.emitter as any).emit(eventName, data);
-                    }
-                } else {
-                    // Fsm child built-in (client already stripped), or any
-                    // custom event (payload is opaque, even with a `client`
-                    // key): walk known clients, relay if ANY client is
-                    // currently in a state with this child.
-                    for (const client of this.registry.liveClients()) {
-                        if (this.isChildActiveForClient(client, childLink)) {
+                onEvent: (eventName, data, client) => {
+                    if (client !== undefined) {
+                        if (this.isChildActiveForClient(client as TClient, childLink)) {
                             (this.emitter as any).emit(eventName, data);
-                            break; // one match is enough — relay once
+                        }
+                        return;
+                    }
+                    // No client to filter on: relay once if ANY live client
+                    // is currently in a state with this child.
+                    for (const liveClient of this.registry.liveClients()) {
+                        if (this.isChildActiveForClient(liveClient, childLink)) {
+                            (this.emitter as any).emit(eventName, data);
+                            break;
                         }
                     }
-                }
+                },
             });
 
             this.childSubscriptions.push(sub);

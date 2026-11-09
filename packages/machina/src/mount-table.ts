@@ -16,6 +16,7 @@ import {
     MACHINA_TYPE,
     type BehavioralFsmEventMap,
     type ChildLink,
+    type ChildListener,
     type ClientSnapshot,
     type MachinaInstance,
 } from "./types";
@@ -170,8 +171,25 @@ const createChildLink = (child: any, stateName: string): ChildLink => {
             reset(client: object): void {
                 child.transition(client, child.initialState);
             },
-            onAny(callback: (eventName: string, data: unknown) => void): { off(): void } {
-                return child.on("*", callback);
+            subscribe(listener: ChildListener): { off(): void } {
+                return child.on("*", (eventName: string, data: unknown) => {
+                    if (eventName === "nohandler") {
+                        const payload = data as {
+                            inputName: string;
+                            args?: unknown[];
+                            client?: object;
+                        };
+                        listener.onUnhandled(payload.inputName, payload.args ?? [], payload.client);
+                        return;
+                    }
+                    // The engine puts `client` in every built-in payload. A
+                    // custom payload is the user's data, so a `client` key
+                    // inside one means nothing to the parent (#183).
+                    const client = BUILT_IN_EVENT_NAMES.has(eventName)
+                        ? (data as { client?: object } | undefined)?.client
+                        : undefined;
+                    listener.onEvent(eventName, data, client);
+                });
             },
             compositeState(client: object): string {
                 return child.compositeState(client);
@@ -203,8 +221,18 @@ const createChildLink = (child: any, stateName: string): ChildLink => {
             reset(_client: object): void {
                 child.reset();
             },
-            onAny(callback: (eventName: string, data: unknown) => void): { off(): void } {
-                return child.on("*", callback);
+            subscribe(listener: ChildListener): { off(): void } {
+                // An Fsm has one context and no clients. Its relay already
+                // strips `client` from built-in payloads, so the parent must
+                // decide which of its own clients the event applies to.
+                return child.on("*", (eventName: string, data: unknown) => {
+                    if (eventName === "nohandler") {
+                        const payload = data as { inputName: string; args?: unknown[] };
+                        listener.onUnhandled(payload.inputName, payload.args ?? [], undefined);
+                        return;
+                    }
+                    listener.onEvent(eventName, data, undefined);
+                });
             },
             compositeState(_client: object): string {
                 return child.compositeState();
