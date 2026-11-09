@@ -1,7 +1,7 @@
 export default {};
 
 import type { ChildMounts } from "./mount-table";
-import type { ClientSnapshot, MachinaType } from "./types";
+import type { ChildLink, ClientSnapshot, MachinaType } from "./types";
 
 type Device = { deviceId: string };
 type ConnState = "online" | "degraded" | "offline";
@@ -103,8 +103,12 @@ describe("MountTable", () => {
 
     describe("constructor", () => {
         describe("when a state mounts a BehavioralFsm instance", () => {
+            let onlineMount: ChildLink | undefined, offlineMount: ChildLink | undefined;
+
             beforeEach(() => {
                 table = buildTable();
+                onlineMount = table.mountAt("online");
+                offlineMount = table.mountAt("offline");
             });
 
             it("should install an adapter over the raw child in place", () => {
@@ -113,11 +117,11 @@ describe("MountTable", () => {
             });
 
             it("should expose the installed adapter through mountAt", () => {
-                expect(table.mountAt("online")).toBe(states.online._child);
+                expect(onlineMount).toBe(states.online._child);
             });
 
             it("should return undefined from mountAt for a state without a child", () => {
-                expect(table.mountAt("offline")).toBeUndefined();
+                expect(offlineMount).toBeUndefined();
             });
 
             it("should open one wildcard subscription on the child", () => {
@@ -127,14 +131,17 @@ describe("MountTable", () => {
         });
 
         describe("when a state mounts an Fsm instance", () => {
+            let onlineMount: ChildLink | undefined;
+
             beforeEach(() => {
                 link = makeChild("Fsm", MACHINA_TYPE);
                 states = { online: { _child: link }, offline: {} };
                 table = buildTable();
+                onlineMount = table.mountAt("online");
             });
 
             it("should install an adapter over the raw child in place", () => {
-                expect(table.mountAt("online")?.instance).toBe(link);
+                expect(onlineMount?.instance).toBe(link);
             });
 
             it("should open one wildcard subscription on the child", () => {
@@ -144,12 +151,13 @@ describe("MountTable", () => {
         });
 
         describe("when two states mount the same child", () => {
-            let mounts: ChildMounts[];
+            let mounts: ChildMounts[], degradedMount: ChildLink | undefined;
 
             beforeEach(() => {
                 states = { online: { _child: link }, degraded: { _child: link }, offline: {} };
                 table = buildTable();
                 mounts = table.mountsByChild();
+                degradedMount = table.mountAt("degraded");
             });
 
             it("should subscribe to the child once", () => {
@@ -163,7 +171,7 @@ describe("MountTable", () => {
             });
 
             it("should resolve both mounts to the same instance", () => {
-                expect(table.mountAt("degraded")?.instance).toBe(link);
+                expect(degradedMount?.instance).toBe(link);
             });
         });
 
@@ -250,6 +258,33 @@ describe("MountTable", () => {
                         'State "online"._child: expected an Fsm or BehavioralFsm instance, got [MACHINA_TYPE] = Pager'
                     )
                 );
+            });
+        });
+
+        describe("when the caller deletes _child from a state after construction", () => {
+            let mount: ChildLink | undefined, delegated: boolean;
+
+            beforeEach(() => {
+                link.canHandle.mockReturnValue(true);
+                table = buildTable();
+                delete states.online._child;
+                mount = table.mountAt("online");
+                delegated = table.delegate(ROUTER, "online", "heartbeat", HEARTBEAT_ARGS);
+            });
+
+            // The table reads `_child` once, in the constructor. Machina does not
+            // support mutating state objects after the FSM exists, so a later
+            // delete does not unmount the child. Before the mount table the engine
+            // read `_child` on every call and a delete did unmount it. This pins
+            // the new behaviour so a future change to it is a deliberate one.
+            it("should still resolve the mount", () => {
+                expect(mount?.instance).toBe(link);
+            });
+
+            it("should still delegate to the child", () => {
+                expect(delegated).toBe(true);
+                expect(link.handle).toHaveBeenCalledTimes(1);
+                expect(link.handle).toHaveBeenCalledWith(ROUTER, "heartbeat", ...HEARTBEAT_ARGS);
             });
         });
     });
