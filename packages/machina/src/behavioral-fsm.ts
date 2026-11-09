@@ -96,10 +96,7 @@ export class BehavioralFsm<
     private readonly registry = new ClientRegistry<TClient, TStateNames>();
     // Every state that declares `_child`, with the adapter installed there.
     // The only code in this class that knows a child exists goes through it.
-    private readonly mounts: MountTable<TClient>;
-    // Subscriptions to child FSM wildcard events, keyed by state name.
-    // Set up once during construction, torn down in dispose().
-    private readonly childSubscriptions: Array<{ off(): void }> = [];
+    private readonly mounts: MountTable<TClient, TStateNames>;
     // Config-level teardown hook (#194). Called once per live client from
     // dispose(); see FsmConfig.onDispose for the contract.
     private readonly onDispose?: (
@@ -115,8 +112,18 @@ export class BehavioralFsm<
         // The constructor's config is typed with the wide maps; the class
         // generics carry the declared ones. Same erasure as `states` below.
         this.onDispose = config.onDispose as typeof this.onDispose;
-        this.mounts = new MountTable<TClient>(this.states);
-        this.setupChildSubscriptions();
+        this.mounts = new MountTable<TClient, TStateNames>(this.states, this.registry, {
+            // A child's nohandler re-enters through handleLocally(), not
+            // handle(): the delegation path would send it straight back to
+            // the child. The table has already confirmed the client's state
+            // mounts the child, so the record exists.
+            bubble: (client, inputName, args) => {
+                const meta = this.registry.get(client)!;
+                meta.currentActionArgs = args;
+                this.handleLocally(client, inputName, args, meta);
+            },
+            relay: (eventName, data) => (this.emitter as any).emit(eventName, data),
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -772,15 +779,12 @@ export class BehavioralFsm<
         }
 
         // Tear down all child wildcard subscriptions before clearing our emitter.
-        for (const sub of this.childSubscriptions) {
-            sub.off();
-        }
+        this.mounts.dispose();
         // Cascade disposal to child FSMs unless explicitly opted out.
         // Dedup keys on the underlying instance, not the ChildLink wrapper —
         // the mount table mints a fresh wrapper per declaring state, so a
         // wrapper-keyed Set never matches for a shared child (the same
-        // identity bug setupChildSubscriptions() and collectChildSnapshots()
-        // had). Double-dispose was harmless (dispose() is idempotent), but
+        // identity bug the relay and collectChildSnapshots() had). Double-dispose was harmless (dispose() is idempotent), but
         // one dedup idiom everywhere beats a latent inconsistency.
         if (!options?.preserveChildren) {
             const seen = new Set<MachinaInstance>();
@@ -810,125 +814,6 @@ export class BehavioralFsm<
     // -------------------------------------------------------------------------
     // Internal
     // -------------------------------------------------------------------------
-
-    /**
-     * Walks all states at construction time, finds states with _child, and
-     * subscribes once to each unique child's wildcard events. Subscriptions are
-     * stored for cleanup in dispose(). We deduplicate by `childLink.instance`
-     * (the underlying Fsm/BehavioralFsm instance), not the `ChildLink` wrapper —
-     * the mount table mints a fresh wrapper per declaring state, so a child
-     * shared across states would otherwise get one subscription PER declaring
-     * state, each independently walking known clients and relaying events. That
-     * silently double-fires client-less relays (Fsm-child events, or a
-     * BehavioralFsm child's custom `emit()` with no `client` in the payload)
-     * whenever two different clients are active on two different declaring
-     * names at once — the same wrapper-vs-instance identity bug
-     * `collectChildSnapshots()` had before its #184 fix.
-     */
-    private setupChildSubscriptions(): void {
-        const seenInstances = new Set<MachinaInstance>();
-
-        for (const stateName of Object.keys(this.states)) {
-            const stateObj = this.states[stateName];
-            const childLink = stateObj?._child as ChildLink | undefined;
-
-            if (!childLink || seenInstances.has(childLink.instance)) {
-                continue;
-            }
-            seenInstances.add(childLink.instance);
-
-            // One wildcard subscription per distinct child. The adapter has
-            // already resolved the client, so the rules below only decide
-            // which of this engine's clients an event applies to.
-            const sub = childLink.subscribe({
-                // Nohandler from child = child couldn't handle the input.
-                // Re-dispatch to parent via handleLocally() (not handle(), to
-                // avoid re-entering the delegation path and looping).
-                onUnhandled: (inputName, args, client) => {
-                    if (client !== undefined) {
-                        // BehavioralFsm child: filter stale events, bubble
-                        // only if this client is currently in a state that
-                        // has this child.
-                        this.bubbleNohandler(client as TClient, childLink, inputName, args);
-                        return;
-                    }
-                    // Fsm child: single-client, so bubble for every live
-                    // client currently in a state with this child.
-                    for (const liveClient of this.registry.liveClients()) {
-                        this.bubbleNohandler(liveClient, childLink, inputName, args);
-                    }
-                },
-                // All other child events: only relay if at least one client
-                // is currently in a parent state that delegates to this child.
-                // Prevents stale events from leaking through the parent emitter
-                // when the child fires during construction or after the parent
-                // has moved to a different state.
-                onEvent: (eventName, data, client) => {
-                    if (client !== undefined) {
-                        if (this.isChildActiveForClient(client as TClient, childLink)) {
-                            (this.emitter as any).emit(eventName, data);
-                        }
-                        return;
-                    }
-                    // No client to filter on: relay once if ANY live client
-                    // is currently in a state with this child.
-                    for (const liveClient of this.registry.liveClients()) {
-                        if (this.isChildActiveForClient(liveClient, childLink)) {
-                            (this.emitter as any).emit(eventName, data);
-                            break;
-                        }
-                    }
-                },
-            });
-
-            this.childSubscriptions.push(sub);
-        }
-    }
-
-    /**
-     * Bubbles a child nohandler to the parent for the given client.
-     * Only fires if the client is currently in a state that has this childLink.
-     * Extracted from the lambda in setupChildSubscriptions to keep it readable.
-     */
-    private bubbleNohandler(
-        client: TClient,
-        childLink: ChildLink,
-        inputName: string,
-        args: unknown[]
-    ): void {
-        if (!this.isChildActiveForClient(client, childLink)) {
-            return;
-        }
-        // Safe to assert — isChildActiveForClient confirmed meta exists AND
-        // the client is in a state whose _child matches childLink.
-        const meta = this.registry.get(client)!;
-        meta.currentActionArgs = args;
-        this.handleLocally(client, inputName as TInputNames, args, meta);
-    }
-
-    /**
-     * Returns true if the given client is currently in a parent state whose
-     * _child resolves to the same underlying instance as childLink. Returns
-     * false if the client has no meta (never initialized) or is in a state
-     * with a different (or no) child.
-     *
-     * Compares `.instance`, not the `ChildLink` wrapper itself — setupChildSubscriptions()
-     * dedupes subscriptions by instance and keeps only ONE representative wrapper
-     * per shared child, so the client's actual active declaring state may hold a
-     * DIFFERENT wrapper for that same instance (the mount table mints one per
-     * declaring state). Comparing wrappers directly would only ever match the one
-     * declaring state whose wrapper happened to be kept for the subscription,
-     * silently breaking relay for every other declaring name of a shared child.
-     */
-    private isChildActiveForClient(client: TClient, childLink: ChildLink): boolean {
-        const meta = this.registry.get(client);
-        if (!meta) {
-            return false;
-        }
-        const parentStateObj = this.states[meta.state];
-        const activeChildLink = parentStateObj?._child as ChildLink | undefined;
-        return activeChildLink?.instance === childLink.instance;
-    }
 
     /**
      * The inner handler dispatch — no delegation, no initialization side effects

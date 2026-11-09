@@ -5,13 +5,16 @@
 // A "mount" is a state that declares `_child`. The table is built once per
 // BehavioralFsm from the config's states object. It installs a ChildLink
 // adapter at every mount, groups mounts by the child instance they share,
-// and answers the engine's four child-aware questions (delegate, canHandle,
-// resetAt, pathAt). The engine itself never reads `_child`.
+// answers the engine's four child-aware questions (delegate, canHandle,
+// resetAt, pathAt), and owns the inbound side: one subscription per child,
+// and the rules that decide which of the engine's clients a child event
+// applies to. The engine itself never reads `_child`.
 //
 // See CONTEXT.md ("Hierarchy") for the vocabulary and docs/adr/0001 for why
 // the adapter is written back into `states[name]._child` in place.
 // =============================================================================
 
+import type { ClientRegistry } from "./client-registry";
 import {
     MACHINA_TYPE,
     type BehavioralFsmEventMap,
@@ -44,7 +47,18 @@ export interface ChildMounts {
     stateNames: string[];
 }
 
-export class MountTable<TClient extends object> {
+/** The two ways a child event re-enters the engine. */
+export interface MountTableCallbacks<TClient extends object> {
+    /**
+     * A child had no handler for `inputName` and `client` is in a state that
+     * mounts it: the engine handles the input locally for that client.
+     */
+    bubble(client: TClient, inputName: string, args: unknown[]): void;
+    /** Re-emit a child event on the engine's own emitter. */
+    relay(eventName: string, data: unknown): void;
+}
+
+export class MountTable<TClient extends object, TStateNames extends string> {
     // State name → the adapter installed at that mount. Populated by the
     // install walk; the same adapter object is what `states[name]._child`
     // now holds, so tooling and the table read the same thing.
@@ -54,8 +68,14 @@ export class MountTable<TClient extends object> {
     // adapters and one entry here. Everything that must happen once per
     // child (subscribe, dispose, snapshot) iterates this map.
     private readonly byChild = new Map<MachinaInstance, ChildMounts>();
+    // One wildcard subscription per distinct child, torn down in dispose().
+    private readonly subscriptions: Array<{ off(): void }> = [];
 
-    constructor(states: Record<string, Record<string, unknown>>) {
+    constructor(
+        states: Record<string, Record<string, unknown>>,
+        private readonly registry: ClientRegistry<TClient, TStateNames>,
+        private readonly callbacks: MountTableCallbacks<TClient>
+    ) {
         for (const stateName of Object.keys(states)) {
             const stateObj = states[stateName];
             const rawChild = stateObj?._child;
@@ -82,6 +102,13 @@ export class MountTable<TClient extends object> {
             } else {
                 this.byChild.set(childLink.instance, { childLink, stateNames: [stateName] });
             }
+        }
+
+        // Subscribe once per child, not once per mount. A child shared by two
+        // states would otherwise relay every client-less event twice whenever
+        // two clients sit on its two mounts at the same time.
+        for (const { childLink } of this.byChild.values()) {
+            this.subscriptions.push(childLink.subscribe(this.listenerFor(childLink)));
         }
     }
 
@@ -144,6 +171,78 @@ export class MountTable<TClient extends object> {
     pathAt(client: TClient, stateName: string): string {
         const mount = this.byState.get(stateName);
         return mount ? mount.compositeState(client) : "";
+    }
+
+    /** Close every child subscription. Safe to call once; the engine guards re-entry. */
+    dispose(): void {
+        for (const sub of this.subscriptions) {
+            sub.off();
+        }
+        this.subscriptions.length = 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Inbound: which of the engine's clients does a child event apply to?
+    // -------------------------------------------------------------------------
+
+    /**
+     * The relay rules for one child. The adapter has already resolved the
+     * client, so each rule is a question about this engine's clients only:
+     *
+     * - Unhandled input with a client: bubble for that client if its state
+     *   mounts this child.
+     * - Unhandled input without a client (Fsm child): bubble for every live
+     *   client whose state mounts this child.
+     * - Any other event with a client: relay if its state mounts this child.
+     * - Any other event without a client: relay once if any live client's
+     *   state mounts this child.
+     *
+     * The "mounts this child" test is what keeps stale events out of the
+     * parent emitter: a child that fires during construction, or after the
+     * parent moved its client to another state, matches no client.
+     */
+    private listenerFor(childLink: ChildLink): ChildListener {
+        const child = childLink.instance;
+        return {
+            onUnhandled: (inputName, args, client) => {
+                if (client !== undefined) {
+                    if (this.mountsChild(client as TClient, child)) {
+                        this.callbacks.bubble(client as TClient, inputName, args);
+                    }
+                    return;
+                }
+                for (const liveClient of this.registry.liveClients()) {
+                    if (this.mountsChild(liveClient, child)) {
+                        this.callbacks.bubble(liveClient, inputName, args);
+                    }
+                }
+            },
+            onEvent: (eventName, data, client) => {
+                if (client !== undefined) {
+                    if (this.mountsChild(client as TClient, child)) {
+                        this.callbacks.relay(eventName, data);
+                    }
+                    return;
+                }
+                for (const liveClient of this.registry.liveClients()) {
+                    if (this.mountsChild(liveClient, child)) {
+                        this.callbacks.relay(eventName, data);
+                        break;
+                    }
+                }
+            },
+        };
+    }
+
+    /**
+     * Whether `client`'s current state mounts `child`. Compares the raw
+     * instance, not the adapter: a shared child has one adapter per mount,
+     * and the subscription was opened through whichever adapter the install
+     * walk met first.
+     */
+    private mountsChild(client: TClient, child: MachinaInstance): boolean {
+        const state = this.registry.stateOf(client);
+        return state !== undefined && this.byState.get(state)?.instance === child;
     }
 }
 
