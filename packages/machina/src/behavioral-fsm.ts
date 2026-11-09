@@ -27,10 +27,8 @@ import {
     type VocabularyEvents,
     type ClientMeta,
     type DeferredInput,
-    type ChildLink,
     type DisposeOptions,
     type ClientSnapshot,
-    type MachinaInstance,
     type SpecialStateKeys,
     type InputMap,
     type InputCall,
@@ -526,7 +524,7 @@ export class BehavioralFsm<
                     );
                 }
 
-                const childLink = this.states[stateName]?._child as ChildLink | undefined;
+                const childLink = this.mounts.mountAt(stateName);
                 if (!childLink) {
                     throw new Error(
                         `rehydrate: state "${stateName}" in FSM "${this.id}" has no _child, ` +
@@ -571,8 +569,7 @@ export class BehavioralFsm<
         // This ensures a throw mid-hierarchy doesn't leave a half-registered client.
         if (rest.length > 0) {
             const childPath = rest.join(".");
-            const stateObj = this.states[state];
-            const childLink = stateObj?._child as ChildLink | undefined;
+            const childLink = this.mounts.mountAt(state);
 
             if (!childLink) {
                 throw new Error(
@@ -594,10 +591,8 @@ export class BehavioralFsm<
      * reused under every declaring state name, matching how the engine already
      * treats shared children elsewhere (dispose, event subscriptions).
      *
-     * Declaring names are grouped by `childLink.instance` (the actual FSM
-     * instance, not the `ChildLink` wrapper — the mount table mints a fresh
-     * wrapper per declaring state, so grouping by wrapper would never hit for a
-     * shared child) BEFORE any `onPath` is computed or any child is dehydrated.
+     * The mount table groups declaring names by child instance, so a shared
+     * child's combined `onPath` is known BEFORE any child is dehydrated.
      * A shared child's `onPath` is the OR of `stateName === activeState` across
      * every declaring name in its group: at most one declaring name can ever
      * equal `activeState`, so this combined flag is correct and, critically,
@@ -626,36 +621,11 @@ export class BehavioralFsm<
         activeState: string,
         isOnActivePath: boolean
     ): Record<string, ClientSnapshot> | undefined {
-        // Pass 1: group every declaring state name by the child instance it
-        // resolves to, so a shared child's combined onPath can be computed
-        // before dehydrate() is ever called for it.
-        const declaringNamesByInstance = new Map<
-            MachinaInstance,
-            { childLink: ChildLink; stateNames: string[] }
-        >();
-
-        for (const stateName of Object.keys(this.states)) {
-            const childLink = this.states[stateName]?._child as ChildLink | undefined;
-            if (!childLink) {
-                continue;
-            }
-
-            const entry = declaringNamesByInstance.get(childLink.instance);
-            if (entry) {
-                entry.stateNames.push(stateName);
-            } else {
-                declaringNamesByInstance.set(childLink.instance, {
-                    childLink,
-                    stateNames: [stateName],
-                });
-            }
-        }
-
-        // Pass 2: dehydrate each unique instance exactly once, using the
-        // combined onPath, then fan the result out to every declaring name.
+        // Dehydrate each distinct child exactly once, using the combined
+        // onPath, then fan the result out to every declaring name.
         let children: Record<string, ClientSnapshot> | undefined;
 
-        for (const { childLink, stateNames } of declaringNamesByInstance.values()) {
+        for (const { childLink, stateNames } of this.mounts.mountsByChild()) {
             const onPath = isOnActivePath && stateNames.includes(activeState);
             const isOffPathFsmChild = childLink.instance[MACHINA_TYPE] === "Fsm" && !onPath;
             if (isOffPathFsmChild) {
