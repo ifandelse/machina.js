@@ -92,6 +92,7 @@ Two factory functions, one mental model:
 - Run `pnpm run checks` (lint + test + build) before submitting.
 - Keep PRs focused. One concern per PR.
 - Tests live in `*.test.ts` files alongside the source they test.
+- An agent that posts a comment, review, or reply on a PR or issue for a maintainer opens with one line that names the model and the person it posts for. Example: "Claude Fable 5.1, posting on Jim's behalf."
 
 ## Prose Linting
 
