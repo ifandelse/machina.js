@@ -19,6 +19,9 @@ packages/
       types.ts          # All type definitions (no runtime code)
       fsm.ts            # Fsm class + createFsm factory
       behavioral-fsm.ts # BehavioralFsm class + createBehavioralFsm factory
+      mount-table.ts    # Child delegation: installs ChildLink adapters, relays, bubbles, disposes
+      client-registry.ts # Per-client records + live-client enumeration
+      json-safe.ts      # Validates and deep-clones dehydrate() output
       emitter.ts        # Minimal event emitter
       *.test.ts         # Tests live alongside source
   machina-inspect/  # Static analysis — graph IR + structural checks
@@ -28,7 +31,7 @@ packages/
 examples/           # Working examples (connectivity, dungeon-critters, etc.)
 ```
 
-The core library is ~2,900 lines of TypeScript across 5 files.
+The core library is ~3,700 lines of TypeScript across 8 files.
 
 ## Build / Test / Lint
 
